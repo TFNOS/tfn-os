@@ -1,0 +1,47 @@
+# The M5Stack CoreS3-SE. Use this file after sdkconfig.defaults, with its own build
+# folder and sdkconfig (see README.md):
+#   idf.py -B build_s3se -D SDKCONFIG=sdkconfig.s3se
+#          -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.cores3se" build
+CONFIG_TFN_TARGET_CORES3SE=y
+
+# 8 MB quad PSRAM (ESP32-S3 with an external PSRAM chip), 16 MB flash
+CONFIG_SPIRAM_MODE_QUAD=y
+
+# The LCD SPI clock: 80 MHz gives about 54 fps (40 MHz: 31 fps). Tested on a CoreS3 with the
+# ILI9342E: the picture is correct.
+CONFIG_TFN_LCD_PCLK_MHZ=80
+
+# The web camera (main/webcam.c): only the GC0308 of the CoreS3, so the start probes only its
+# address (0x21) on the shared system I2C bus. A small DMA buffer (internal RAM) while it is on.
+# CONFIG_OV7670_SUPPORT is not set
+# CONFIG_OV7725_SUPPORT is not set
+# CONFIG_NT99141_SUPPORT is not set
+# CONFIG_OV2640_SUPPORT is not set
+# CONFIG_OV3660_SUPPORT is not set
+# CONFIG_OV3640_SUPPORT is not set
+# CONFIG_OV5640_SUPPORT is not set
+# CONFIG_GC2145_SUPPORT is not set
+# CONFIG_GC032A_SUPPORT is not set
+CONFIG_GC0308_SUPPORT=y
+# CONFIG_BF3005_SUPPORT is not set
+# CONFIG_BF20A6_SUPPORT is not set
+# CONFIG_SC101IOT_SUPPORT is not set
+# CONFIG_SC030IOT_SUPPORT is not set
+# CONFIG_SC031GS_SUPPORT is not set
+# CONFIG_HM1055_SUPPORT is not set
+# CONFIG_HM0360_SUPPORT is not set
+# CONFIG_MEGA_CCM_SUPPORT is not set
+CONFIG_CAMERA_DMA_BUFFER_SIZE_MAX=8192
+# the slim layout: small app slots, a big /data for the app files (partitions_slim.csv)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_slim.csv"
+
+# USB-C HEADPHONES: slower USB timings (the first descriptor of the headphones failed with the
+# defaults: ENUM CHECK_SHORT_DEV_DESC, a transfer error)
+CONFIG_USB_HOST_DEBOUNCE_DELAY_MS=600
+CONFIG_USB_HOST_RESET_HOLD_MS=50
+CONFIG_USB_HOST_RESET_RECOVERY_MS=100
+CONFIG_USB_HOST_SET_ADDR_RECOVERY_MS=50
+# the FIFO of the USB host for periodic OUT (the audio stream to the headphones): the AB13X headphones have
+# an endpoint of 384 bytes; the balanced FIFO allowed 128 (HCD DWC: EP MPS exceeds supported limit)
+CONFIG_USB_HOST_HW_BUFFER_BIAS_PERIODIC_OUT=y

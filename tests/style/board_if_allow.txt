@@ -1,0 +1,2 @@
+# The old places that still test a board name (tests/style/check_board_if.py): file, count.
+# The list only gets shorter.

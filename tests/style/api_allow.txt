@@ -1,0 +1,3 @@
+# The old places that still include an OS file of main/ (tests/style/check_api.py): the file, the OS file, the reason.
+# The list only gets shorter.
+libs/rfsrc/rfsrc_native.c main/rf_native.h  # the extra RF NATIVE (PLAN 5.2)

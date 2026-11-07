@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "HELLO",
+ "sym": "app_hello",
+ "group": "UTIL",
+ "version": "1.0.0",
+ "srcs": [
+  "app_hello.c"
+ ],
+ "store": {
+  "en": "The smallest complete app of TFN OS: a ball that goes to each tap, and a count of the taps."
+ },
+ "about": "The template of an app in its own repo (README.md). Change name, sym and the file names together."
+}

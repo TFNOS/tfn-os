@@ -1,0 +1,81 @@
+name: An ABI request
+description: An app needs a function that the app ABI of the firmware does not have.
+labels: ["abi request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The ABI is add-only: a name that goes in stays in all later releases of the same ABI version. So each name
+        needs a reason. Read `sdk/docs/raw.md` first: about 800 ESP-IDF functions are already in the ABI.
+        When `sdk/tools/mk_app.py` stops at a name that is not in the ABI, it writes `sdk/out/<id>/abi_request.json`.
+  - type: textarea
+    id: names
+    attributes:
+      label: The names
+      description: One function on each line. For an ESP-IDF function, give its component or header.
+      placeholder: |
+        esp_example_function (components/esp_example, esp_example.h)
+    validations:
+      required: true
+  - type: textarea
+    id: request
+    attributes:
+      label: The content of abi_request.json
+      render: json
+  - type: input
+    id: app
+    attributes:
+      label: The app that needs the names
+      description: A link to the source of the app. A request for an app with no public source is hard to review.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why the app needs them
+      description: What the app does with each name, and the ways that you tried with the names of the ABI now.
+    validations:
+      required: true
+  - type: dropdown
+    id: perm
+    attributes:
+      label: The permission class that you propose
+      description: A name that can do harm needs a class. The store asks the user before the install of an app with
+        the class. `main/tfn_abi.json` (perms) lists the classes.
+      options:
+        - free (no harm)
+        - net
+        - ble
+        - espnow
+        - events
+        - background
+        - notify
+        - nvs
+        - secret
+        - gpio
+        - bus
+        - pwm
+        - adc
+        - hid
+        - radio.rx
+        - sound.alert
+        - wifi.scan
+        - wifi.config
+        - wifi.radio
+        - a new class (write it below)
+    validations:
+      required: true
+  - type: dropdown
+    id: kinds
+    attributes:
+      label: The board kinds
+      multiple: true
+      options:
+        - All kinds
+        - The ESP32-S3 kinds only
+        - The ESP32-P4 kind only (Tab5)
+        - Other (write it below)
+  - type: textarea
+    id: notes
+    attributes:
+      label: More data

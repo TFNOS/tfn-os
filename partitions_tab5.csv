@@ -1,0 +1,13 @@
+# Name,     Type, SubType, Offset,   Size
+# THE TAB5 (ESP32-P4, 16 MB flash): the layout of Tab5Boot (its own repo, partitions.csv there; keep the two
+# the same): the boot menu in the factory slot, TFN OS in ota_0 / ota_1 (4.5 MB each: the slim firmware is about
+# 3 MB; an update writes the TFN slot that does not run), M5PaperDOS-X in ota_2, the storage after them (2.4 MB).
+# The bootloader of Tab5Boot starts the menu; flash all with Tab5Boot/tools/flash_all.py.
+nvs,        data, nvs,     0x9000,   0x6000
+phy_init,   data, phy,     0xf000,   0x1000
+menu,       app,  factory, 0x10000,  0x100000
+otadata,    data, ota,     0x110000, 0x2000
+tfn_a,      app,  ota_0,   0x120000, 0x480000
+tfn_b,      app,  ota_1,   0x5A0000, 0x480000
+dos,        app,  ota_2,   0xA20000, 0x380000
+storage,    data, fat,     0xDA0000, 0x260000

@@ -1,0 +1,96 @@
+# The firmware build of each board kind in the ESP-IDF container, from a clean clone. It runs only when a person
+# starts it (Actions > firmware > Run workflow), because each kind needs some minutes of the runner.
+# The result: the image size of each kind in the job summary, and the .bin files as artifacts (7 days).
+# This build does not do the steps of the release flow (the app selection of a release, the
+# FORCE_CFG values, the version): its sizes are near the release sizes, not the same.
+# The tab5 build shows "1/4 app partitions are too small": that is the 1 MB slot of the boot menu, not a TFN OS slot.
+name: firmware
+on:
+  workflow_dispatch:
+    inputs:
+      kinds:
+        description: 'The kinds (JSON list)'
+        default: '["lcd349", "cores3", "am18", "am175", "watcher", "tab5"]'
+        required: true
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.kind }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container: espressif/idf:v6.1
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: ${{ fromJSON(inputs.kinds || '["lcd349", "cores3", "am18", "am175", "watcher", "tab5"]') }}
+    env:
+      IDF_CCACHE_ENABLE: 1
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 600M
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: .ccache
+          key: fw-ccache-${{ matrix.kind }}-${{ github.sha }}
+          restore-keys: fw-ccache-${{ matrix.kind }}-
+      - name: Build
+        env:
+          KIND: ${{ matrix.kind }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh" > /dev/null
+          # the sdkconfig.defaults files and the chip of each kind (as boards.json)
+          case "$KIND" in
+          lcd349)  extra="" ;;
+          cores3)  extra="sdkconfig.defaults.cores3se" ;;
+          am18)    extra="sdkconfig.defaults.amoled18" ;;
+          am175)   extra="sdkconfig.defaults.amoled175" ;;
+          watcher) extra="sdkconfig.defaults.watcher" ;;
+          tab5)    extra="sdkconfig.defaults.tab5" ;;
+          *) echo "unknown kind $KIND"; exit 1 ;;
+          esac
+          defaults="sdkconfig.defaults${extra:+;$extra}"
+          target=""
+          [ "$KIND" = tab5 ] && target="-D IDF_TARGET=esp32p4"
+          b="build_ci/$KIND"
+          mkdir -p "$b"
+          idf.py -B "$b" -D SDKCONFIG="$PWD/$b/sdkconfig" -D SDKCONFIG_DEFAULTS="$defaults" $target build 2>&1 \
+            | tee "$b/build.log" | grep -E "error|warning: .*overflow|too small|Project build complete|bytes|FAILED" \
+            | tail -40
+          test "${PIPESTATUS[0]}" = 0
+          # the build takes the component versions of the lock file of the tree: when the component manager solves
+          # the versions again (a lock of older component manifests), this build has other versions
+          if grep -i "solving dependencies" "$b/build.log"; then
+            echo "::error::the lock file of the components (dependencies.lock*) is out of date: the component manager solved the versions again. Build this kind with tfn.py, check the versions, then commit the lock"
+            exit 1
+          fi
+      - name: Size report
+        if: always()
+        env:
+          KIND: ${{ matrix.kind }}
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          b="build_ci/$KIND"
+          [ -f "$b/tfn_os.bin" ] || { echo "no image"; tail -60 "$b/build.log"; exit 1; }
+          size=$(stat -c %s "$b/tfn_os.bin")
+          {
+            echo "### $KIND: tfn_os.bin $size bytes"
+            echo '```'
+            idf.py -B "$b" -D SDKCONFIG="$PWD/$b/sdkconfig" size 2>/dev/null | tail -30
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: firmware-${{ matrix.kind }}
+          path: |
+            build_ci/${{ matrix.kind }}/tfn_os.bin
+            build_ci/${{ matrix.kind }}/bootloader/bootloader.bin
+            build_ci/${{ matrix.kind }}/partition_table/partition-table.bin
+          retention-days: 7

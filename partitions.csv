@@ -1,0 +1,9 @@
+# Name,     Type, SubType, Offset,   Size
+# nvs keeps the offset of the default table, so the settings stay after the change
+# two app slots for the firmware update over the network (OTA, main/ota.c)
+nvs,        data, nvs,     0x9000,   0x6000
+phy_init,   data, phy,     0xf000,   0x1000
+ota_0,      app,  ota_0,   0x10000,  6M
+ota_1,      app,  ota_1,   0x610000, 6M
+otadata,    data, ota,     0xC10000, 0x2000
+storage,    data, fat,     0xC20000, 0x3E0000

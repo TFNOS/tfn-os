@@ -1,0 +1,929 @@
+/* TFN OS site. The colours come from the TFN OS menu: night indigo, the violet of GAMES, the teal of UTIL and the gold
+   frame of the selected app. The board drawings use real millimetres (--mm = the px of one mm). */
+
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  src: url('../fonts/bricolage-grotesque.woff2') format('woff2');
+  font-weight: 400 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('../fonts/atkinson-hyperlegible-next.woff2') format('woff2');
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+:root {
+  --paper: #f2f1fb;
+  --paper-2: #e7e5f7;
+  --raised: #ffffff;
+  --ink: #1b1c48;
+  --ink-2: #4a4c7c;
+  --line: #d2cfee;
+  --violet: #5243c4;
+  --on-violet: #ffffff;
+  --gold: #e6a315;
+  --gold-soft: #fbe6b0;
+  --teal: #0f7c75;
+  --warn-bg: #fff1d6;
+  --warn-ink: #6b4300;
+  --bad: #b3261e;
+  --on-bad: #ffffff;
+  --case-1: #2f3247;
+  --case-2: #1e2033;
+  --case-edge: rgba(255, 255, 255, 0.14);
+  --shadow: 0 1px 2px rgba(27, 28, 72, 0.08), 0 8px 24px rgba(27, 28, 72, 0.08);
+  --font-d: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-b: 'Atkinson Hyperlegible Next', 'Segoe UI', system-ui, sans-serif;
+  --wrap: 1180px;
+  --gutter: clamp(16px, 4vw, 40px);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #14163b;
+    --paper-2: #1b1e4d;
+    --raised: #20235a;
+    --ink: #eceaff;
+    --ink-2: #aeacda;
+    --line: #2f3378;
+    --violet: #a59bff;
+    --on-violet: #14163b;
+    --gold: #f6c548;
+    --gold-soft: #4a3d12;
+    --teal: #4fd0c4;
+    --warn-bg: #3d2f0d;
+    --warn-ink: #ffd98a;
+    --bad: #ff8a80;
+    --on-bad: #2b0a07;
+    --case-1: #3a3d5c;
+    --case-2: #26294a;
+    --case-edge: rgba(255, 255, 255, 0.2);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.25);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #14163b;
+  --paper-2: #1b1e4d;
+  --raised: #20235a;
+  --ink: #eceaff;
+  --ink-2: #aeacda;
+  --line: #2f3378;
+  --violet: #a59bff;
+  --on-violet: #14163b;
+  --gold: #f6c548;
+  --gold-soft: #4a3d12;
+  --teal: #4fd0c4;
+  --warn-bg: #3d2f0d;
+  --warn-ink: #ffd98a;
+  --bad: #ff8a80;
+  --on-bad: #2b0a07;
+  --case-1: #3a3d5c;
+  --case-2: #26294a;
+  --case-edge: rgba(255, 255, 255, 0.2);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.25);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-b);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+}
+
+a {
+  color: var(--violet);
+  text-underline-offset: 0.18em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-d);
+  line-height: 1.08;
+  margin: 0 0 0.5em;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: clamp(1.9rem, 4.2vw, 3rem);
+  font-weight: 750;
+  font-variation-settings: 'opsz' 72;
+}
+
+h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+.wrap {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.measure {
+  max-width: 62ch;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip:focus {
+  left: 16px;
+  top: 12px;
+  z-index: 10;
+  background: var(--raised);
+  padding: 8px 12px;
+}
+
+/* the top bar */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.top .wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 60px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.brand svg {
+  width: 34px;
+  height: 14px;
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.nav a {
+  color: var(--ink-2);
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.nav a:hover,
+.nav a[aria-current='page'] {
+  color: var(--ink);
+  background: var(--paper-2);
+}
+
+.theme-btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 999px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 12px;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  background: transparent;
+  font: 700 1.02rem/1 var(--font-b);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--violet);
+  border-color: var(--violet);
+  color: var(--on-violet);
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.btn-danger {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: var(--on-bad);
+}
+
+/* the board drawings: the sizes in mm, from the screen size and the pixel pitch; the cases are close, not exact */
+.dev {
+  --mm: 2.4px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dev-body {
+  position: relative;
+  width: calc(var(--bw) * var(--mm));
+  height: calc(var(--bh) * var(--mm));
+  border-radius: calc(var(--br) * var(--mm));
+  background: linear-gradient(160deg, var(--case-1), var(--case-2));
+  box-shadow: inset 0 0 0 1px var(--case-edge), var(--shadow);
+}
+
+.dev-screen {
+  position: absolute;
+  left: calc(var(--sx) * var(--mm));
+  top: calc(var(--sy) * var(--mm));
+  width: calc(var(--sw) * var(--mm));
+  height: calc(var(--sh) * var(--mm));
+  border-radius: calc(var(--sr) * var(--mm));
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 0 calc(0.5 * var(--mm)) #05060f;
+}
+
+.dev-screen img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.7s ease;
+}
+
+.dev-screen img.off {
+  opacity: 0;
+}
+
+.dev-lcd349 {
+  --bw: 101;
+  --bh: 33;
+  --br: 3;
+  --sw: 85.1;
+  --sh: 22.9;
+  --sx: 6.4;
+  --sy: 5.05;
+  --sr: 0.6;
+}
+
+.dev-lcd349 .dev-body::after {
+  content: '';
+  position: absolute;
+  right: calc(-0.8 * var(--mm));
+  top: calc(13.5 * var(--mm));
+  width: calc(1.6 * var(--mm));
+  height: calc(6 * var(--mm));
+  border-radius: calc(0.6 * var(--mm));
+  background: #9aa0b5;
+}
+
+.dev-cores3 {
+  --bw: 54;
+  --bh: 54;
+  --br: 7;
+  --sw: 40.9;
+  --sh: 30.7;
+  --sx: 6.55;
+  --sy: 6.2;
+  --sr: 1;
+}
+
+.dev-cores3 .dev-body::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(9 * var(--mm));
+  height: 1px;
+  background: var(--case-edge);
+}
+
+.dev-am18 {
+  --bw: 44;
+  --bh: 37;
+  --br: 5;
+  --sw: 35.4;
+  --sh: 29.1;
+  --sx: 4.3;
+  --sy: 3.95;
+  --sr: 2.2;
+}
+
+.dev-am175 {
+  --bw: 50;
+  --bh: 50;
+  --br: 25;
+  --sw: 44.45;
+  --sh: 44.45;
+  --sx: 2.78;
+  --sy: 2.78;
+  --sr: 22.3;
+}
+
+.dev-watcher {
+  --bw: 46;
+  --bh: 46;
+  --br: 11;
+  --sw: 36.8;
+  --sh: 36.8;
+  --sx: 4.6;
+  --sy: 4.6;
+  --sr: 18.4;
+}
+
+.dev-watcher .dev-body::after {
+  content: '';
+  position: absolute;
+  right: calc(-2.2 * var(--mm));
+  top: calc(3 * var(--mm));
+  width: calc(3 * var(--mm));
+  height: calc(9 * var(--mm));
+  border-radius: calc(1.2 * var(--mm));
+  background: repeating-linear-gradient(180deg, #8b90a6 0 calc(0.6 * var(--mm)), #5d6178 0 calc(1.2 * var(--mm)));
+}
+
+.dev-tab5 {
+  --bw: 128;
+  --bh: 83;
+  --br: 8;
+  --sw: 110.7;
+  --sh: 62.3;
+  --sx: 8.65;
+  --sy: 10.35;
+  --sr: 1;
+}
+
+.dev figcaption {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  color: var(--ink-2);
+}
+
+.dev figcaption b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+/* the hero */
+.hero {
+  padding: clamp(28px, 5vw, 64px) 0 28px;
+}
+
+.hero-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 34rem);
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px 48px;
+}
+
+.hero-title {
+  font-size: clamp(4rem, 13vw, 9.5rem);
+  font-weight: 800;
+  font-variation-settings: 'opsz' 96, 'wdth' 85;
+  letter-spacing: -0.045em;
+  line-height: 0.88;
+  margin: 0;
+}
+
+.hero-lede {
+  font-family: var(--font-d);
+  font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+  font-weight: 500;
+  line-height: 1.22;
+  max-width: 24ch;
+  margin-bottom: 14px;
+}
+
+.hero-sub {
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 22px 0 0;
+}
+
+/* the shelf is wider than the text column: all six boards in one row on a wide screen. The sum of the case widths is
+   423 mm; the gaps and the captions take about 200 px. */
+.shelf {
+  --shelf-w: min(calc(100vw - 2 * var(--gutter)), 1480px);
+  width: var(--shelf-w);
+  margin: clamp(36px, 5vw, 56px) 0 0 calc((100% - var(--shelf-w)) / 2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 34px 24px;
+  padding: 0 8px 18px;
+  border-bottom: 3px solid var(--ink);
+}
+
+.shelf .dev {
+  --mm: calc((var(--shelf-w) - 200px) / 423);
+}
+
+.shelf a {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 12px;
+}
+
+.shelf-note {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+/* sections */
+.section {
+  padding: clamp(56px, 9vw, 104px) 0;
+}
+
+.section-alt {
+  background: var(--paper-2);
+}
+
+.section-head {
+  margin-bottom: clamp(28px, 4vw, 44px);
+}
+
+.section-head p {
+  color: var(--ink-2);
+  font-size: 1.12rem;
+}
+
+/* what you get */
+.get {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: clamp(28px, 4vw, 56px);
+  align-items: start;
+}
+
+.strip {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.strip img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 640 / 172;
+  border-radius: 6px;
+  background: #000;
+  box-shadow: 0 0 0 4px var(--case-2);
+}
+
+.strip figcaption {
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+.facts {
+  display: grid;
+  gap: 26px;
+}
+
+.fact h3 {
+  margin-bottom: 0.3em;
+}
+
+.fact p {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.fact .tags {
+  margin-top: 10px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tags li {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+}
+
+/* which board to buy */
+.picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0 0 clamp(36px, 5vw, 56px);
+  padding: 0;
+  list-style: none;
+}
+
+.picks li {
+  border-top: 3px solid var(--gold);
+  padding-top: 12px;
+}
+
+.picks b {
+  display: block;
+  font-family: var(--font-d);
+  font-size: 1.15rem;
+}
+
+/* the board cards */
+.boards {
+  display: grid;
+  gap: 22px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) 1.1fr;
+  gap: clamp(20px, 4vw, 48px);
+  padding: clamp(20px, 3vw, 34px);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  scroll-margin-top: 80px;
+}
+
+.board-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 220px;
+}
+
+/* in a card each board fills its column (the shelf shows the true scale) */
+.board-art .dev {
+  --fit: min(280px, calc(100vw - 110px));
+  --mm: calc(var(--fit) / var(--bw));
+}
+
+.board-art .dev-tab5,
+.board-art .dev-lcd349 {
+  --fit: min(430px, calc(100vw - 110px));
+}
+
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.thumbs button {
+  width: 58px;
+  height: 40px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+}
+
+.thumbs button[aria-pressed='true'] {
+  border-color: var(--gold);
+}
+
+.thumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.board h3 {
+  font-size: clamp(1.4rem, 2.4vw, 1.75rem);
+  margin-bottom: 4px;
+}
+
+.board .maker {
+  color: var(--ink-2);
+  margin-bottom: 14px;
+}
+
+.specs {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0 0 16px;
+}
+
+.specs dt {
+  font-weight: 700;
+}
+
+.specs dd {
+  margin: 0;
+}
+
+.board ul.works {
+  margin: 0 0 14px;
+  padding-left: 1.2em;
+}
+
+.board .differs {
+  color: var(--ink-2);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--teal) 14%, transparent);
+  color: var(--teal);
+}
+
+.status-later {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+/* apps */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.tabs button {
+  font: 700 1rem var(--font-b);
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.apps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 26px 22px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.apps img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 640 / 172;
+  border-radius: 6px;
+  background: #000;
+  margin-bottom: 10px;
+}
+
+.apps b {
+  font-family: var(--font-d);
+  font-size: 1.08rem;
+}
+
+.apps p {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+.more-apps {
+  margin-top: 30px;
+  columns: 3 220px;
+  column-gap: 28px;
+  padding: 0;
+  list-style: none;
+}
+
+.more-apps li {
+  break-inside: avoid;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.more-apps b {
+  font-weight: 700;
+}
+
+/* install steps */
+.steps {
+  counter-reset: step;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+  padding: 0;
+  margin: 0 0 30px;
+  list-style: none;
+}
+
+.steps li {
+  counter-increment: step;
+  padding-top: 12px;
+  border-top: 3px solid var(--ink);
+}
+
+.steps li::before {
+  content: counter(step);
+  display: block;
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 8px;
+  color: var(--violet);
+}
+
+.note {
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+/* FAQ */
+.faq details {
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+}
+
+.faq summary {
+  font-weight: 700;
+  font-size: 1.08rem;
+  cursor: pointer;
+}
+
+.faq details p {
+  margin: 10px 0 0;
+  color: var(--ink-2);
+}
+
+/* the footer */
+.foot {
+  padding: 40px 0 56px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
+.foot p {
+  max-width: 80ch;
+}
+
+@media (max-width: 900px) {
+  .get,
+  .board,
+  .hero-head {
+    grid-template-columns: 1fr;
+  }
+
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .picks {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav a.hide-s {
+    display: none;
+  }
+
+  .top .wrap {
+    gap: 8px;
+  }
+
+  .shelf {
+    justify-content: center;
+    gap: 24px 18px;
+  }
+
+  .shelf .dev {
+    --mm: 1.6px;
+  }
+
+  .shelf .dev figcaption {
+    font-size: 0.78rem;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .dev-screen img {
+    transition: none;
+  }
+}
+
+/* The links to the product page of the maker of each board. */
+.buy {
+  margin: 0.4rem 0 0.6rem;
+}
+.buy a {
+  margin-right: 0.8rem;
+  color: var(--violet);
+  font-weight: 600;
+}

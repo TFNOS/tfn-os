@@ -1,0 +1,6 @@
+{
+ "mqtt": {
+  "en": "An MQTT 3.1.1 client and broker. Connect to a broker (a public test broker or your home broker), see each topic with its last value, JSON and charts, and publish. Or make this board the broker of your network. English and Hebrew.",
+  "he": "לקוח וברוקר MQTT 3.1.1. התחברו לברוקר (ברוקר בדיקה ציבורי או הברוקר של הבית), ראו כל נושא עם הערך האחרון, JSON וגרפים, ופרסמו הודעות. או הפכו את הלוח לברוקר של הרשת. אנגלית ועברית."
+ }
+}

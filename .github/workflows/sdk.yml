@@ -1,0 +1,131 @@
+# The SDK package and the proof of the app template (PLAN 13, the gate of P5) on a clean Linux runner:
+#   1. pack: the ESP-IDF container configures each board kind (no firmware build: the SDK package needs only the
+#      compile options and sdkconfig.h of each kind), then sdk/tools/sdk_pack.py makes tfn-sdk.zip (the artifact).
+#   2. template: a fresh runner gets ONLY the folder sdk/templates/hello (the template of an app in its own repo) and
+#      the artifact tfn-sdk.zip, and runs build.sh of the template, as its own workflow does in an app repo.
+# It runs when the SDK, the public headers, the libs or the board files change, and when a person starts it.
+name: SDK
+on:
+  push:
+    paths:
+      - 'sdk/**'
+      - 'main/tfn/**'
+      - 'main/tfn_abi.json'
+      - 'libs/**'
+      - 'third_party/**'
+      - 'boards/**'
+      - 'sdkconfig.defaults*'
+      - '.github/workflows/sdk.yml'
+  pull_request:
+    paths:
+      - 'sdk/**'
+      - 'main/tfn/**'
+      - 'main/tfn_abi.json'
+      - 'libs/**'
+      - 'third_party/**'
+      - 'boards/**'
+      - 'sdkconfig.defaults*'
+      - '.github/workflows/sdk.yml'
+  workflow_dispatch:
+    inputs:
+      kinds:
+        description: 'The kinds of the package (a list with commas)'
+        default: 'lcd349,cores3,am18,am175,watcher,tab5'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: sdk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pack:
+    name: the SDK package
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    container: espressif/idf:v6.1
+    defaults:
+      run:
+        shell: bash
+    env:
+      KINDS: ${{ inputs.kinds || 'lcd349,cores3,am18,am175,watcher,tab5' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure each kind
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh" > /dev/null
+          for kind in ${KINDS//,/ }; do
+            # the sdkconfig.defaults files and the chip of each kind (as .github/workflows/firmware.yml)
+            case "$kind" in
+            lcd349)  extra="" ;;
+            cores3)  extra="sdkconfig.defaults.cores3se" ;;
+            am18)    extra="sdkconfig.defaults.amoled18" ;;
+            am175)   extra="sdkconfig.defaults.amoled175" ;;
+            watcher) extra="sdkconfig.defaults.watcher" ;;
+            tab5)    extra="sdkconfig.defaults.tab5" ;;
+            *) echo "unknown kind $kind"; exit 1 ;;
+            esac
+            defaults="sdkconfig.defaults${extra:+;$extra}"
+            target=""
+            [ "$kind" = tab5 ] && target="-D IDF_TARGET=esp32p4"
+            b="build_ci/$kind"
+            mkdir -p "$b"
+            echo "::group::$kind"
+            idf.py -B "$b" -D SDKCONFIG="$PWD/$b/sdkconfig" -D SDKCONFIG_DEFAULTS="$defaults" $target reconfigure \
+              > "$b/configure.log" 2>&1 || { tail -60 "$b/configure.log"; exit 1; }
+            # the SDK package takes the component versions of the lock file of the tree (no new solve)
+            if grep -i "solving dependencies" "$b/configure.log"; then
+              echo "::error::$kind: the lock file of the components (dependencies.lock*) is out of date: the component manager solved the versions again"
+              exit 1
+            fi
+            tail -3 "$b/configure.log"
+            echo "::endgroup::"
+          done
+      - name: Make the SDK package
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          python3 sdk/tools/sdk_pack.py --build-root build_ci --kinds "$KINDS" --out sdk_out/tfn-sdk
+          python3 -c "import json; d = json.load(open('sdk_out/tfn-sdk/sdk.json')); print(json.dumps(d['kinds'], indent=1))" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tfn-sdk
+          path: sdk_out/tfn-sdk.zip
+          retention-days: 14
+
+  template:
+    name: the app template on a clean runner
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: espressif/idf:v6.1
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Get only the template folder
+        uses: actions/checkout@v7
+        with:
+          path: repo
+          sparse-checkout: sdk/templates/hello
+          sparse-checkout-cone-mode: false
+      - name: Copy the template to an app folder of its own
+        run: |
+          cp -r repo/sdk/templates/hello "$RUNNER_TEMP/my_app"
+          ls -la "$RUNNER_TEMP/my_app"
+      - uses: actions/download-artifact@v7
+        with:
+          name: tfn-sdk
+          path: ${{ runner.temp }}/sdk_zip
+      - name: Build the app with build.sh of the template (the steps of its own workflow)
+        working-directory: ${{ runner.temp }}/my_app
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          sh build.sh "$RUNNER_TEMP/sdk_zip/tfn-sdk.zip"
+          for f in out/*/*/app.elf; do echo "$f $(stat -c %s "$f") bytes"; done | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hello-app
+          path: ${{ runner.temp }}/my_app/out/
+          retention-days: 7

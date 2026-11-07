@@ -1,0 +1,422 @@
+# The public release of TFN OS (PLAN 10.3). A tag v<major>.<minor>.<patch> starts it:
+#   1. keys: the release needs two secrets (the official keys; this repo never makes a key):
+#        TFN_STORE_KEY  the store key (a P-256 private PEM): it signs each app of the store and the store index; its
+#                       public value goes into the firmware (TFN_STORE_PUBKEY_BYTES), so the boards trust the apps
+#        TFN_OTA_KEY    the release key of the signed OTA (a P-256 private PEM): it signs the firmware files; its
+#                       public value goes into the firmware (TFN_OTA_PUBKEY1_BYTES)
+#      and two optional repository variables: TFN_OTA_PUB2 = the public value of the offline backup key (130 hex
+#      digits; slot 2), and TFN_OTA_PUB = the published value of the release key (when it is set, it must be the
+#      public value of TFN_OTA_KEY, else the release stops). The job stops with a clear message when a secret is
+#      missing.
+#   2. firmware: each public kind in the ESP-IDF container, with the version of the tag; the public keys go into
+#      main/tfn_release_keys.h (sdk/tools/release_cfg.py header; main/tfn_defaults.h reads it); the signature trailer
+#      (sdk/tools/fw_sign.py); the files of the web flasher (site/tools/fw_manifest.py).
+#      THE OTA MODE (sdk/tools/release_cfg.py force + check): a release with the secret TFN_OTA_KEY builds ENFORCE
+#      (a board installs only an update with a good signature). A dry run builds REPORT (an ENFORCE build with no
+#      OTA key stops at the #error of main/ota.c, and a dry-run firmware must not trust only a TEST key).
+#      The other values of a release build: force_cfg and release_cfg of boards.json (release_cfg.py force). Each
+#      signed image must hold the 65 bytes of each public key of the release (release_cfg.py keys): a build with a
+#      wrong key list stops before the release.
+#   3. sdk: the SDK package, the apps of apps/ with the SDK package, and the signed static store (store_index.py).
+#   4. publish: the release files (release_pack.py: also channel.json and tfn-poolmgr-V.zip, the pool manager of
+#      poolmgr/ with copies of its shared modules), the check of the files against this tree (release_check.py
+#      --tree), the GitHub release, and the web site (pages_build.py).
+#   5. pages: the web site goes to GitHub Pages (Settings > Pages > Source: GitHub Actions).
+#   6. check: release-check.yml downloads the files as a stranger does and checks them.
+# "Run workflow" (no tag) is a DRY RUN: the jobs make TEST keys, do all steps with them, and publish nothing (the
+# files stay as artifacts of the run for 3 days). A test key is never a release key.
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version of the dry run (no release, no Pages; TEST keys)'
+        default: '0.0.1'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  # the kinds of a public release: the boards with a web install (site/js/boards.js "web: true")
+  KINDS: lcd349,cores3,am18,am175,watcher
+  DRY: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+
+jobs:
+  keys:
+    name: the keys and the version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      store_pub: ${{ steps.pub.outputs.store_pub }}
+      ota_pub: ${{ steps.pub.outputs.ota_pub }}
+      ota_pub2: ${{ steps.pub.outputs.ota_pub2 }}
+      ota_mode: ${{ steps.key.outputs.ota_mode }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Only the public tree makes a release
+        run: |
+          # (the public tree of export/export_public.py has the OTA signature tool in sdk/tools/)
+          [ -f sdk/tools/fw_sign.py ] || { echo "::error::this repo is not the public tree: no release"; exit 1; }
+      - name: The version
+        id: ver
+        env:
+          REF: ${{ github.ref_name }}
+          IN_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$DRY" ]; then v="$IN_VERSION"; else v="${REF#v}"; fi
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::the version '$v' is not <major>.<minor>.<patch> (the tag must be v1.2.3)"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "### TFN OS $v ${DRY:+(DRY RUN: TEST keys, nothing is published)}" >> "$GITHUB_STEP_SUMMARY"
+      - name: The keys (the secrets, or TEST keys in a dry run)
+        id: key
+        env:
+          TFN_STORE_KEY: ${{ secrets.TFN_STORE_KEY }}
+          TFN_OTA_KEY: ${{ secrets.TFN_OTA_KEY }}
+        run: |
+          umask 077
+          k="$RUNNER_TEMP/keys"
+          mkdir -p "$k"
+          # the OTA mode of the firmware: ENFORCE only with the real OTA key (release_cfg.py; the comment at the top)
+          if [ -z "$DRY" ] && [ -n "$TFN_OTA_KEY" ]; then mode=enforce; else mode=report; fi
+          echo "ota_mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "- the OTA mode of the firmware: **$mode**" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$DRY" ]; then
+            openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "$k/store.pem"
+            openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "$k/ota.pem"
+            exit 0
+          fi
+          miss=""
+          [ -n "$TFN_STORE_KEY" ] || miss="$miss TFN_STORE_KEY"
+          [ -n "$TFN_OTA_KEY" ] || miss="$miss TFN_OTA_KEY"
+          if [ -n "$miss" ]; then
+            echo "::error::The secret(s)$miss of this repo are not set: a release needs the official keys. The owner makes each key on a safe computer with 'python sdk/tools/fw_sign.py keygen <file>.pem' and sets it with 'gh secret set <NAME> --repo $GITHUB_REPOSITORY < <file>.pem'. The release stops."
+            exit 1
+          fi
+          printf '%s\n' "$TFN_STORE_KEY" > "$k/store.pem"
+          printf '%s\n' "$TFN_OTA_KEY" > "$k/ota.pem"
+      - name: The public values
+        id: pub
+        env:
+          OTA_PUB2: ${{ vars.TFN_OTA_PUB2 }}
+          OTA_PUB_VAR: ${{ vars.TFN_OTA_PUB }}
+        run: |
+          k="$RUNNER_TEMP/keys"
+          pub() { python3 -c "import sys; sys.path.insert(0, 'sdk/tools'); import fw_sign; print(fw_sign.pub_of_pem(sys.argv[1]).hex())" "$1"; }
+          s=$(pub "$k/store.pem") || { echo "::error::TFN_STORE_KEY is not a P-256 private key in PEM form"; exit 1; }
+          o=$(pub "$k/ota.pem") || { echo "::error::TFN_OTA_KEY is not a P-256 private key in PEM form"; exit 1; }
+          [ "$s" != "$o" ] || { echo "::error::TFN_STORE_KEY and TFN_OTA_KEY are the same key: use two keys"; exit 1; }
+          # (the published value of the release key: the boards of this release trust it; a dry run has TEST keys)
+          if [ -z "$DRY" ] && [ -n "$OTA_PUB_VAR" ] && [ "$(echo "$OTA_PUB_VAR" | tr 'A-F' 'a-f')" != "$o" ]; then
+            echo "::error::the variable TFN_OTA_PUB is not the public value of the secret TFN_OTA_KEY: set the right key or the right variable. The release stops."
+            exit 1
+          fi
+          if [ -n "$OTA_PUB2" ] && ! echo "$OTA_PUB2" | grep -Eq '^04[0-9a-f]{128}$'; then
+            echo "::error::the variable TFN_OTA_PUB2 is not 130 hex digits that start with 04"; exit 1
+          fi
+          { echo "store_pub=$s"; echo "ota_pub=$o"; echo "ota_pub2=$OTA_PUB2"; } >> "$GITHUB_OUTPUT"
+          mkdir -p pubs
+          echo "$s" > pubs/store.pub
+          echo "$o" > pubs/ota.pub
+          {
+            echo "- store key ID: \`$(python3 -c "import hashlib,sys; print(hashlib.sha256(bytes.fromhex(sys.argv[1])).hexdigest()[:16])" "$s")\`"
+            echo "- OTA key ID: \`$(python3 -c "import hashlib,sys; print(hashlib.sha256(bytes.fromhex(sys.argv[1])).hexdigest()[:16])" "$o")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: The TEST keys go to the other jobs of the dry run
+        if: env.DRY == '1'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dry-run-test-keys
+          path: ${{ runner.temp }}/keys/
+          retention-days: 1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: public-keys
+          path: pubs/
+          retention-days: 3
+
+  firmware:
+    name: firmware ${{ matrix.kind }}
+    needs: keys
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container: espressif/idf:v6.1
+    strategy:
+      fail-fast: true
+      matrix:
+        kind: [lcd349, cores3, am18, am175, watcher]
+    defaults:
+      run:
+        shell: bash
+    env:
+      KIND: ${{ matrix.kind }}
+      VERSION: ${{ needs.keys.outputs.version }}
+      OTA_MODE: ${{ needs.keys.outputs.ota_mode }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Get the TEST keys (dry run)
+        if: env.DRY == '1'
+        uses: actions/download-artifact@v7
+        with:
+          name: dry-run-test-keys
+          path: ${{ runner.temp }}/keys
+      - name: Get the OTA key (release)
+        if: env.DRY != '1'
+        env:
+          TFN_OTA_KEY: ${{ secrets.TFN_OTA_KEY }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/keys"
+          [ -n "$TFN_OTA_KEY" ] || { echo "::error::the secret TFN_OTA_KEY is not set"; exit 1; }
+          printf '%s\n' "$TFN_OTA_KEY" > "$RUNNER_TEMP/keys/ota.pem"
+      - name: The version and the public keys of the build
+        env:
+          STORE_PUB: ${{ needs.keys.outputs.store_pub }}
+          OTA_PUB: ${{ needs.keys.outputs.ota_pub }}
+          OTA_PUB2: ${{ needs.keys.outputs.ota_pub2 }}
+        run: |
+          echo "$VERSION" > version.txt
+          # (a tfn_local.h of a private setup would come first in main/tfn_defaults.h and keep its own keys)
+          [ ! -f main/tfn_local.h ] || { echo "::error::main/tfn_local.h is in the tree: a release build takes only the keys of the release"; exit 1; }
+          python3 sdk/tools/release_cfg.py header --out main/tfn_release_keys.h --store-pub "$STORE_PUB" \
+            --ota-pub "$OTA_PUB" ${OTA_PUB2:+--ota-pub2 "$OTA_PUB2"}
+          cat main/tfn_release_keys.h
+      - name: Build
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh" > /dev/null
+          # the sdkconfig.defaults files and the chip of the kind come from boards.json
+          defaults=$(python3 -c "import json, sys; b = json.load(open('boards.json'))['kinds'][sys.argv[1]]; print(';'.join(b['sdkconfig_defaults']))" "$KIND")
+          chip=$(python3 -c "import json, sys; print(json.load(open('boards.json'))['kinds'][sys.argv[1]]['chip'])" "$KIND")
+          b="build_rel/$KIND"
+          mkdir -p "$b"
+          args=(-B "$b" -D SDKCONFIG="$PWD/$b/sdkconfig" -D SDKCONFIG_DEFAULTS="$defaults" -D IDF_TARGET="$chip")
+          idf.py "${args[@]}" reconfigure > "$b/configure.log" 2>&1 || { tail -60 "$b/configure.log"; exit 1; }
+          # the build takes the component versions of the lock file of the tree: when the component manager solves
+          # the versions again (a lock of older component manifests), the release would get other versions
+          if grep -i "solving dependencies" "$b/configure.log"; then
+            echo "::error::the lock file of the components (dependencies.lock*) is out of date: the component manager solved the versions again. Build this kind with tfn.py, check the versions, then commit the lock"
+            exit 1
+          fi
+          # the force_cfg values of boards.json and the OTA mode of the release (enforce or report)
+          python3 sdk/tools/release_cfg.py force "$b/sdkconfig" --boards boards.json --ota-mode "$OTA_MODE"
+          idf.py "${args[@]}" build 2>&1 | tee "$b/build.log" | grep -E "error|too small|Project build complete|FAILED" | tail -40
+          test "${PIPESTATUS[0]}" = 0
+          # the build must have the OTA mode and the release_cfg values of boards.json (a lost value = the job stops)
+          python3 sdk/tools/release_cfg.py check "$b/config/sdkconfig.h" --ota-mode "$OTA_MODE" --boards boards.json
+          echo "- $KIND: OTA mode $OTA_MODE" >> "$GITHUB_STEP_SUMMARY"
+      - name: Sign, and make the files of the web flasher
+        env:
+          STORE_PUB: ${{ needs.keys.outputs.store_pub }}
+          OTA_PUB: ${{ needs.keys.outputs.ota_pub }}
+          OTA_PUB2: ${{ needs.keys.outputs.ota_pub2 }}
+        run: |
+          command -v openssl > /dev/null || { apt-get update -qq && apt-get install -y -qq openssl > /dev/null; }
+          b="build_rel/$KIND"
+          python3 sdk/tools/fw_sign.py sign "$b/tfn_os.bin" --key "$RUNNER_TEMP/keys/ota.pem" --kind "$KIND" \
+            --version "$VERSION" --out "$b/signed.bin"
+          python3 sdk/tools/fw_sign.py verify "$b/signed.bin" --pub "$OTA_PUB" --kind "$KIND"
+          # the board trusts only the keys of its image: each public key of the release must be in it
+          python3 sdk/tools/release_cfg.py keys "$b/signed.bin" --ota-pub "$OTA_PUB" ${OTA_PUB2:+--ota-pub2 "$OTA_PUB2"} \
+            --store-pub "$STORE_PUB"
+          python3 site/tools/fw_manifest.py kind "$KIND" --build "$b" --version "$VERSION" --app "$b/signed.bin" \
+            --out fw_out
+          echo "- $KIND: $(stat -c %s "$b/signed.bin") bytes (signed)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fw-${{ matrix.kind }}
+          path: fw_out/
+          retention-days: 3
+
+  sdk:
+    name: the SDK package and the store
+    needs: keys
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container: espressif/idf:v6.1
+    defaults:
+      run:
+        shell: bash
+    env:
+      VERSION: ${{ needs.keys.outputs.version }}
+      SDK_KINDS: lcd349,cores3,am18,am175,watcher,tab5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Get the TEST keys (dry run)
+        if: env.DRY == '1'
+        uses: actions/download-artifact@v7
+        with:
+          name: dry-run-test-keys
+          path: ${{ runner.temp }}/keys
+      - name: Get the store key (release)
+        if: env.DRY != '1'
+        env:
+          TFN_STORE_KEY: ${{ secrets.TFN_STORE_KEY }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/keys"
+          [ -n "$TFN_STORE_KEY" ] || { echo "::error::the secret TFN_STORE_KEY is not set"; exit 1; }
+          printf '%s\n' "$TFN_STORE_KEY" > "$RUNNER_TEMP/keys/store.pem"
+      - name: Configure each kind
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . "$IDF_PATH/export.sh" > /dev/null
+          for kind in ${SDK_KINDS//,/ }; do
+            defaults=$(python3 -c "import json, sys; b = json.load(open('boards.json'))['kinds'][sys.argv[1]]; print(';'.join(b['sdkconfig_defaults']))" "$kind")
+            chip=$(python3 -c "import json, sys; print(json.load(open('boards.json'))['kinds'][sys.argv[1]]['chip'])" "$kind")
+            b="build_ci/$kind"
+            mkdir -p "$b"
+            args=(-B "$b" -D SDKCONFIG="$PWD/$b/sdkconfig" -D SDKCONFIG_DEFAULTS="$defaults" -D IDF_TARGET="$chip")
+            idf.py "${args[@]}" reconfigure > "$b/configure.log" 2>&1 || { tail -60 "$b/configure.log"; exit 1; }
+            if grep -i "solving dependencies" "$b/configure.log"; then
+              echo "::error::$kind: the lock file of the components (dependencies.lock*) is out of date: the component manager solved the versions again"
+              exit 1
+            fi
+            python3 -c "import json, sys; sys.path.insert(0, '.'); import tfn; d = json.load(open('boards.json')); v = {k: x for k, x in d['force_cfg'].items() if not k.startswith('_')}; n = tfn.force_cfg(sys.argv[1], v, False); print(sys.argv[1], 'forced values:', n)" "$b/sdkconfig"
+            idf.py "${args[@]}" reconfigure > "$b/configure2.log" 2>&1 || { tail -60 "$b/configure2.log"; exit 1; }
+          done
+      - name: Make the SDK package
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          python3 sdk/tools/sdk_pack.py --build-root build_ci --kinds "$SDK_KINDS" --out sdk_out/tfn-sdk
+      - name: Build the apps of the store with the SDK package
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          for j in apps/*/app.json; do
+            d=$(dirname "$j")
+            kinds=$(python3 -c "import json, sys; a = json.load(open(sys.argv[1])); want = sys.argv[2].split(','); print(','.join(k for k in want if k in a.get('kinds', want)))" "$j" "$KINDS")
+            [ -n "$kinds" ] || { echo "$d: no kind of the release"; continue; }
+            echo "::group::$d ($kinds)"
+            python3 sdk_out/tfn-sdk/tools/tfn_app.py build "$d" --sdk sdk_out/tfn-sdk --kinds "$kinds" --out store_pkgs
+            echo "::endgroup::"
+          done
+      - name: Make the signed store
+        run: |
+          python3 sdk/tools/store_index.py make store_pkgs --out store_out --key "$RUNNER_TEMP/keys/store.pem" \
+            --release "$VERSION" --kinds "$KINDS" | tee -a "$GITHUB_STEP_SUMMARY"
+          python3 sdk/tools/store_index.py verify store_out --pub "${{ needs.keys.outputs.store_pub }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tfn-sdk
+          path: sdk_out/tfn-sdk.zip
+          retention-days: 3
+      - uses: actions/upload-artifact@v7
+        with:
+          name: store
+          path: store_out/
+          retention-days: 3
+
+  publish:
+    name: the release files and the web site
+    needs: [keys, firmware, sdk]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.keys.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: fw-*
+          merge-multiple: true
+          path: fw
+      - uses: actions/download-artifact@v7
+        with:
+          name: store
+          path: store
+      - uses: actions/download-artifact@v7
+        with:
+          name: tfn-sdk
+          path: sdk_zip
+      - name: The tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/py"
+          "$RUNNER_TEMP/py/bin/pip" install --quiet cryptography pillow
+      - name: The web site and the release files
+        env:
+          STORE_PUB: ${{ needs.keys.outputs.store_pub }}
+          OTA_PUB: ${{ needs.keys.outputs.ota_pub }}
+          OTA_PUB2: ${{ needs.keys.outputs.ota_pub2 }}
+        run: |
+          py="$RUNNER_TEMP/py/bin/python"
+          owner="${GITHUB_REPOSITORY%%/*}"
+          site="https://${owner,,}.github.io/${GITHUB_REPOSITORY#*/}"
+          "$py" site/tools/fw_manifest.py index --out fw
+          "$py" site/tools/pages_build.py --out pages --firmware fw --store store --golden tests/golden
+          # (also channel.json and tfn-poolmgr-V.zip: the pool manager with the public keys of this release)
+          "$py" sdk/tools/release_pack.py --version "$VERSION" --firmware fw --store store --sdk sdk_zip/tfn-sdk.zip \
+            --out rel --store-pub "$STORE_PUB" --ota-pub "$OTA_PUB" ${OTA_PUB2:+--ota-pub2 "$OTA_PUB2"} \
+            --poolmgr poolmgr --pages "$site" --repo "$GITHUB_REPOSITORY"
+          # the files against this tree before they go out (each file of the pool manager zip = its source)
+          "$py" sdk/tools/release_check.py --site pages --release rel --store-pub "$STORE_PUB" --ota-pub "$OTA_PUB" \
+            --node '' --tree .
+          { echo '```'; cat rel/SHA256SUMS; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-files
+          path: rel/
+          retention-days: 3
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pages-site
+          path: pages/
+          include-hidden-files: true
+          retention-days: 3
+      - name: The GitHub release
+        if: env.DRY != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          owner="${GITHUB_REPOSITORY%%/*}"
+          site="https://${owner,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+          {
+            echo "TFN OS $VERSION."
+            echo
+            echo "- Install it from the browser: ${site}install.html"
+            echo "- The free apps: ${site}store.html"
+            echo "- \`tfn-os-$VERSION-<kind>.bin\`: the signed update file of each board kind."
+            echo "- \`tfn-os-$VERSION-<kind>-full.bin\`: the full image (write it at 0x0 with esptool)."
+            echo "- \`tfn-keys.json\`: the public keys of this release. \`SHA256SUMS\`: the SHA-256 of each file."
+            echo "- \`tfn-poolmgr-$VERSION.zip\`: the pool manager (unzip it, then \`python poolmgr/poolmgr.py doctor\`)."
+            echo "  \`channel.json\`: its channel (the site, the repo and the public keys of this release)."
+          } > notes.md
+          gh release create "$TAG" rel/* --repo "$GITHUB_REPOSITORY" --title "TFN OS $VERSION" --notes-file notes.md --verify-tag
+      - uses: actions/upload-pages-artifact@v5
+        if: env.DRY != '1'
+        with:
+          path: pages/
+
+  pages:
+    name: GitHub Pages
+    if: github.event_name != 'workflow_dispatch'
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5
+
+  check:
+    name: the check of a stranger
+    needs: [keys, publish, pages]
+    if: ${{ !cancelled() && needs.publish.result == 'success' && (needs.pages.result == 'success' || needs.pages.result == 'skipped') }}
+    uses: ./.github/workflows/release-check.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      source: ${{ github.event_name == 'workflow_dispatch' && 'artifacts' || 'release' }}
+      tag: ${{ github.ref_name }}

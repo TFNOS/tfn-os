@@ -1,0 +1,3 @@
+# Vendored code: clang-format does not change it (an update from its source stays easy to compare).
+DisableFormat: true
+SortIncludes: Never

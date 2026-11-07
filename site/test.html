@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>Flasher tests</title>
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/install.css">
+<script src="js/theme.js"></script>
+</head>
+<body>
+<main class="wrap flasher">
+  <h1 class="flasher-title">Flasher tests</h1>
+  <p class="flasher-lede">The checks of the detection and of the write plan, with a fake port and a fake board. No real port opens.</p>
+  <p id="summary"><b>Running...</b></p>
+  <div class="plan-wrap">
+    <table class="plan">
+      <thead><tr><th scope="col">Result</th><th scope="col">Scenario</th><th scope="col">Faults</th><th scope="col">Try it</th></tr></thead>
+      <tbody id="results"></tbody>
+    </table>
+  </div>
+</main>
+<script type="module" src="test/page.js"></script>
+</body>
+</html>

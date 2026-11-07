@@ -1,0 +1,13 @@
+# The static state (.bss) of the apps goes to PSRAM: it is not used by interrupts,
+# and internal RAM is necessary for WiFi, task stacks and DMA. The drivers (board,
+# audio, imu, input, gfx) stay in internal RAM.
+
+[scheme:arcade_extram_bss]
+entries:
+    bss -> extern_ram
+    common -> extern_ram
+
+# The objects that use this scheme are in <build folder>/apps/apps.lf: main/apps_gen.py writes it at each CMake
+# configure from the "psram" lists of main/apps.json (core, modules, apps), only for the objects of the build. A new
+# app: put its sources with static state into its "psram" list (16 KB of .bss in internal RAM stopped the web
+# server of the AMOLED once).

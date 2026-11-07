@@ -1,0 +1,24 @@
+dependencies:
+  idf:
+    version: '>=6.0'
+  espressif/esp_codec_dev: ^1.5.0
+  espressif/qrcode: ^0.1.0
+  espressif/esp_tinyusb: 2.4.0
+  # USB-C headphones on the CoreS3 (main/usb_phones.c): the USB host library and the USB audio host driver
+  espressif/usb: ^1.0.0
+  espressif/usb_host_uac: ^1.5.0
+  espressif/esp32-camera:
+    version: ^2.1.8
+    rules:
+      - if: "target in [esp32s3]"
+  espressif/esp_lcd_spd2010: ^1.0.1
+  # the Tab5: the ESP32-P4 has no radio. esp_wifi_remote gives the normal esp_wifi API; esp_hosted carries
+  # it over SDIO to the ESP32-C6 of the board
+  espressif/esp_wifi_remote:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4]"
+  espressif/esp_hosted:
+    version: "^2.0.0"
+    rules:
+      - if: "target in [esp32p4]"

@@ -1,0 +1,12 @@
+minimp3 (https://github.com/lieff/minimp3), by lieff.
+
+The licence: CC0 1.0 Universal (public domain). The notice of the author (the header of minimp3.h has it too):
+
+    To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights
+    to this software to the public domain worldwide.
+    This software is distributed without any warranty.
+    See <http://creativecommons.org/publicdomain/zero/1.0/>.
+
+The full legal text of CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+TFN OS changed the file (a static work memory and a mono synthesis, marked "TFN OS"). The changes are under the same
+terms.

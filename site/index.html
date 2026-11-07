@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>TFN OS</title>
+<meta name="description" content="TFN OS: an open operating system with apps and an app store for small ESP32 touch boards. Install it from your browser.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/site.css">
+<script src="js/theme.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Go to the content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="TFN OS home">
+      <svg viewBox="0 0 34 14" aria-hidden="true"><rect x="1" y="1" width="32" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="4.5" width="5" height="5" rx="1" fill="#e6a315"/></svg>
+      TFN OS
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html#boards">Boards</a>
+      <a href="store.html">Apps</a>
+      <a href="how.html" class="hide-s">How it works</a>
+      <a href="install.html">Install</a>
+      <a href="index.html#faq" class="hide-s">FAQ</a>
+    </nav>
+    <button class="theme-btn" type="button" data-theme-btn aria-label="Colour theme">Auto</button>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-head">
+      <h1 class="hero-title">TFN OS</h1>
+      <div>
+        <p class="hero-lede">An open operating system with apps and an app store for small ESP32 touch boards.</p>
+        <p class="hero-sub">Connect your board by USB and install TFN OS from the install page. You need Chrome or Edge on a computer. Then get free apps from the app page.</p>
+        <p class="hero-cta">
+          <a class="btn btn-primary" href="install.html">Install TFN OS</a>
+          <a class="btn" href="store.html">Get apps</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="boards">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>The boards</h2>
+      <p>The install page writes TFN OS to these boards. It finds the chip and the flash of your board, and you confirm the board kind.</p>
+    </div>
+    <ul class="picks">
+      <li><b>ESP32-S3-Touch-LCD-3.49</b>Waveshare. A long 640 x 172 screen, a motion sensor and an SD card.</li>
+      <li><b>CoreS3 / CoreS3 SE</b>M5Stack. A 320 x 240 screen in a closed case.</li>
+      <li><b>ESP32-S3-Touch-AMOLED-1.8</b>Waveshare. A 368 x 448 AMOLED screen.</li>
+      <li><b>ESP32-S3-Touch-AMOLED-1.75C</b>Waveshare. A round 466 x 466 AMOLED screen.</li>
+      <li><b>SenseCAP Watcher</b>Seeed Studio. A round 412 x 412 screen (experimental).</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section section-alt" id="faq">
+  <div class="wrap">
+   <div class="measure faq">
+    <h2>Questions</h2>
+    <details>
+      <summary>Which browsers work?</summary>
+      <p>Chrome and Edge on Windows, macOS, Linux and ChromeOS. They have Web Serial, the part that talks to the USB port. Firefox, Safari and phones do not have it.</p>
+    </details>
+    <details>
+      <summary>The page does not find my board.</summary>
+      <p>Use a cable that carries data (some cables only charge). Close other programs that use the port, such as a serial monitor. If the board still does not answer, hold its BOOT key while you connect the cable, then click Connect again.</p>
+    </details>
+    <details>
+      <summary>Can I go back to the firmware that came with the board?</summary>
+      <p>Yes, if you keep a copy. Before an install, the page can save the whole flash of the board to a file. Keep that file private: it has the WiFi passwords that the board knew. To put it back, write it at address 0 with esptool.</p>
+    </details>
+    <details>
+      <summary>Where do the files come from?</summary>
+      <p>From the release of the public source code of TFN OS. The pages check the SHA-256 of each file. The board checks the signature of each app before it installs the app.</p>
+    </details>
+    <details>
+      <summary>Does this site track me?</summary>
+      <p>No. The site has no analytics, no cookies of its own and no third-party scripts. The fonts and the flasher library come from this site.</p>
+    </details>
+   </div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>TFN OS is not made by Waveshare, M5Stack or Seeed Studio. The board names are the trademarks of their owners.</p>
+    <p>The flasher uses esptool-js 0.7.0 by Espressif (Apache License 2.0). The fonts are Bricolage Grotesque and Atkinson Hyperlegible Next (SIL Open Font License 1.1). <a href="licences.html">Licences</a></p>
+  </div>
+</footer>
+<script type="module" src="js/site.js"></script>
+</body>
+</html>

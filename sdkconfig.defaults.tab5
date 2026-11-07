@@ -1,0 +1,84 @@
+# The M5Stack Tab5 (ESP32-P4 rev v1.x: two RISC-V cores at 360 MHz, 32 MB PSRAM, 16 MB flash; the radio is an
+# ESP32-C6 on SDIO). Use this file after sdkconfig.defaults, with its own build folder and sdkconfig and the target:
+#   idf.py -B build_tab5 -D IDF_TARGET=esp32p4 -D SDKCONFIG=sdkconfig.tab5
+#          -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.tab5" build
+# (the ESP32-S3 values of sdkconfig.defaults, for example the octal PSRAM and the S3 cache, do not apply to the P4)
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_TFN_TARGET_TAB5=y
+
+# the CPU: the P4 rev v1.x runs at 360 MHz (400 MHz needs rev v3)
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_360=y
+
+# 16 MB flash; the slim layout of all kinds (partitions_slim.csv)
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+
+# the console: the USB-C port is the USB-Serial-JTAG of the P4
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# 32 MB PSRAM in HEX mode at 200 MHz (the DSI panel needs the speed; ESP-IDF lists 200 MHz as experimental)
+CONFIG_SPIRAM=y
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+CONFIG_SPIRAM_SPEED_200M=y
+CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY=y
+CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM=y
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536
+
+# the L2 cache: 256 KB with lines of 128 bytes (the apps draw into PSRAM)
+CONFIG_CACHE_L2_CACHE_256KB=y
+CONFIG_CACHE_L2_CACHE_LINE_128B=y
+
+# no Bluetooth on the P4 (the C6 can do it through esp_hosted: a later step). bt_pad.c and ble_midi.c say "no Bluetooth".
+# CONFIG_BT_ENABLED is not set
+
+# The WiFi: esp_wifi_remote gives the normal esp_wifi API, esp_hosted carries it over SDIO to the ESP32-C6.
+# The pins of the Tab5 (SDIO slot 1; slot 0 is the microSD card); the C6 reset: GPIO15.
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE=y
+CONFIG_ESP_HOSTED_SDIO_SLOT_1=y
+CONFIG_ESP_HOSTED_SDIO_4_BIT_BUS=y
+CONFIG_ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH=y
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_1=13
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_1=12
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_1=11
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_1=10
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_1=9
+CONFIG_ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_1=8
+CONFIG_ESP_HOSTED_SDIO_GPIO_RESET_SLAVE=15
+# (the SDIO pool of about 48 KB failed from the internal RAM in M5PaperDOS_X: a boot loop; the P4 DMA reaches PSRAM)
+CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM=y
+
+# the light sleep of power.c: not on the P4 for now (the C6 link and the DSI panel)
+# CONFIG_PM_ENABLE is not set
+# CONFIG_FREERTOS_USE_TICKLESS_IDLE is not set
+
+# THE FULL FIRMWARE (all apps built in) with two app slots of 7 MB (partitions_tab5.csv): the app files of the store
+# are for the ESP32-S3 (Xtensa); the P4 (RISC-V) needs its own builds of them (a later step)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_tab5.csv"
+
+# the P4 bootloader starts at 0x2000 and must end before the partition table (0x8000): less log text in it
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_SIZE=y
+
+# the chip revision: a Tab5 can have an ESP32-P4 rev v1.3 (ESP-IDF 6.1 builds for v3.x by default; a v3
+# bootloader does not start on v1.x)
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+CONFIG_ESP32P4_REV_MIN_100=y
+
+# the SD card on the P4 (as M5PaperDOS_X on this Tab5): FAT sectors of 512 bytes and small allocations (up to 16 KB) in
+# the internal RAM; with the S3 values (4096, 2 KB) the first block read of the card failed (0x104)
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_FATFS_SECTOR_512=y
+CONFIG_WL_SECTOR_SIZE_512=y
+# (the FATFS buffers in the internal RAM: a read of the card into a FATFS buffer in PSRAM failed (0x104) on this P4,
+# and a read into an internal buffer worked)
+# CONFIG_FATFS_ALLOC_PREFER_EXTRAM is not set
+
+# Tab5Boot (the boot menu, its own repo): the request "start slot N one time" in 16 bytes of RTC memory; the
+# same two values as Tab5Boot
+CONFIG_BOOTLOADER_CUSTOM_RESERVE_RTC=y
+CONFIG_BOOTLOADER_CUSTOM_RESERVE_RTC_SIZE=0x10
+# the DSI interrupts run also while a flash write turns the cache off
+CONFIG_LCD_DSI_ISR_CACHE_SAFE=y

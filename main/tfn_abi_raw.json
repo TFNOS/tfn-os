@@ -1,0 +1,157 @@
+{
+"about": "TFN OS: the raw ESP-IDF names that the firmware already has (one mechanism in place of one request for each function). sdk/tools/abi_gen.py reads the functions of each DEV build (nm of build_dev/<kind>/tfn_os.elf) and adds each global function whose name matches a family below and no deny pattern. Their code is already in the firmware, so only the ABI table grows. A NEW name gets the class of its family (the default policy; the manager tab PERMISSIONS can change the classes later without a firmware). A name of a deny pattern never goes into the ABI: it can harm the board or the system (the flash, the updates, the power, the interrupts, the WiFi connection, the sound hardware, tasks that the loader cannot follow).",
+"classes": {
+"wifi.scan": "SCAN THE WIFI NETWORKS",
+"wifi.radio": "CHANGE THE WIFI RADIO (CHANNEL, POWER, RAW PACKETS)",
+"wifi.config": "READ THE WIFI SETTINGS (ALSO THE PASSWORD)",
+"espnow": "SEND ESP-NOW MESSAGES TO BOARDS NEAR IT",
+"net": "USE THE NETWORK AND THE INTERNET",
+"events": "GET THE EVENTS OF THE SYSTEM (WIFI, NETWORK)",
+"ble": "USE BLUETOOTH",
+"nvs": "READ AND WRITE THE SETTINGS STORE (ALSO THE WIFI PASSWORDS)",
+"gpio": "USE THE PINS OF THE BOARD",
+"bus": "USE THE I2C AND SPI BUSES OF THE BOARD",
+"pwm": "USE THE PWM OUTPUTS (THE SCREEN LIGHT TOO)",
+"adc": "READ THE ANALOG INPUTS"
+},
+"families": [
+{
+"re": "^esp_wifi_scan_",
+"class": "wifi.scan"
+},
+{
+"re": "^esp_wifi_(get_config|get_country|get_country_code|get_mode|get_ps|get_bandwidth|get_protocol|sta_get_rssi|sta_get_aid|get_tsf_time)$",
+"class": "wifi.config"
+},
+{
+"re": "^esp_wifi_(get_mac)$",
+"class": ""
+},
+{
+"re": "^esp_wifi_(set_channel|set_ps|set_max_tx_power|get_max_tx_power|set_promiscuous|get_promiscuous|set_promiscuous_filter|get_promiscuous_filter|set_promiscuous_ctrl_filter|80211_tx|set_bandwidth|set_protocol|set_country|set_country_code|set_rssi_threshold|set_ant|get_ant|set_ant_gpio|get_ant_gpio|set_csi|set_csi_config)$",
+"class": "wifi.radio"
+},
+{
+"re": "^esp_now_(send|add_peer|del_peer|mod_peer|get_peer|fetch_peer|is_peer_exist|get_peer_num|get_version)$",
+"class": "espnow"
+},
+{
+"re": "^esp_netif_get_",
+"class": ""
+},
+{
+"re": "^lwip_",
+"class": "net"
+},
+{
+"re": "^(esp_http_client_|esp_tls_|esp_transport_)",
+"class": "net"
+},
+{
+"re": "^(sntp_enabled|sntp_get_sync_interval|esp_sntp_enabled|esp_sntp_getserver|esp_sntp_getservername)$",
+"class": "net"
+},
+{
+"re": "^esp_event_handler_(instance_)?(register|unregister)$",
+"class": "events"
+},
+{
+"re": "^mbedtls_",
+"class": ""
+},
+{
+"re": "^psa_(aead_(encrypt|decrypt)|cipher_(abort|decrypt_setup|encrypt_setup|finish|set_iv|update|encrypt|decrypt)|hash_(abort|clone|compute|finish|setup|update|verify)|mac_(abort|sign_finish|sign_setup|update|verify_finish|verify_setup|compute|verify)|sign_hash|verify_hash|sign_message|verify_message|import_key|export_key|export_public_key|generate_key|generate_random|get_key_attributes|reset_key_attributes|copy_key|raw_key_agreement|key_derivation_(abort|input_bytes|input_key|output_bytes|set_capacity|setup)|destroy_key)$",
+"class": ""
+},
+{
+"re": "^nvs_",
+"class": "nvs"
+},
+{
+"re": "^gpio_",
+"class": "gpio"
+},
+{
+"re": "^(i2c_master_|i2c_new_master_bus$|i2c_del_master_bus$|spi_bus_add_device$|spi_bus_remove_device$|spi_device_)",
+"class": "bus"
+},
+{
+"re": "^ledc_",
+"class": "pwm"
+},
+{
+"re": "^adc_(oneshot|cali|continuous)_",
+"class": "adc"
+},
+{
+"re": "^ble_gap_(adv_start|adv_stop|adv_set_fields|adv_rsp_set_fields|adv_set_data|adv_rsp_set_data|adv_active|disc|disc_cancel|disc_active|connect|conn_active|conn_find|conn_rssi|terminate|update_params|security_initiate|unpair|set_prefered_le_phy|read_le_phy|set_data_len)$",
+"class": "ble"
+},
+{
+"re": "^ble_gattc_(disc_all_svcs|disc_svc_by_uuid|disc_all_chrs|disc_chrs_by_uuid|disc_all_dscs|read|read_by_uuid|read_long|write|write_flat|write_no_rsp|write_no_rsp_flat|write_long|exchange_mtu)$",
+"class": "ble"
+},
+{
+"re": "^ble_gatts_(notify|notify_custom|indicate|indicate_custom|chr_updated|find_chr|find_svc|find_dsc)$",
+"class": "ble"
+},
+{
+"re": "^(ble_uuid_(cmp|to_str|init_from_buf|u16|flat|length)|ble_hs_id_(copy_addr|infer_auto)|ble_hs_adv_parse_fields)$",
+"class": "ble"
+},
+{
+"re": "^(x|v|ux|ul|pc|pv)(Task|Queue|Semaphore|EventGroup|Timer|StreamBuffer|MessageBuffer|Ringbuffer)[A-Z]",
+"class": ""
+},
+{
+"re": "^esp_timer_(create|delete|start_once|start_periodic|stop|restart|get_time|get_next_alarm|get_period|get_expiry_time|is_active)$",
+"class": ""
+},
+{
+"re": "^esp_log_(write|writev|timestamp|system_timestamp|early_timestamp|va|buffer_hex_internal|buffer_char_internal|buffer_hexdump_internal)$",
+"class": ""
+},
+{
+"re": "^heap_caps_(get_info|get_free_size|get_largest_free_block|get_minimum_free_size|get_allocated_size|get_total_size|check_integrity_all|print_heap_info)$",
+"class": ""
+},
+{
+"re": "^(multi_heap_get_info|esp_random|esp_fill_random|esp_read_mac|esp_efuse_mac_get_default|esp_get_free_heap_size|esp_get_minimum_free_heap_size|esp_get_idf_version|esp_err_to_name|esp_err_to_name_r)$",
+"class": ""
+}
+],
+"deny": [
+"isr",
+"ISR",
+"_ll_",
+"_hal_",
+"_impl",
+"private",
+"_unsafe",
+"^lwip_hook",
+"^lwip_(init|netconn)",
+"_internal_event",
+"_foundation_",
+"^esp_now_(init|deinit|register|unregister|set_pmk|set_wake)",
+"^nvs_flash_",
+"^nvs_(entry_|sec_)",
+"^gpio_(install|uninstall|isr|intr|wakeup|deep_sleep|hold|force_hold|sleep_)",
+"^ledc_(fade_func_install|fade_func_uninstall|cb_register|isr)",
+"^adc_continuous_(register|flush)",
+"^(x|v)TaskCreate",
+"^xTaskCreate",
+"^vTaskSuspendAll$",
+"^xTaskResumeAll$",
+"^vTaskStartScheduler$",
+"^vTaskEndScheduler$",
+"^vTaskSetApplicationTaskTag$",
+"^xTaskCallApplicationTaskHook$",
+"^vTaskSetThreadLocalStoragePointer",
+"^(vTaskPlaceOn|vTaskRemoveFrom|xTaskRemoveFrom|vTaskSwitchContext|xTaskIncrementTick|vTaskStepTick|xTaskPriority|vTaskPriority|pvTaskIncrementMutex|vTaskInternal|xTimerCreateTimerTask|vQueueWaitForMessageRestricted|vTaskSuspend|vTaskResume|xTaskResume|uxTaskResetEventItemValue|vTaskGetSnapshot|xTaskGetIdleTaskHandle|xTaskAbortDelay)",
+"^esp_tls_(init_global_ca_store|free_global_ca_store|set_global_ca_store|cfg_server|server_)",
+"^esp_transport_ssl_enable_global_ca_store",
+"^mbedtls_(platform_set|threading_set|debug_set_threshold)",
+"^psa_(crypto_init|its_|ps_|purge_key)",
+"^esp_http_client_init_internal"
+]
+}

@@ -1,0 +1,10 @@
+{
+ "format": 1,
+ "pages": "https://example.github.io/tfn-os",
+ "repo": "example/tfn-os",
+ "store_pub": "<the 65-byte public key of the official store key, in hex>",
+ "ota_pub": ["<the 65-byte public key of an official OTA key, in hex>"],
+ "release": "<the version of the release that made the file>",
+ "kinds": ["<the board kinds of the release, for example lcd349>"],
+ "releases": "<optional: the base URL of the release files vV/; default https://github.com/<repo>/releases/download>"
+}

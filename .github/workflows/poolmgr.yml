@@ -1,0 +1,109 @@
+# The tests of the pool manager poolmgr/ (PLAN 9.2, P6 design 3.1) on the systems of its users: Linux, Windows and
+# macOS, with the oldest Python that it supports (3.9) and a new one (3.12). The program needs only the standard library
+# and the openssl program; the tests also use the package "cryptography" (a second check of the crypto).
+#   1. the Python tests of the pools and of poolmgr: tests/unit/test_pool_crypto.py, test_pool_tool.py and each
+#      tests/unit/test_poolmgr*.py (each prints one line "<TAG> OK ..."; tests/unit/run.py runs the same files);
+#   2. the release zip: sdk/tools/release_pack.py makes tfn-poolmgr-V.zip with TEST keys, and the program of the
+#      unpacked zip starts in a new folder with no repo near it.
+# It runs for a change of poolmgr/, of the shared modules or of these tests, and by hand ("Run workflow").
+name: poolmgr
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'poolmgr/**'
+      - 'sdk/tools/pool.py'
+      - 'sdk/tools/pool_crypto.py'
+      - 'sdk/tools/pool_tool.py'
+      - 'sdk/tools/fw_sign.py'
+      - 'sdk/tools/pool.py'
+      - 'sdk/tools/pool_crypto.py'
+      - 'sdk/tools/pool_tool.py'
+      - 'sdk/tools/fw_sign.py'
+      - 'sdk/tools/store_index.py'
+      - 'sdk/tools/release_pack.py'
+      - 'tests/unit/test_pool*.py'
+      - 'tests/unit/poolmgr_fake.py'
+      - 'tests/unit/vectors/**'
+      - '.github/workflows/poolmgr.yml'
+  pull_request:
+    paths:
+      - 'poolmgr/**'
+      - 'sdk/tools/fw_sign.py'
+      - 'sdk/tools/pool*.py'
+      - 'sdk/tools/fw_sign.py'
+      - 'sdk/tools/store_index.py'
+      - 'sdk/tools/release_pack.py'
+      - 'tests/unit/test_pool*.py'
+      - 'tests/unit/poolmgr_fake.py'
+      - 'tests/unit/vectors/**'
+      - '.github/workflows/poolmgr.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: poolmgr-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: poolmgr ${{ matrix.os }} Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.9', '3.12']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: The tools
+        run: |
+          python -m pip install --quiet cryptography
+          openssl version
+      - name: The Python tests of the pools and of poolmgr
+        run: |
+          bad=0
+          out="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/poolmgr_test.txt"
+          for t in tests/unit/test_pool_crypto.py tests/unit/test_pool_tool.py tests/unit/test_poolmgr*.py; do
+            [ -f "$t" ] || continue
+            echo "::group::$t"
+            if python "$t" > "$out" 2>&1; then r=0; else r=$?; fi
+            cat "$out"
+            echo "::endgroup::"
+            # (the tag of the OK line: the name of the file, as tests/unit/run.py reads it)
+            n=$(basename "$t" .py)
+            tag=$(echo "${n#test_}" | tr '_' ' ' | tr '[:lower:]' '[:upper:]')
+            if [ "$r" != 0 ] || ! grep -q "^$tag PY OK" "$out"; then
+              echo "::error::$t failed (exit $r, no \"$tag PY OK\" line)"
+              bad=1
+            fi
+          done
+          exit $bad
+      - name: The release zip starts with no repo near it
+        run: |
+          python - << 'EOF'
+          import os, subprocess, sys, tempfile, zipfile
+          sys.path.insert(0, 'sdk/tools')
+          import release_pack
+          tmp = tempfile.mkdtemp()
+          pub = '04' + 'ab' * 64
+          ch = release_pack.channel_bytes(release_pack.channel('0.0.1', pub, [pub], 'https://example.github.io/tfn-os',
+                                                               'example/tfn-os', ['lcd349']))
+          z = os.path.join(tmp, 'tfn-poolmgr-0.0.1.zip')
+          names = release_pack.poolmgr_zip('poolmgr', '.', ch, z)
+          run = os.path.join(tmp, 'run')
+          zipfile.ZipFile(z).extractall(run)
+          r = subprocess.run([sys.executable, '-I', os.path.join(run, 'poolmgr', 'poolmgr.py'), '--help'], cwd=run,
+                             capture_output=True, text=True)
+          print(r.stdout[-2000:], r.stderr[-2000:])
+          if r.returncode or 'doctor' not in r.stdout:
+              sys.exit('the unpacked pool manager does not start')
+          print('POOLMGR ZIP OK (%d files)' % len(names))
+          EOF

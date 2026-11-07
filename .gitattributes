@@ -1,0 +1,2 @@
+# The sample static store of the unit test: signed bytes (no line end change)
+tests/unit/sstore/** -text

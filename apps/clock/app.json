@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "CLOCK",
+ "sym": "app_clock",
+ "group": "UTIL",
+ "emoji": "⏰",
+ "new": true,
+ "srcs": [
+  "app_clock.c"
+ ],
+ "store": {
+  "en": "A big clock face with the date, alarms that ring also when another app is open (snooze, days, sounds, a night mode) and a world clock of 46 cities. The board keeps the time in its clock chip. English and Hebrew.",
+  "he": "שעון גדול עם התאריך, השכמות שמצלצלות גם כשאפליקציה אחרת פתוחה (נודניק, ימים, צלילים, מצב לילה) ושעון עולמי של 46 ערים. הלוח שומר את השעה בשבב השעון. אנגלית ועברית."
+ }
+}

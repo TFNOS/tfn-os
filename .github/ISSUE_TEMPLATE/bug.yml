@@ -1,0 +1,81 @@
+name: A bug
+description: TFN OS, an app, the SDK or the simulator does a wrong thing.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. For a security fault, do not use this form: read SECURITY.md.
+        Remove the private data from all text and logs: WiFi names and passwords, IP addresses, keys, tokens.
+  - type: dropdown
+    id: board
+    attributes:
+      label: The board kind
+      options:
+        - Waveshare ESP32-S3-Touch-LCD-3.49
+        - M5Stack CoreS3 / CoreS3 SE
+        - Waveshare ESP32-S3-Touch-AMOLED-1.75C
+        - Waveshare ESP32-S3-Touch-AMOLED-1.8
+        - M5Stack Tab5
+        - SenseCAP Watcher
+        - The simulator (no board)
+        - Other (write it below)
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: The firmware version
+      description: The console command `ota` prints it. For a DEV build, give the branch and the commit.
+    validations:
+      required: true
+  - type: input
+    id: app
+    attributes:
+      label: The app and its version
+      description: The app that shows the fault (the STORE shows the version), or "the system".
+  - type: textarea
+    id: steps
+    attributes:
+      label: The steps that show the fault
+      placeholder: |
+        1. Open ...
+        2. Touch ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: A picture of the screen helps.
+    validations:
+      required: true
+  - type: dropdown
+    id: often
+    attributes:
+      label: How often it happens
+      options:
+        - Each time
+        - Sometimes
+        - One time
+  - type: textarea
+    id: log
+    attributes:
+      label: The log
+      description: The output of the USB console, or of the simulator. Remove the private data first.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The fault is also on the newest release (or on a fresh `main`).
+        - label: I removed the private data (WiFi names, IP addresses, keys) from the text and the log.
+          required: true

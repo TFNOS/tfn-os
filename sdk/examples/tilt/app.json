@@ -1,0 +1,10 @@
+{
+ "tfn_app": 1,
+ "name": "TILT BALL",
+ "sym": "app_tiltball",
+ "group": "GAMES",
+ "srcs": [
+  "app_tiltball.c"
+ ],
+ "version": "1.0.0"
+}

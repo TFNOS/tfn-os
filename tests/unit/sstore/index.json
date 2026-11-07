@@ -1,0 +1,260 @@
+{
+ "tfn_store": 1,
+ "release": "9.8.7",
+ "key_id": "5fd7e9f3b8acb6de",
+ "pubkey": "04541eb061b2f398c9fd6a3fff669761cb49d0910081e7859ef37c830c5fdfb483aa171fd1913444e8274d8813d200403473d1992889a67e2087e7029cbe113d86",
+ "kinds": [
+  "cores3",
+  "lcd349"
+ ],
+ "apps": [
+  {
+   "id": "abix",
+   "name": "ABIX",
+   "ver": "1.2.3",
+   "code": 26123,
+   "group": "UTIL",
+   "emoji": "🎲",
+   "desc": "A demo app: \"quotes\" and a back slash \\ in the text.",
+   "desc_he": "משחק לבדיקה",
+   "kinds": {
+    "lcd349": {
+     "path": "apps/abix/lcd349/",
+     "abi": 999,
+     "rev": 20,
+     "perms": [],
+     "bytes": 3004,
+     "ram": 1000,
+     "files": {
+      "manifest.txt": {
+       "size": 368,
+       "sha256": "669fd9115e5d3db9b32b07797df6d0c1e9a533521655078624c10a451826fe5e"
+      },
+      "app.elf": {
+       "size": 3004,
+       "sha256": "d275f28e5047aa7958f92a51aa971f40eee4fc031a63b2031bcb2fe245f1499c"
+      },
+      "icon.bin": {
+       "size": 400,
+       "sha256": "6e6788f5b321bad783b4872955e4693a5fa444ff90ea42aa82acbc9cae566ebc"
+      },
+      "sig": {
+       "size": 64,
+       "sha256": "95ba67d36ae8bac6df7bd9356c6277818d29cc95934198afd7987e4922c899e5"
+      }
+     },
+     "zip": {
+      "path": "apps/abix/abix-lcd349.zip",
+      "size": 4165,
+      "sha256": "8c941fa23f6058d2491358100979099f3f72fc0fb2db03840a30da5979723886"
+     }
+    }
+   }
+  },
+  {
+   "id": "demo",
+   "name": "DEMO",
+   "ver": "1.2.3",
+   "code": 26123,
+   "group": "UTIL",
+   "emoji": "🎲",
+   "desc": "A demo app: \"quotes\" and a back slash \\ in the text.",
+   "desc_he": "משחק לבדיקה",
+   "kinds": {
+    "cores3": {
+     "path": "apps/demo/cores3/",
+     "abi": 12345,
+     "rev": 20,
+     "perms": [
+      "net",
+      "storage"
+     ],
+     "bytes": 3002,
+     "ram": 1000,
+     "files": {
+      "manifest.txt": {
+       "size": 381,
+       "sha256": "26f40b90ddf6cc39f31f446abec2d86c52fb3d2d076a1800cce02bf243fdd4cc"
+      },
+      "app.elf": {
+       "size": 3002,
+       "sha256": "aeb74bda4dac9057702ef463d7279729955c88da134a9ab2beca96dbba884953"
+      },
+      "icon.bin": {
+       "size": 400,
+       "sha256": "16e1c67e9b11cb22bd32ef085cb3ceaca13a4a0ed2f5c3d550db8f03d59f3354"
+      },
+      "sig": {
+       "size": 64,
+       "sha256": "79e8e0a8fe85970ab15690c61ddd8d3fc506d32d6d4874b24bb65c84b10d0c86"
+      }
+     },
+     "zip": {
+      "path": "apps/demo/demo-cores3.zip",
+      "size": 4176,
+      "sha256": "1c51a7a21103fcc89bb70c8c945a5d63e1366465c591ef8a899dd4980b6646d4"
+     }
+    },
+    "lcd349": {
+     "path": "apps/demo/lcd349/",
+     "abi": 12345,
+     "rev": 20,
+     "perms": [
+      "net",
+      "storage"
+     ],
+     "bytes": 3001,
+     "ram": 1000,
+     "files": {
+      "manifest.txt": {
+       "size": 381,
+       "sha256": "5bdd6d50af41c31745407f8247eacc1c61e7363c6ce68ee129423136be889de3"
+      },
+      "app.elf": {
+       "size": 3001,
+       "sha256": "174864e5854eb5692b3155feb818837d242f1979f5aaf4c34b6544a1cf918cca"
+      },
+      "icon.bin": {
+       "size": 400,
+       "sha256": "86c8c240a767ec276f6f26ca8fdd53fe2a5c6b66e1e8c6d7f61bed9751f55254"
+      },
+      "sig": {
+       "size": 64,
+       "sha256": "89dbd3f327c2aa522d9d4cc91d34534adcfe610514e3cda533a67d1dbc48ec79"
+      }
+     },
+     "zip": {
+      "path": "apps/demo/demo-lcd349.zip",
+      "size": 4176,
+      "sha256": "7d272b904bc167e2deb3938f36e756600ac42fd6ceb88ee03c1384de5ba137fd"
+     }
+    }
+   }
+  },
+  {
+   "id": "fut",
+   "name": "FUT",
+   "ver": "1.2.3",
+   "code": 26123,
+   "group": "UTIL",
+   "emoji": "🎲",
+   "desc": "A demo app: \"quotes\" and a back slash \\ in the text.",
+   "desc_he": "משחק לבדיקה",
+   "kinds": {
+    "cores3": {
+     "path": "apps/fut/cores3/",
+     "abi": 12345,
+     "rev": 20,
+     "perms": [
+      "future"
+     ],
+     "bytes": 3006,
+     "ram": 1000,
+     "files": {
+      "manifest.txt": {
+       "size": 373,
+       "sha256": "14d02c62660570f2d72211006b9f6493bca05f4a6021318b7fdca8a4d7cf258f"
+      },
+      "app.elf": {
+       "size": 3006,
+       "sha256": "b6ded495b1eb59cec5440b3c1511201581ac523a490b9d7155fddf7331a92e6c"
+      },
+      "icon.bin": {
+       "size": 400,
+       "sha256": "2120c07dd11506e7a29a48ea099fa157340af9675803de05293a09adf4533ec6"
+      },
+      "sig": {
+       "size": 64,
+       "sha256": "736b874609f7408a5506e5f03e7e369b04778a835d0234161415a2cae90a0289"
+      }
+     },
+     "zip": {
+      "path": "apps/fut/fut-cores3.zip",
+      "size": 4172,
+      "sha256": "b2cf3bf9fba81fdfe272fb5bb539b0b83c3b6678652de818a9e62d415909b77a"
+     }
+    },
+    "lcd349": {
+     "path": "apps/fut/lcd349/",
+     "abi": 12345,
+     "rev": 20,
+     "perms": [
+      "future"
+     ],
+     "bytes": 3005,
+     "ram": 1000,
+     "files": {
+      "manifest.txt": {
+       "size": 373,
+       "sha256": "ece66abde41c8fb96cfd0f787df04b48cbacbde394429d90bf63effc7c05c97e"
+      },
+      "app.elf": {
+       "size": 3005,
+       "sha256": "ba8d9067dbe6e4847d166cb67cefe0e29b5894f9b5478dc18d15b1c98d5be04a"
+      },
+      "icon.bin": {
+       "size": 400,
+       "sha256": "ce3100a495b2841cbfdce7c3c1b9ee43f9e94aeb7a8bd035ed131a5244537b12"
+      },
+      "sig": {
+       "size": 64,
+       "sha256": "c4737db78149761daeb0d8db024bbbed4ec65c2413479256d1974f341c08b7c0"
+      }
+     },
+     "zip": {
+      "path": "apps/fut/fut-lcd349.zip",
+      "size": 4170,
+      "sha256": "cad552e81e0d3632fcc4cfe4812ac591eb003c9a5092eb08566c3b2d1e0d139a"
+     }
+    }
+   }
+  },
+  {
+   "id": "watchy",
+   "name": "WATCHY",
+   "ver": "1.2.3",
+   "code": 26123,
+   "group": "UTIL",
+   "emoji": "🎲",
+   "desc": "A demo app: \"quotes\" and a back slash \\ in the text.",
+   "desc_he": "משחק לבדיקה",
+   "kinds": {
+    "lcd349": {
+     "path": "apps/watchy/lcd349/",
+     "abi": 12345,
+     "rev": 99,
+     "perms": [],
+     "bytes": 3003,
+     "ram": 1000,
+     "files": {
+      "manifest.txt": {
+       "size": 454,
+       "sha256": "694064b45ead99a258c7f0294e736b716133a3359716665f857d0473a47a4f6e"
+      },
+      "app.elf": {
+       "size": 3003,
+       "sha256": "767a34be221a869f3d63b13ef65eb009e656ef842e172d486d9343243ace3b7b"
+      },
+      "icon.bin": {
+       "size": 400,
+       "sha256": "a78cf620e9ca2cdbe22ff3b47499da5fa576bd740b3dfad0fa482a55d9c000d2"
+      },
+      "sig": {
+       "size": 64,
+       "sha256": "18ab99fd05cfac9566314cd8a687f9e774dcf03ea77d3b2c14c65e967dceb6db"
+      },
+      "watch.elf": {
+       "size": 700,
+       "sha256": "30f323aead2782ef80c4e00c2eb178c49ea168ebc899021cee2adcd4b7c7251c"
+      }
+     },
+     "zip": {
+      "path": "apps/watchy/watchy-lcd349.zip",
+      "size": 5020,
+      "sha256": "1a840fc737e7b97bc668e9eb9f94ea2ee959e77965bba0f30916267458419ae7"
+     }
+    }
+   }
+  }
+ ]
+}

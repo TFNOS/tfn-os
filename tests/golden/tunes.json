@@ -1,0 +1,47 @@
+[
+ {
+  "name": "TUNE_RUN",
+  "expect": {
+   "samples": 37200,
+   "sha256": "9ad23030d3834a74ff4f53def6bea02b1728ce5e8d685f765948f6239a95e1a5",
+   "peak": 21416,
+   "rms": 4456.442
+  }
+ },
+ {
+  "name": "TUNE_KNIGHT",
+  "expect": {
+   "samples": 48000,
+   "sha256": "857f460d7afb34900a1edad8fb487a0f6709106f2735e84c6bd1ab7b575be5c0",
+   "peak": 24794,
+   "rms": 5579.302
+  }
+ },
+ {
+  "name": "TUNE_PONG",
+  "expect": {
+   "samples": 43200,
+   "sha256": "976e899babae02de91c693702613210ac9f6dc29802fb7241fd6870fcdd38a18",
+   "peak": 22578,
+   "rms": 3310.208
+  }
+ },
+ {
+  "name": "TUNE_CRUISE",
+  "expect": {
+   "samples": 84000,
+   "sha256": "a4823e3332c7a3aa001586207a39b6452e2c4c715de3c2e223ab7f3092f44db8",
+   "peak": 26422,
+   "rms": 7845.946
+  }
+ },
+ {
+  "name": "TUNE_FIGHT_WIN",
+  "expect": {
+   "samples": 32640,
+   "sha256": "8bb77fc49efd3dcf88c38ad66927b92aeec62ab7fe4fa50c58be7f0fe68c99d5",
+   "peak": 26122,
+   "rms": 6957.336
+  }
+ }
+]

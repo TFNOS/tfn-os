@@ -1,0 +1,11 @@
+# Name,     Type, SubType, Offset,   Size
+# THE SLIM LAYOUT: the board kinds of the slim
+# firmware (main/apps.json "slim": the CoreS3, the AMOLED, the Watcher) have small app slots and a big storage for the
+# app files. nvs and phy_init do not move (the settings stay). The full layout of the 3.49 is partitions.csv.
+# A slim image is about 2.7 MB: a slot of 3.5 MB. /data: 8.9 MB (the full layout: 3.9 MB).
+nvs,        data, nvs,     0x9000,   0x6000
+phy_init,   data, phy,     0xf000,   0x1000
+ota_0,      app,  ota_0,   0x10000,  0x380000
+ota_1,      app,  ota_1,   0x390000, 0x380000
+otadata,    data, ota,     0x710000, 0x2000
+storage,    data, fat,     0x720000, 0x8E0000

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>How TFN OS works</title>
+<meta name="description" content="How TFN OS works: signed updates, signed apps, pools of boards that trust each other, play by radio, and the pool manager on your own computer.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/how.css">
+<script src="js/theme.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Go to the content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="TFN OS home">
+      <svg viewBox="0 0 34 14" aria-hidden="true"><rect x="1" y="1" width="32" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="4.5" width="5" height="5" rx="1" fill="#e6a315"/></svg>
+      TFN OS
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html#boards" class="hide-s">Boards</a>
+      <a href="store.html" class="hide-s">Apps</a>
+      <a href="how.html" aria-current="page">How it works</a>
+      <a href="install.html">Install</a>
+    </nav>
+    <button class="theme-btn" type="button" data-theme-btn aria-label="Colour theme">Auto</button>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero how-hero">
+  <div class="wrap">
+    <h1 class="hero-title how-title">How it works</h1>
+    <p class="hero-lede measure">Your boards, your computer if you want one, and this site. Nothing else.</p>
+    <p class="hero-sub measure">TFN OS has no accounts and no server of ours that talks to your boards. Each file that comes to a board has a signature, and the board checks it. A group of your boards trusts each other with keys that only you keep.</p>
+  </div>
+</section>
+
+<section class="section" id="map">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>The three places</h2>
+      <p>Each part of TFN OS lives in one of these places. The lines show what goes between them.</p>
+    </div>
+
+    <div class="map" role="img" aria-label="The three places: the TFN OS site and its releases, your boards, and your computer with the pool manager. The site sends signed firmware and signed apps to the boards over HTTPS. The pool manager on your computer adds the boards to your pool over your home network. The boards talk to each other by radio and on your network, with the key of the pool.">
+      <div class="node node-site">
+        <span class="node-k">The site and the releases</span>
+        <b>tfnos.xyz</b>
+        <ul>
+          <li>The install page</li>
+          <li>The update channel</li>
+          <li>The signed apps of the store</li>
+          <li>The public source and its releases</li>
+        </ul>
+      </div>
+      <div class="edge edge-down"><span>Signed firmware and signed apps, over HTTPS. The board checks each one.</span></div>
+      <div class="node node-boards">
+        <span class="node-k">Your boards</span>
+        <b>TFN OS</b>
+        <ul>
+          <li>Its own device key, made at the first start</li>
+          <li>The list of keys that it trusts</li>
+          <li>The signed list of its pool</li>
+        </ul>
+        <div class="radio" aria-hidden="true"><i></i><i></i><i></i></div>
+        <span class="node-foot">Board to board: radio (ESP-NOW) and your WiFi, with the key of the pool</span>
+      </div>
+      <div class="edge edge-up"><span>The JOIN with 6 digits, the pool list, updates and your own store, on your home network only.</span></div>
+      <div class="node node-pc">
+        <span class="node-k">Your computer (optional)</span>
+        <b>poolmgr</b>
+        <ul>
+          <li>The keys of your pool</li>
+          <li>The backups of the pool</li>
+          <li>A copy of the store, and your own apps</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="one">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>One board, with nothing else</h2>
+      <p>This is the start for each board. You need no computer and no pool.</p>
+    </div>
+    <ol class="steps">
+      <li>Install TFN OS from the <a href="install.html">install page</a>. The board makes its own device key at the first start.</li>
+      <li>The board gets the free apps from the store of this site. It checks the signature of each app before the install.</li>
+      <li>New releases come from the update channel of this site, when the board is idle.</li>
+      <li>Friends near you play with you by radio, with no internet and with no pool.</li>
+    </ol>
+    <p class="measure">A board with no pool sends no beacons on your network. Other people on the network do not see it.</p>
+  </div>
+</section>
+
+<section class="section" id="signed">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>Each file has a signature</h2>
+      <p>A board takes a file only when a key that it trusts signed it. The board does the check itself. A web page or a computer cannot tell it to skip the check.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <h3>The firmware</h3>
+        <p>Each release image has a signature of the TFN OS release key. The board checks it before it starts the new image, and refuses an image for another board kind.</p>
+        <p>Each release has a security number. A board does not go back to an older number, so a person cannot put back an old image with a known fault.</p>
+        <p>A new image must pass its self-test. If it does not, the board goes back to the last good image.</p>
+      </article>
+      <article class="card">
+        <h3>The apps</h3>
+        <p>Each app package has a signature of a store key. The board checks the signature, the board kind, the version of the system calls and the SHA-256 of each file.</p>
+        <p>The board trusts the key of the TFN OS store. You can add more keys, for example the key of your pool's own store, or your key as a developer.</p>
+        <p>An app is native code, so install only the apps of a store that you trust.</p>
+      </article>
+      <article class="card">
+        <h3>A finger on the glass</h3>
+        <p>Some steps change who the board trusts: a new key, a JOIN of a pool, the developer mode. These steps need a tap of a real finger on the board.</p>
+        <p>A tap from the web page or from the network does not count. The USB cable counts, because a person with the cable can write any firmware to the board anyway.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="pools">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>Pools: boards that trust each other</h2>
+      <p>A pool is a group of up to 16 boards, for example the boards of a home. Anyone can make a pool. There is no central list of pools.</p>
+    </div>
+    <div class="split">
+      <div>
+        <h3>What a pool has</h3>
+        <dl class="specs how-specs">
+          <dt>The pool key</dt><dd>A random secret of the group. Each packet between the boards of the pool has a tag of this key and a counter. A board drops a packet with a bad tag or an old counter.</dd>
+          <dt>The pool list</dt><dd>The members, their roles and the address of the pool manager. The admin key of the pool signs it. A board takes only a newer list with a good signature.</dd>
+          <dt>Two admin keys</dt><dd>Key A signs the changes. Key R is for recovery: it stays in an encrypted file, so a lost computer does not lose the pool.</dd>
+          <dt>Roles</dt><dd>MEMBER, MANAGER, and CHILD (a CHILD board cannot leave the pool by itself).</dd>
+        </dl>
+      </div>
+      <div>
+        <h3>How a board joins</h3>
+        <ol class="join">
+          <li>On the board: SETUP &gt; POOL &gt; JOIN.</li>
+          <li>On your computer: <code>poolmgr adopt</code>.</li>
+          <li>The board and the computer show the same 6 digits.</li>
+          <li>When the digits are the same, tap ALLOW on the board with your finger.</li>
+        </ol>
+        <p>The 6 digits stop a device between the board and the computer. If they are not the same, tap NO.</p>
+        <h3>When a board leaves</h3>
+        <p>The pool manager sends a new pool key to the other members. The board that left cannot read the pool any more.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="play">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>Play together, also with no internet</h2>
+      <p>The 2-board games and WALKIE talk board to board by radio (ESP-NOW). They need no router and no internet.</p>
+    </div>
+    <div class="cards">
+      <article class="card">
+        <h3>One meeting channel</h3>
+        <p>When both boards open the same game, they meet on one radio channel. A board on a WiFi network stays on the channel of its network, and the other board comes to it.</p>
+      </article>
+      <article class="card">
+        <h3>Two different WiFi networks</h3>
+        <p>If your friend's board is on another WiFi network, the lobby asks "YOUR FRIEND IS ON ANOTHER WIFI?". PLAY BY RADIO leaves the WiFi for the game, and joins it again after the game. Your saved networks do not change.</p>
+      </article>
+      <article class="card">
+        <h3>Inside a pool</h3>
+        <p>The boards of a pool see each other, and each packet has the tag of the pool key. The boards of another pool cannot see them.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="poolmgr">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>The pool manager on your computer</h2>
+      <p><code>poolmgr</code> is a free program in the TFN OS source. It runs on Windows, macOS, Linux or a Raspberry Pi, with Python 3.9 or later and nothing more to install.</p>
+    </div>
+    <div class="split">
+      <div>
+        <h3>What it does</h3>
+        <ul class="does">
+          <li><b>init</b> makes your pool, its keys and the first backup.</li>
+          <li><b>adopt</b> adds a board with the 6 digits. Each member gets a random web password, and all other members as friends.</li>
+          <li><b>update</b> sends a new release to your boards, one board at a time. It checks the signature first, and the board checks it again.</li>
+          <li><b>store</b> keeps a copy of the store on your network, and adds the apps that you sign with your pool's own key.</li>
+          <li><b>backup</b> and <b>recover</b> keep your pool when a computer is lost.</li>
+          <li><b>serve</b> runs in the background and keeps the boards up to date.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>What it does not do</h3>
+        <ul class="doesnt">
+          <li>It has no web page and no admin access on the network. A change comes only from a command on your computer.</li>
+          <li>It never adds a board by itself. Each board joins with the 6 digits and a tap on ALLOW.</li>
+          <li>It sends nothing to us. Your keys and your data stay in one folder on your computer.</li>
+        </ul>
+        <p class="how-more">The full guide is in the source: <code>docs/poolmgr.md</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="where">
+  <div class="wrap">
+    <div class="section-head measure">
+      <h2>Where each part lives</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="where">
+        <thead>
+          <tr><th scope="col">Part</th><th scope="col">Where</th><th scope="col">Who keeps it</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">The source of TFN OS, the SDK and poolmgr</th><td>The public repository, with a licence for each part</td><td>Everyone can read it</td></tr>
+          <tr><th scope="row">The release images and the store apps</th><td>The releases of the repository and this site</td><td>Signed with the TFN OS keys; the private keys stay off line</td></tr>
+          <tr><th scope="row">The device key of a board</th><td>The board</td><td>Only that board</td></tr>
+          <tr><th scope="row">The pool key and the pool list</th><td>The members of the pool</td><td>Your boards</td></tr>
+          <tr><th scope="row">The admin keys A and R of a pool</th><td>Your computer (key R only in an encrypted file)</td><td>Only you</td></tr>
+          <tr><th scope="row">Your WiFi, your files, your settings</th><td>The board</td><td>Only you. This site never sees them</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hero-cta"><a class="btn btn-primary" href="install.html">Install TFN OS</a> <a class="btn" href="store.html">See the apps</a></p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>TFN OS is not made by Waveshare, M5Stack or Seeed Studio. The board names are the trademarks of their owners.</p>
+    <p><a href="licences.html">Licences</a></p>
+  </div>
+</footer>
+<script type="module" src="js/site.js"></script>
+</body>
+</html>

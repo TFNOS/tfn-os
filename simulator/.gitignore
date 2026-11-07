@@ -1,0 +1,5 @@
+# The simulator: the builds, the state of the simulated board (its NVS and files) and the compiler are made, not kept
+.build/
+.data/
+.tools/
+__pycache__/

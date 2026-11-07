@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "TOUCH LAB",
+ "sym": "app_touchlab",
+ "group": "UTIL",
+ "emoji": "👆",
+ "new": true,
+ "srcs": [
+  "app_touchlab.c"
+ ],
+ "store": {
+  "en": "A test tool that shows what the touch panel detects. It draws each touch report and a timeline of the last 3 seconds. It counts right thumb presses while the left thumb is down. FREEZE saves the raw reports to a file.",
+  "he": "כלי בדיקה שמראה מה מסך המגע מזהה. הוא מצייר כל דיווח מגע ואת ציר הזמן של 3 השניות האחרונות. הוא סופר לחיצות של האגודל הימני בזמן שהשמאלי לחוץ. FREEZE שומר את הדיווחים הגולמיים בקובץ."
+ }
+}

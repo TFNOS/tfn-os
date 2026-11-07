@@ -1,0 +1,45 @@
+# The C and C++ format of TFN OS. CI checks it with clang-format 22.1.8 (tests/style/check_format.py); each
+# version formats a little differently, so use that version. .clang-format-ignore lists the files that it skips.
+# Data tables (fonts, panel start tables, colour tables) go between "// clang-format off" and "// clang-format on".
+# The vendored folders have their own .clang-format with DisableFormat: true.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+ContinuationIndentWidth: 8
+# a function body starts on a new line; the body of if, for, while and switch starts on the same line
+BreakBeforeBraces: Linux
+# braces on each body of if, else, for, while and do
+InsertBraces: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortLambdasOnASingleLine: None
+# "case" at the level of its "switch"
+IndentCaseLabels: false
+PointerAlignment: Right
+AlignConsecutiveMacros: Consecutive
+AlignTrailingComments: true
+SpacesBeforeTrailingComments: 2
+AlignAfterOpenBracket: Align
+BinPackArguments: true
+BinPackParameters: true
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+# the comments keep their text tables
+ReflowComments: false
+# the order of the includes can matter (sdkconfig.h first)
+SortIncludes: Never
+IncludeBlocks: Preserve
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+InsertNewlineAtEOF: true
+# a CRLF file stays CRLF
+LineEnding: DeriveLF
+...

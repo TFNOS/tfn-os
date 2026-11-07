@@ -1,0 +1,10 @@
+{
+ "tfn_app": 1,
+ "name": "COUNTER",
+ "sym": "app_counter",
+ "group": "UTIL",
+ "version": "1.0.0",
+ "srcs": [
+  "app_counter.c"
+ ]
+}

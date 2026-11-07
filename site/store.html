@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>TFN OS apps</title>
+<meta name="description" content="The free apps of TFN OS: download the signed files of an app and install them on your board.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/install.css">
+<link rel="stylesheet" href="css/store.css">
+<script src="js/theme.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Go to the content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="TFN OS home">
+      <svg viewBox="0 0 34 14" aria-hidden="true"><rect x="1" y="1" width="32" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="4.5" width="5" height="5" rx="1" fill="#e6a315"/></svg>
+      TFN OS
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html#boards">Boards</a>
+      <a href="store.html" aria-current="page">Apps</a>
+      <a href="how.html" class="hide-s">How it works</a>
+      <a href="install.html">Install</a>
+    </nav>
+    <button class="theme-btn" type="button" data-theme-btn aria-label="Colour theme">Auto</button>
+  </div>
+</header>
+
+<main id="main" class="wrap flasher">
+  <h1 class="flasher-title">The apps</h1>
+  <p class="flasher-lede">Free apps for TFN OS. Each app file has the signature of the TFN OS store. Your board checks the signature before it installs the app.</p>
+
+  <p id="error" class="error" role="alert" hidden></p>
+  <p id="store-facts" class="note" hidden>Store release <b id="release"></b>, store key <b id="key-id"></b>. The page checked the signature of the list and checks the SHA-256 of each file before you save it.</p>
+
+  <section class="step" aria-labelledby="h-kind">
+    <h2 id="h-kind"><span class="step-n">1</span>Choose your board</h2>
+    <p><label for="kind">The board kind:</label> <select id="kind"></select></p>
+    <p>Your board must run TFN OS. To install it, use the <a href="install.html">install page</a>.</p>
+  </section>
+
+  <section class="step" id="step-apps" aria-labelledby="apps-title" hidden>
+    <h2><span class="step-n">2</span><span id="apps-title">The apps</span></h2>
+    <ul id="apps" class="app-list"></ul>
+  </section>
+
+  <section class="step" id="step-install" aria-labelledby="h-install" hidden>
+    <h2 id="h-install"><span class="step-n">3</span>Install the app on the board</h2>
+    <p>Unzip the file that you saved. It holds the files of the app: manifest.txt, app.elf, icon.bin and sig. Then use one of these ways:</p>
+    <ol class="how">
+      <li><b>The web page of the board.</b> Connect the board to your WiFi. SETUP &gt; WEB PAGE on the board shows its address. On a computer or a phone in the same network, open <code>http://&lt;the board address&gt;/apps</code>. Under "Install an app file", select all the files of the app, and click Install.</li>
+      <li><b>The SD card.</b> Copy the folder with the files of the app to the SD card. Put the card into the board, open the folder in FILES, and tap INSTALL.</li>
+    </ol>
+    <p>The app is then in the menu of the board. The board refuses a file with no good signature, and a file for another board kind.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>TFN OS is not made by Waveshare, M5Stack or Seeed Studio. The board names are the trademarks of their owners.</p>
+    <p><a href="licences.html">Licences</a></p>
+  </div>
+</footer>
+<script type="module" src="js/site.js"></script>
+<script type="module" src="js/store/ui.js"></script>
+</body>
+</html>

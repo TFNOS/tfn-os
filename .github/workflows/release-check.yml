@@ -1,0 +1,100 @@
+# The check of a public release as a stranger does it (PLAN 13, the gate of P6): no checkout of the repo. The job gets
+# the files of the release and the web site, unzips the SDK package of the release, and runs its
+# tools/release_check.py: the pages and each file that they name, the firmware manifests with the logic of the install
+# page (Node), the store (the signature of the index and of each app), SHA256SUMS, the OTA signature of each firmware
+# file, and the full images.
+#   source "release":   the files of the GitHub release <tag> and the GitHub Pages site (or site_url). The keys: the
+#                       repository variables TFN_STORE_PUB and TFN_OTA_PUB (the published key values) when they are
+#                       set, else tfn-keys.json of the release (the job says so).
+#   source "artifacts": the files of a dry run of release.yml in the same run (TEST keys).
+# release.yml calls it after each release and each dry run. "Run workflow" checks a release again.
+name: release check
+on:
+  workflow_call:
+    inputs:
+      source:
+        type: string
+        default: release
+      tag:
+        type: string
+        default: ''
+      site_url:
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The tag of the release (for example v1.0.0)'
+        required: true
+      site_url:
+        description: 'The web site (empty = the GitHub Pages site of this repo)'
+        default: ''
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: download and check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE: ${{ inputs.source || 'release' }}
+      TAG: ${{ inputs.tag }}
+      SITE_URL: ${{ inputs.site_url }}
+    steps:
+      - name: The files of the dry run
+        if: env.SOURCE == 'artifacts'
+        uses: actions/download-artifact@v7
+        with:
+          name: release-files
+          path: rel
+      - name: The web site of the dry run
+        if: env.SOURCE == 'artifacts'
+        uses: actions/download-artifact@v7
+        with:
+          name: pages-site
+          path: site
+      - name: The TEST keys of the dry run (only the public values)
+        if: env.SOURCE == 'artifacts'
+        uses: actions/download-artifact@v7
+        with:
+          name: public-keys
+          path: pubs
+      - name: The files of the release
+        if: env.SOURCE != 'artifacts'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p rel
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir rel
+          ls -l rel
+      - name: The check
+        env:
+          STORE_PUB_VAR: ${{ vars.TFN_STORE_PUB }}
+          OTA_PUB_VAR: ${{ vars.TFN_OTA_PUB }}
+        run: |
+          python3 -m venv "$RUNNER_TEMP/py"
+          "$RUNNER_TEMP/py/bin/pip" install --quiet cryptography
+          sdk=$(ls rel/tfn-sdk-*.zip | head -n 1)
+          [ -n "$sdk" ] || { echo "::error::the release has no SDK package (tfn-sdk-<version>.zip)"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/sdk"
+          python3 -m zipfile -e "$sdk" "$RUNNER_TEMP/sdk"
+          tool="$RUNNER_TEMP/sdk/tfn-sdk/tools/release_check.py"
+          if [ "$SOURCE" = artifacts ]; then
+            site=site
+            keys=(--store-pub "$(cat pubs/store.pub)" --ota-pub "$(cat pubs/ota.pub)")
+          else
+            owner="${GITHUB_REPOSITORY%%/*}"
+            site="${SITE_URL:-https://${owner,,}.github.io/${GITHUB_REPOSITORY#*/}/}"
+            keys=()
+            [ -z "$STORE_PUB_VAR" ] || keys+=(--store-pub "$STORE_PUB_VAR")
+            [ -z "$OTA_PUB_VAR" ] || keys+=(--ota-pub "$OTA_PUB_VAR")
+          fi
+          set -o pipefail
+          "$RUNNER_TEMP/py/bin/python" -I "$tool" --site "$site" --release rel "${keys[@]}" --node node \
+            | tee check.log
+      - name: The result
+        if: always()
+        run: |
+          [ -f check.log ] || exit 0
+          { echo '### The check of a stranger'; echo '```'; cat check.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

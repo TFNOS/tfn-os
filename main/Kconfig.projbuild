@@ -1,0 +1,176 @@
+menu "TFN OS"
+
+    config TFN_DEVICE_PROTECTION
+        bool "Protect credentials and authenticate device administration"
+        depends on TFN_TARGET_WS349
+        default n
+        help
+            Keep normal startup automatic. Require owner authentication for
+            maintenance and trusted signatures for installed apps. A protected
+            build needs owner public keys supplied at build time. Hardware flash
+            encryption, NVS encryption and secure boot must be provisioned as a
+            separate, verified step. This option alone does not protect readout.
+
+    choice TFN_OTA_SIG
+        prompt "The signature check of a firmware update (TFNOTA1)"
+        depends on !TFN_DEVICE_PROTECTION
+        default TFN_OTA_SIG_REPORT
+        help
+            A signed update file ends with the trailer TFNOTA1 (main/ota_sig.h): the image hash, the
+            board kind, the version, the security version and up to 4 ECDSA P-256 signatures. The keys
+            are TFN_OTA_PUBKEY1_BYTES .. TFN_OTA_PUBKEY4_BYTES (main/tfn_defaults.h, main/tfn_local.h).
+            Report: the board checks each update over the network, writes the result into the log and
+            the JSON (last_sig), and takes the update in all cases. Off: no check.
+            Enforce: the board installs only an update with the result "ok". For each other result it
+            stops the update (the answer code "sig"), and the old firmware stays. A new firmware that came
+            by OTA marks itself good only after a self-test: its own trailer verifies with its own key
+            list, and the web server has the /api/ota handler. Else the board goes back to the old
+            firmware. A build in Enforce needs at least one key (else the build stops with an error).
+            A build with device protection has no check: its secure boot checks the image.
+
+        config TFN_OTA_SIG_REPORT
+            bool "Report: check each update and report the result; refuse nothing"
+        config TFN_OTA_SIG_ENFORCE
+            bool "Enforce: install only a signed update; a self-test before the mark of a new firmware"
+        config TFN_OTA_SIG_OFF
+            bool "Off: no check"
+    endchoice
+
+    config TFN_OTA_CRASH_TEST
+        bool "A test build only: the new firmware fails before its mark (the rollback test)"
+        default n
+        help
+            Only for a test build on a board with USB access. Never for a release.
+            In Enforce, the check of the own trailer gets one wrong byte of the signature, so the
+            self-test fails and the board goes back to the old firmware. In Report and Off, the firmware
+            stops (abort) 8 s after the start, before its mark, and the bootloader goes back.
+            The C define ARCADE_OTA_CRASH_TEST does the same.
+
+    config TFN_POOL_LEGACY
+        bool "The pools: a board with no pool keeps the old network behaviour (an old network of boards)"
+        default n
+        help
+            The pools (main/tfn_pool.c, main/tfn_pool.h). Nothing on the network changes this option.
+            On (an old network of boards that moves to pools): a board with no pool sends the plain beacon 'A' 'B',
+            link v3 to all boards, and takes op=mgr of a new manager (trust on first use). A board with a
+            token and no pool can join the pool of its manager one time with the token (no tap).
+            Off (the public build): a board with no pool sends no beacon, sends link v3 only for its friends,
+            and takes no op=mgr. A board gets a manager only by JOIN with the 6 digits (SETUP > POOL).
+
+    config TFN_POOL_STRICT
+        bool "The pools: the STRICT receive rules"
+        default n
+        help
+            Off (RELAXED): a pool board also takes link v3, the plain beacon and the call v1 of a roster MAC
+            and of a keyed friend of another pool (a member on an older firmware).
+            On (STRICT): a pool board drops these packets, keeps the boards that are not members and not
+            friends out of its table, and takes WAKE only from a MANAGER of the roster or a legacy friend.
+            A board with no pool behaves the same in both modes.
+
+    choice TFN_TARGET
+        prompt "Target board"
+        default TFN_TARGET_WS349
+        help
+            The board that the firmware is for. Each board has its own driver file
+            (board.c, board_cores3.c, board_amoled.c, board_watcher.c) and its own build folder and sdkconfig.
+
+        config TFN_TARGET_WS349
+            bool "Waveshare ESP32-S3-Touch-LCD-3.49 (172 x 640)"
+        config TFN_TARGET_CORES3SE
+            bool "M5Stack CoreS3-SE (320 x 240)"
+        config TFN_TARGET_AMOLED18
+            bool "Waveshare ESP32-S3-Touch-AMOLED-1.8 (368 x 448; the apps draw 320 x 240, scaled)"
+        config TFN_TARGET_WATCHER
+            bool "Seeed SenseCAP Watcher (412 x 412 round; the apps draw 320 x 240 in the middle)"
+        config TFN_TARGET_AMOLED175
+            bool "Waveshare ESP32-S3-Touch-AMOLED-1.75C (466 x 466 round; the round frame 412 x 412 and the 320 x 240 frame, scaled)"
+        config TFN_TARGET_TAB5
+            bool "M5Stack Tab5, ESP32-P4 (720 x 1280 DSI; the apps draw 320 x 240, scaled 3 times)"
+    endchoice
+
+    choice TFN_BOARD
+        depends on TFN_TARGET_WS349
+        prompt "Board revision"
+        default TFN_BOARD_AUTO
+        help
+            The V1 and V2 boards use different pins for the LCD reset and
+            the backlight. Auto-detect reads the pull resistors on GPIO8
+            and GPIO42 at start-up.
+
+        config TFN_BOARD_AUTO
+            bool "Auto-detect"
+        config TFN_BOARD_V1
+            bool "V1 (LCD reset on GPIO21, backlight on GPIO8)"
+        config TFN_BOARD_V2
+            bool "V2 (LCD reset on EXIO5, backlight on GPIO42)"
+    endchoice
+
+    config TFN_LCD_PCLK_MHZ
+        int "LCD clock (MHz): QSPI on the 3.49 and the AMOLED, SPI on the CoreS3"
+        range 10 80
+        default 40
+        help
+            The CoreS3 LCD takes about 31 ms for a frame at 40 MHz (the M5GFX value). A faster
+            clock can work, but do a test on the board (colours, lines) before you keep it.
+
+    config TFN_BRIGHTNESS
+        int "Default backlight brightness (10-255)"
+        range 10 255
+        default 230
+
+    config TFN_VOLUME
+        int "Default sound volume (0-100)"
+        range 0 100
+        default 85
+
+    config TFN_IMU_USE_GYRO
+        bool "Use the gyro to make the tilt estimate faster"
+        default y
+
+    config TFN_IMU_DEBUG
+        bool "Log the IMU values two times per second"
+        default n
+
+    config TFN_SELFTEST
+        bool "Self-test: open each app, tap to start, log the frame rate"
+        default n
+
+    config TFN_TOUCH_DEBUG
+        bool "Log touch coordinates"
+        default n
+
+    menu "TFN OS extras"
+        # The optional features of the core (main/apps.json core.extras). When an extra is off, its files are not
+        # in the build, and its hooks in the core are empty.
+
+        config TFN_EXTRA_HA
+            bool "Home Assistant: the client of the app HOME and its board web page"
+            default n
+            help
+                main/ha.c (the calls to Home Assistant) and main/web_ha.c (the page /ha and its API). The app HOME
+                needs it (the ABI names ha_*).
+
+        config TFN_EXTRA_WEBCAM
+            bool "The web camera: the page /cam and the picture /api/cam.jpg"
+            default n
+            help
+                main/webcam.c: the camera of the CoreS3 (GC0308) as a web camera, and the console "wcam" (the AI chip of
+                the Watcher). When it is off, the board says "cam": false to the manager.
+
+        config TFN_EXTRA_RF_NATIVE
+            bool "The native radio: the WiFi receiver as a receiver of I/Q samples"
+            default n
+            help
+                main/rf_native.c (the dump path of the receiver of the ESP32-S3, the radio start) and main/rf_test.c (the
+                console "rf"). When it is off, the radio apps (SDR and others) say "no native radio", as on the Tab5.
+
+        config TFN_EXTRA_VPN
+            bool "The VPN: a WireGuard tunnel to the hub of the manager"
+            default n
+            help
+                main/vpn.c, the page /vpn and /api/vpn, the console "vpn" and "vpnonly". When it is off, the board finds
+                the other boards on the WiFi network and by ESP-NOW only.
+
+    endmenu
+
+endmenu

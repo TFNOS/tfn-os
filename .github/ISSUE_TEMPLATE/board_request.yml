@@ -1,0 +1,67 @@
+name: A board request
+description: Ask for the support of a new board, or tell that you want to port TFN OS to a board.
+labels: ["board"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A new board is a new folder `boards/<kind>/` with its `board_caps.h` and its driver. The shared code does not
+        change (CONTRIBUTING.md, section 7). Give as much data as you can. A link to the schematic helps most.
+  - type: input
+    id: name
+    attributes:
+      label: The board
+      description: The maker and the full model name.
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: A link to the product page or to the wiki of the board
+    validations:
+      required: true
+  - type: dropdown
+    id: chip
+    attributes:
+      label: The chip
+      options:
+        - ESP32-S3
+        - ESP32-P4
+        - Other (write it below)
+    validations:
+      required: true
+  - type: input
+    id: memory
+    attributes:
+      label: The flash and the PSRAM
+      placeholder: for example 16 MB flash, 8 MB octal PSRAM
+  - type: textarea
+    id: parts
+    attributes:
+      label: The parts of the board
+      description: The chip name of each part, if you know it.
+      value: |
+        - The screen (size, pixels, round or not, the driver chip):
+        - The touch (the chip):
+        - The motion sensor (IMU):
+        - The sound (the codec, the speaker, the microphone):
+        - The power (the PMIC, the battery):
+        - The SD card:
+        - The keys, a wheel, other sensors:
+    validations:
+      required: true
+  - type: textarea
+    id: schematic
+    attributes:
+      label: The schematic and the examples of the maker
+      description: Links to the schematic, the pin table and the example code of the maker.
+  - type: dropdown
+    id: have_board
+    attributes:
+      label: Do you have this board?
+      options:
+        - Yes, and I can test the builds on it
+        - Yes, and I want to do the port myself
+        - No
+    validations:
+      required: true

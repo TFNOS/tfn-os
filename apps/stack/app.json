@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "STACK",
+ "sym": "app_stack",
+ "group": "GAMES",
+ "emoji": "🏗️",
+ "srcs": [
+  "app_stack.c"
+ ],
+ "store": {
+  "en": "Build a tall tower. A block slides from side to side above the tower. Tap to drop it, and the part that hangs over the edge falls off. Three perfect drops in a row make the block grow again.",
+  "he": "בונים מגדל גבוה. קוביה מחליקה מצד לצד מעל המגדל. געו כדי להפיל אותה, והחלק שבולט מעבר לקצה נופל. שלוש הפלות מדויקות ברצף מגדילות שוב את הקוביה."
+ }
+}

@@ -1,0 +1,3 @@
+#pragma once
+#define CONFIG_TFN_TARGET_WATCHER 1
+#define CONFIG_TFN_LCD_PCLK_MHZ 40

@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "SIMON",
+ "sym": "app_simon",
+ "group": "GAMES",
+ "emoji": "🟢",
+ "new": true,
+ "srcs": [
+  "app_simon.c"
+ ],
+ "store": {
+  "en": "The memory game of four coloured pads. The console plays a sequence of lights and tones; press it back. Each round adds one step and the steps get faster. Goals of 8, 14, 20 or 31 steps, a best score, and 2 PLAYERS: each adds a new colour.",
+  "he": "משחק הזיכרון של ארבע לוחיות צבעוניות. הקונסולה מנגנת רצף של אורות וצלילים; לחצו עליו בחזרה. כל סיבוב מוסיף צעד, והצעדים נעשים מהירים יותר. יעדים של 8, 14, 20 או 31 צעדים, שיא, ו-2 שחקנים: כל אחד מוסיף צבע חדש."
+ }
+}

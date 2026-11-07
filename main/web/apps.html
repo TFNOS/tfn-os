@@ -1,0 +1,110 @@
+<style>
+.ap{max-width:1100px;margin:0 auto;padding:0 1.2em 2em}
+.ap *{box-sizing:border-box}
+.ap .cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:1.2em;align-items:start}
+@media (max-width:860px){.ap .cols{grid-template-columns:1fr}}
+.ap .pan{background:#12152a;border:1px solid #232850;border-radius:16px;padding:1em;margin:1em 0}
+.ap .pan h3{margin:0 0 .7em;font-size:1.05em;color:#ffd84a;display:flex;justify-content:space-between;align-items:baseline}
+.ap .pan h3 small{color:#8a93c0;font-weight:400;font-size:.8em}
+.ap .btn{background:#2d6cdf;color:#fff;border:0;border-radius:9px;padding:.5em .9em;font:inherit;font-size:.9em;cursor:pointer}
+.ap .btn:hover{filter:brightness(1.15)}.ap .btn.g{background:#262c52}.ap .btn.r{background:#7a2330}.ap .btn:disabled{opacity:.45;cursor:default}
+.ap .row{display:flex;align-items:center;gap:.7em;padding:.65em .3em;border-bottom:1px solid #20254a;flex-wrap:wrap}
+.ap .row:last-child{border-bottom:0}
+.ap .nm{flex:1;min-width:10em}.ap .nm b{color:#fff;letter-spacing:.02em}
+.ap .nm small{display:block;color:#7c86b8;font-size:.8em}
+.ap .tag{font-size:.72em;border:1px solid #39407a;border-radius:999px;padding:.15em .55em;color:#aab3e6}
+.ap .tag.card{border-color:#2f7a52;color:#7be3a6}.ap .tag.bad{border-color:#8a2f3a;color:#ff8a8f}.ap .tag.dev{border-color:#8a6d1a;color:#ffd84a}
+.ap .bar{height:10px;border-radius:99px;background:#0b0d1a;border:1px solid #232850;overflow:hidden;margin:.35em 0 .2em}
+.ap .bar i{display:block;height:100%;background:linear-gradient(90deg,#5b8cff,#b56cff)}
+.ap .sp{color:#8a93c0;font-size:.85em}
+.ap .msg{color:#8a93c0;font-size:.88em;margin:.6em 0 0;min-height:1.2em}.ap .msg.bad{color:#ff8a8f}.ap .msg.ok{color:#7be3a6}
+.ap .note{color:#7c86b8;font-size:.82em;line-height:1.5;margin:.7em 0 0}
+.ap .empty{color:#8a93c0;text-align:center;padding:1.4em .5em}
+.ap label.sw{display:flex;gap:.6em;align-items:center;color:#cfd5ff;cursor:pointer}
+.ap select,.ap input[type=file]{background:#0b0d1a;color:#e8ecff;border:1px solid #2a3058;border-radius:10px;padding:.5em;font:inherit;max-width:100%}
+</style>
+<div class=ap>
+<div class=cols>
+<div>
+<div class=pan><h3>Installed apps <small id=cnt></small></h3>
+<div id=list><div class=empty>Loading...</div></div>
+<div class=msg id=lm></div>
+<p class=note>An installed app is a file on the board or on the SD card. It opens from the menu as any other app. OPEN opens it
+on the board now. MOVE puts it in the other place. REMOVE deletes its files (its saved scores stay).</p>
+</div>
+</div>
+<div>
+<div class=pan><h3>Space</h3>
+<div class=sp>Board storage <span id=bs></span></div><div class=bar><i id=bb></i></div>
+<div class=sp style="margin-top:.7em">SD card <span id=cs></span></div><div class=bar><i id=cb></i></div>
+</div>
+<div class=pan><h3>Install an app file</h3>
+<p class=note style="margin-top:0">Select the files of one app for this board kind (<b id=kind>?</b>): manifest.txt, app.elf,
+icon.bin and sig. They come from the manager store, or from <code>sdk/out/&lt;app&gt;/&lt;kind&gt;/</code> of the SDK.</p>
+<input type=file id=files multiple>
+<div style="display:flex;gap:.6em;align-items:center;margin-top:.7em;flex-wrap:wrap">
+<select id=place><option value=board>to the board</option><option value=card>to the SD card</option></select>
+<button class=btn id=upb onclick=upload()>Install</button></div>
+<div class=msg id=um></div>
+</div>
+<div class=pan><h3>Developer mode</h3>
+<label class=sw><input type=checkbox id=dev disabled onchange=setDev()> App files with no signature of the manager can run</label>
+<p class=note>Only for app development. A file with no signature can be anything: keep it off on boards that you do not test on. This page can only turn it off: turn it on at the board (SETUP &gt; DEVELOPER MODE, then tap TURN ON with your finger) or with the USB console (<code>apps dev 1</code>).</p>
+</div>
+</div>
+</div>
+</div>
+<script>
+(function(){
+var S={};
+function $(i){return document.getElementById(i)}
+function kb(n){return n>=1048576?(n/1048576).toFixed(n>=1e8?0:1)+' MB':Math.max(1,Math.round(n/1024))+' KB'}
+function api(q,body){return fetch('/api/apps'+(q?'?'+q:''),body===undefined?{}:{method:'POST',body:body}).then(function(r){return r.json()})}
+function say(id,t,ok){var m=$(id);m.textContent=t;m.className='msg '+(ok===true?'ok':ok===false?'bad':'')}
+var ST={ok:'',dev:'developer',bad_sig:'no signature',bad_abi:'needs another firmware',bad_kind:'another board',bad_file:'damaged',stopped:'stopped the board'};
+function draw(){
+ $('kind').textContent=S.kind||'?';$('dev').checked=!!S.dev;$('dev').disabled=!S.dev;
+ var b=S.board||{},c=S.card||{};
+ $('bs').textContent=b.total?kb(b.free)+' free of '+kb(b.total):'';$('bb').style.width=b.total?(100-b.free*100/b.total).toFixed(1)+'%':'0';
+ $('cs').textContent=c.in?kb(c.free)+' free of '+kb(c.total):'no card';$('cb').style.width=c.in&&c.total?(100-c.free*100/c.total).toFixed(1)+'%':'0';
+ var L=$('list');L.textContent='';var a=S.apps||[];$('cnt').textContent=a.length+(a.length==1?' app':' apps');
+ if(!a.length){L.innerHTML='<div class=empty>No installed apps yet.</div>';return}
+ a.forEach(function(x){
+  var r=document.createElement('div');r.className='row';
+  var nm=document.createElement('div');nm.className='nm';var bb=document.createElement('b');bb.textContent=x.name;nm.appendChild(bb);
+  var sm=document.createElement('small');sm.textContent=x.ver+' · '+kb(x.bytes)+' file · '+kb(x.ram)+' memory · '+x.group.toLowerCase();nm.appendChild(sm);
+  r.appendChild(nm);
+  var t=document.createElement('span');t.className='tag '+(x.place=='card'?'card':'');t.textContent=x.place=='card'?'SD card':'board';r.appendChild(t);
+  if(x.state!='ok'){var s=document.createElement('span');s.className='tag '+(x.state=='dev'?'dev':'bad');s.textContent=ST[x.state]||x.state;r.appendChild(s)}
+  function btn(txt,cls,fn){var e=document.createElement('button');e.className='btn '+cls;e.textContent=txt;e.onclick=fn;r.appendChild(e)}
+  if(x.form)btn('Account','g',function(){location='app/'+x.id});
+  if(x.state=='ok'||x.state=='dev')btn('Open','g',function(){fetch('/api/ctl?open='+encodeURIComponent(x.name)).then(function(){say('lm',x.name+' opens on the board.',true)})});
+  if(x.place=='board'?(c.in):true)btn(x.place=='card'?'Move to board':'Move to card','g',function(){say('lm','Moving '+x.name+'...');api('op=move&id='+x.id+'&place='+(x.place=='card'?'board':'card'),'').then(function(j){say('lm',j.msg,j.ok);load()})});
+  btn('Remove','r',function(){if(!confirmRm(x))return;api('op=rm&id='+x.id,'').then(function(j){say('lm',j.msg,j.ok);load()})});
+  L.appendChild(r);
+ });
+}
+var armed=null;
+function confirmRm(x){if(armed===x.id){armed=null;return true}armed=x.id;say('lm','Press Remove again to delete '+x.name+'.');return false}
+function load(){api().then(function(j){S=j;draw()}).catch(function(){say('lm','The board does not answer.',false)})}
+window.setDev=function(){if($('dev').checked){$('dev').checked=false;return}api('op=dev&on=0','').then(function(j){say('um',j.msg,j.ok);setTimeout(load,800)})};
+window.upload=function(){
+ var fs=Array.prototype.slice.call($('files').files);var by={};fs.forEach(function(f){by[f.name]=f});
+ if(!by['manifest.txt']||!by['app.elf']){say('um','Select at least manifest.txt and app.elf of one app.',false);return}
+ $('upb').disabled=true;say('um','Reading the manifest...');
+ by['manifest.txt'].text().then(function(t){
+  var m=/^id=([a-z0-9_]+)$/m.exec(t),k=/^kind=(\w+)$/m.exec(t);
+  if(!m){throw new Error('manifest.txt has no id')}
+  if(k&&S.kind&&k[1]!=S.kind){throw new Error('this app file is for '+k[1]+', the board is '+S.kind)}
+  var id=m[1],pl=$('place').value,names=['manifest.txt','app.elf','icon.bin','sig','watch.elf'].filter(function(n){return by[n]}),i=0;
+  function next(){
+   if(i>=names.length){say('um','Checking and installing '+id+'...');return api('op=commit&id='+id+'&place='+pl,'')}
+   var n=names[i++];say('um','Sending '+n+' ('+kb(by[n].size)+')...');
+   return api('op=put&id='+id+'&file='+n+'&place='+pl,by[n]).then(function(j){if(!j.ok)throw new Error(j.msg);return next()});
+  }
+  return next();
+ }).then(function(j){say('um',j.msg,j.ok);setTimeout(load,800)}).catch(function(e){say('um',e.message,false)}).then(function(){$('upb').disabled=false});
+};
+load();setInterval(load,5000);
+})();
+</script>

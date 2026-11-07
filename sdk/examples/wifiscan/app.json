@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "WIFI SCAN",
+ "sym": "app_wifiscan",
+ "group": "UTIL",
+ "srcs": [
+  "app_wifiscan.c"
+ ],
+ "version": "1.0.0",
+ "idf": "all",
+ "store": {
+  "en": "Shows the WiFi networks that the board hears: signal in dBm, channel and security. CHANNELS draws each network as a curve. FOLLOW shows one signal live, with a tick that gets faster as it grows. Use it to find the right place for a router.",
+  "he": "מציג את רשתות ה-WiFi שהלוח שומע: עוצמת אות ב-dBm, ערוץ והצפנה. CHANNELS מצייר כל רשת כעקומה. FOLLOW מציג אות אחד בזמן אמת, עם נקישה שמהירה יותר ככל שהאות חזק יותר. אפשר למצוא בעזרתו את המקום הנכון לנתב."
+ }
+}

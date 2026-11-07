@@ -1,0 +1,226 @@
+{
+ "files": {
+  "GET /": [
+   "main/wifi_web.c"
+  ],
+  "GET /api/apps": [
+   "main/tfn_web.c"
+  ],
+  "GET /api/boards": [
+   "main/web_walkie.c"
+  ],
+  "GET /api/cam.jpg": [
+   "main/webcam.c"
+  ],
+  "GET /api/ctl": [
+   "main/web_walkie.c"
+  ],
+  "GET /api/evlog": [
+   "main/evlog.c"
+  ],
+  "GET /api/friends": [
+   "main/web_walkie.c"
+  ],
+  "GET /api/fs": [
+   "main/tfn_web.c"
+  ],
+  "GET /api/ha": [
+   "main/web_ha.c"
+  ],
+  "GET /api/ha/search": [
+   "main/web_ha.c"
+  ],
+  "GET /api/ha/test": [
+   "main/web_ha.c"
+  ],
+  "GET /api/id": [
+   "main/tfn_id.c"
+  ],
+  "GET /api/locate": [
+   "main/web_sys.c"
+  ],
+  "GET /api/menu": [
+   "main/web_walkie.c"
+  ],
+  "GET /api/msg": [
+   "main/web_sys.c"
+  ],
+  "GET /api/notify": [
+   "main/web_sys.c"
+  ],
+  "GET /api/pad": [
+   "main/wifi_web.c"
+  ],
+  "GET /api/pool": [
+   "main/tfn_pool.c"
+  ],
+  "GET /api/power": [
+   "main/web_walkie.c"
+  ],
+  "GET /api/pub": [
+   "main/tfn_pub.c"
+  ],
+  "GET /api/screen": [
+   "main/web_walkie.c"
+  ],
+  "GET /api/splash": [
+   "main/web_sys.c"
+  ],
+  "GET /api/sweep": [
+   "main/web_sys.c"
+  ],
+  "GET /api/usbphones": [
+   "main/web_sys.c"
+  ],
+  "GET /api/vpn": [
+   "main/web_walkie.c"
+  ],
+  "GET /api/walkie": [
+   "main/web_walkie.c"
+  ],
+  "GET /app/*": [
+   "main/tfn_web.c"
+  ],
+  "GET /apps": [
+   "main/tfn_web.c"
+  ],
+  "GET /cam": [
+   "main/webcam.c"
+  ],
+  "GET /del/*": [
+   "main/wifi_web.c"
+  ],
+  "GET /f/*": [
+   "main/wifi_web.c"
+  ],
+  "GET /files": [
+   "main/web_files.c"
+  ],
+  "GET /ha": [
+   "main/web_ha.c"
+  ],
+  "GET /login": [
+   "main/web_auth.c"
+  ],
+  "GET /logout": [
+   "main/web_auth.c"
+  ],
+  "GET /pad": [
+   "main/wifi_web.c"
+  ],
+  "GET /vpn": [
+   "main/web_walkie.c"
+  ],
+  "GET /walkie": [
+   "main/web_walkie.c"
+  ],
+  "GET /ws/audio (websocket)": [
+   "main/web_walkie.c"
+  ],
+  "POST /api/apps": [
+   "main/tfn_web.c"
+  ],
+  "POST /api/fs": [
+   "main/tfn_web.c"
+  ],
+  "POST /api/ha/config": [
+   "main/web_ha.c"
+  ],
+  "POST /api/ha/items": [
+   "main/web_ha.c"
+  ],
+  "POST /api/menu": [
+   "main/web_walkie.c"
+  ],
+  "POST /api/msg": [
+   "main/web_sys.c"
+  ],
+  "POST /api/notify": [
+   "main/web_sys.c"
+  ],
+  "POST /api/ota": [
+   "main/ota.c"
+  ],
+  "POST /api/pad": [
+   "main/wifi_web.c"
+  ],
+  "POST /api/pool": [
+   "main/tfn_pool.c"
+  ],
+  "POST /api/pub": [
+   "main/tfn_pub.c"
+  ],
+  "POST /api/splash": [
+   "main/web_sys.c"
+  ],
+  "POST /app/*": [
+   "main/tfn_web.c"
+  ],
+  "POST /files": [
+   "main/web_files.c"
+  ],
+  "POST /login": [
+   "main/web_auth.c"
+  ],
+  "POST /midi": [
+   "main/wifi_web.c"
+  ]
+ },
+ "routes": [
+  "GET /",
+  "GET /api/apps",
+  "GET /api/boards",
+  "GET /api/cam.jpg",
+  "GET /api/ctl",
+  "GET /api/evlog",
+  "GET /api/friends",
+  "GET /api/fs",
+  "GET /api/ha",
+  "GET /api/ha/search",
+  "GET /api/ha/test",
+  "GET /api/id",
+  "GET /api/locate",
+  "GET /api/menu",
+  "GET /api/msg",
+  "GET /api/notify",
+  "GET /api/pad",
+  "GET /api/pool",
+  "GET /api/power",
+  "GET /api/pub",
+  "GET /api/screen",
+  "GET /api/splash",
+  "GET /api/sweep",
+  "GET /api/usbphones",
+  "GET /api/vpn",
+  "GET /api/walkie",
+  "GET /app/*",
+  "GET /apps",
+  "GET /cam",
+  "GET /del/*",
+  "GET /f/*",
+  "GET /files",
+  "GET /ha",
+  "GET /login",
+  "GET /logout",
+  "GET /pad",
+  "GET /vpn",
+  "GET /walkie",
+  "GET /ws/audio (websocket)",
+  "POST /api/apps",
+  "POST /api/fs",
+  "POST /api/ha/config",
+  "POST /api/ha/items",
+  "POST /api/menu",
+  "POST /api/msg",
+  "POST /api/notify",
+  "POST /api/ota",
+  "POST /api/pad",
+  "POST /api/pool",
+  "POST /api/pub",
+  "POST /api/splash",
+  "POST /app/*",
+  "POST /files",
+  "POST /login",
+  "POST /midi"
+ ]
+}

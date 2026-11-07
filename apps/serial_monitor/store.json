@@ -1,0 +1,6 @@
+{
+ "serial": {
+  "en": "A serial terminal for a device on the pins (Arduino, ESP, GPS, a USB-UART adapter): baud and format, common settings, AUTO baud, text or hex, send lines, a self test and a demo. It keeps your settings. English and Hebrew.",
+  "he": "מסוף טורי להתקן על הפינים (ארדואינו, ESP, GPS, מתאם USB-UART): קצב ומבנה, הגדרות נפוצות, קצב אוטומטי, טקסט או HEX, שליחת שורות, בדיקה עצמית והדגמה. שומר את ההגדרות. אנגלית ועברית."
+ }
+}

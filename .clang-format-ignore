@@ -1,0 +1,30 @@
+# The files that clang-format does not change (clang-format 18 or later reads this file).
+# 1. The host tools and tests of each app: same_code.py cannot prove them with the firmware build.
+apps/*/tools/*
+apps/*/tools/*/*
+apps/*/tools/*/*/*
+apps/*/test/*
+# 3. The vendored files of main/ (NOTICE.md). The code of other projects is in third_party/: check_format.py does not
+#    read it, and each of its folders has its own .clang-format.
+main/tjpgd_rom.h
+main/tfn/tjpgd_rom.h
+# 2. The files that a tool makes (their header names the tool, or says "do not edit"). Make them again with
+#    their tool; do not format them by hand.
+apps/cruise/sv_tunes/*
+apps/dice/dz_sfx.c
+apps/dice/dz_sfx.h
+apps/i2c_scanner/i2c_fonts.inc
+apps/mqtt/mq_fonts.inc
+apps/serial_monitor/ser_fonts.inc
+apps/weather/wx_fonts.inc
+apps/weather/wx_icons.inc
+apps/weather/wx_roots.inc
+libs/interfont/ck_fonts.inc
+libs/interfont/stocks_font.inc
+libs/tfnet/tn_roots.inc
+main/apps_all.inc
+main/keeper_font.inc
+main/layout_table.inc
+main/menu_font.inc
+main/tab5_panels.inc
+main/tfn_abi.inc

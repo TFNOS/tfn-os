@@ -1,0 +1,67 @@
+# The simulator of TFN OS on Linux: the build with no window and no sound card, the golden frames and tunes
+# (tests/golden/run.py), the smoke test of all apps (simulator/smoke.py) and the check of the sound memory
+# (simulator/sound_check.py). The golden frames use the fixed clock of
+# the simulator, so the pixels must be the same as on the PC of the developer (clang on each system). Two jobs at the
+# same time: the 3.49 and the CoreS3 (with the tunes and the smoke test), and the round boards and the Tab5 (each
+# frame is a build of its own).
+name: simulator
+on:
+  push:
+  pull_request:
+concurrency:
+  group: sim-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  sim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TFN_SIM_CC: clang
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build the simulator (the 3.49 and the 320 x 240 frame)
+        run: |
+          python simulator/build.py
+          python simulator/build.py --frame cores3
+      - name: The golden frames and tunes
+        run: python tests/golden/run.py --no-build --frames lcd349 cores3
+      - name: The smoke test of all apps (headless)
+        run: python simulator/smoke.py --no-build --headless --seconds 1
+      - name: No sound reads the memory of an app after its free (simulator/sound_check.py)
+        run: python simulator/sound_check.py --no-build
+      - name: Keep the frames of a fault
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-out
+          path: |
+            tests/golden/out/*.png
+            simulator/.build/smoke.json
+          if-no-files-found: ignore
+  frames:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TFN_SIM_CC: clang
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build the simulator (the Watcher, the AMOLED-1.75C and the Tab5)
+        run: |
+          python simulator/build.py --frame watcher
+          python simulator/build.py --frame am175
+          python simulator/build.py --frame tab5
+      - name: The golden frames of these boards
+        run: python tests/golden/run.py --no-build --no-tunes --frames watcher am175 tab5
+      - name: Keep the frames of a fault
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-out-frames
+          path: tests/golden/out/*.png
+          if-no-files-found: ignore

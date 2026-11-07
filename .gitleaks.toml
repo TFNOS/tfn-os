@@ -1,0 +1,13 @@
+# The secret scan of the whole tree (gitleaks 8.28, .github/workflows/ci.yml): the default rules of gitleaks.
+# CI also scans the new commits of a push or a pull request with these rules.
+title = "TFN OS: the secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Vendored code: names that look like keys, but are not"
+paths = [
+    # zstd: data_key_lo and data_key_hi are the halves of a hash, not keys
+    '''(^|/)third_party/zstd/''',
+]

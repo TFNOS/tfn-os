@@ -1,0 +1,19 @@
+{
+ "tfn_app": 1,
+ "name": "MQTT",
+ "sym": "app_mqtt",
+ "group": "UTIL",
+ "emoji": "📬",
+ "new": true,
+ "form": "host|Broker address (a name or an IP);port|Port (1883, or 8883 with TLS);tls|TLS|c:NO,YES;user|User name (if the broker asks);pass|Password (if the broker asks)|s;topics|Topics to subscribe (commas: home/#, zigbee2mqtt/#)",
+ "form_help": "The board connects to this MQTT broker as a client (MQTT 3.1.1): open MQTT, then the settings panel > BROKER > THE BOARD PAGE. In BROKER mode the board is the broker on port 1883; with BROKER LOGIN set to THE PAGE LOGIN it asks for this user name and password.",
+ "srcs": [
+  "app_mqtt.c",
+  "mq_net.c"
+ ],
+ "idf": "all",
+ "store": {
+  "en": "An MQTT 3.1.1 client and broker. Connect to a broker (a public test broker or your home broker), see each topic with its last value, JSON and charts, and publish. Or make this board the broker of your network. English and Hebrew.",
+  "he": "לקוח וברוקר MQTT 3.1.1. התחברו לברוקר (ברוקר בדיקה ציבורי או הברוקר של הבית), ראו כל נושא עם הערך האחרון, JSON וגרפים, ופרסמו הודעות. או הפכו את הלוח לברוקר של הרשת. אנגלית ועברית."
+ }
+}

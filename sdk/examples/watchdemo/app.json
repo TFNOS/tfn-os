@@ -1,0 +1,17 @@
+{
+ "tfn_app": 1,
+ "name": "WATCH DEMO",
+ "sym": "app_watchdemo",
+ "group": "UTIL",
+ "srcs": [
+  "app_watchdemo.c"
+ ],
+ "watch": {
+  "srcs": [
+   "watch_watchdemo.c"
+  ],
+  "sym": "watch_watchdemo",
+  "every": 15
+ },
+ "version": "1.0.0"
+}

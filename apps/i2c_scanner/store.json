@@ -1,0 +1,6 @@
+{
+ "i2c": {
+  "en": "Finds each device on an I2C bus of the board, live: a map of the addresses, the chips of the board, the usual chips at each address and their ID registers, and the registers of a device. A wiring sketch. English and Hebrew.",
+  "he": "מוצא כל התקן על אפיק I2C של הלוח, בזמן אמת: מפת כתובות, רכיבי הלוח, הרכיבים הנפוצים בכל כתובת ואוגרי הזיהוי שלהם, והאוגרים של התקן. שרטוט חיווט. אנגלית ועברית."
+ }
+}

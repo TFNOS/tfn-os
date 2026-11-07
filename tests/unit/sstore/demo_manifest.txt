@@ -1,0 +1,17 @@
+id=demo
+name=DEMO
+ver=1.2.3
+code=26123
+abi=12345
+rev=20
+perms=net,storage
+kind=lcd349
+group=UTIL
+emoji=🎲
+saves=demo_
+bytes=3001
+ram=1000
+elf_sha256=174864e5854eb5692b3155feb818837d242f1979f5aaf4c34b6544a1cf918cca
+icon_sha256=86c8c240a767ec276f6f26ca8fdd53fe2a5c6b66e1e8c6d7f61bed9751f55254
+desc=A demo app: "quotes" and a back slash \ in the text.
+desc_he=משחק לבדיקה

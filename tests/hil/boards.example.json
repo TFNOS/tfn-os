@@ -1,0 +1,20 @@
+{
+  "_doc": [
+    "The form of tests/hil/boards.local.json (git ignores the local file). Copy this file to it and put in your boards.",
+    "manager: the URL of the manager (else --manager, TFN_MANAGER or the store setup).",
+    "deny_ports: the ports that the tool never opens (for example a port of another USB device or of a board of a user).",
+    "boards: name (as in the manager), port (the console port; none for a board with no USB), mac (12 hex digits:",
+    "the USB serial number of the port must be this MAC), kind (lcd349, cores3, am175, am18, watcher, tab5),",
+    "role: console (mem + open-all), pair (one of the two boards of the link test), net (versions only).",
+    "Optional: min_internal (the limit of the mem check in bytes), web_password (a board with a web password)."
+  ],
+  "manager": "http://manager.example:8000",
+  "deny_ports": ["COM_X"],
+  "boards": [
+    {"name": "BOARD-A", "port": "COM_A", "mac": "02AA00000001", "kind": "lcd349", "role": ["console", "pair"]},
+    {"name": "BOARD-B", "port": "COM_B", "mac": "02AA00000002", "kind": "lcd349", "role": ["pair"]},
+    {"name": "BOARD-C", "port": "COM_C", "mac": "02AA00000003", "kind": "cores3", "role": ["console"],
+     "min_internal": 40000},
+    {"name": "BOARD-D", "mac": "02AA00000004", "kind": "lcd349", "role": ["net"]}
+  ]
+}

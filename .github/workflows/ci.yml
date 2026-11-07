@@ -1,0 +1,139 @@
+# The checks of each push and each pull request (CONTRIBUTING.md tells how to run them on your computer).
+# The repo is private: the free plan has 2 000 runner minutes in a month. Each job is short, and a new push of the
+# same branch stops the run that is not complete.
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: apps list, contracts, licences, style, tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: main/apps.json is correct
+        run: python3 main/apps_gen.py --check
+      - name: main/apps_all.inc is current
+        run: |
+          python3 main/apps_gen.py --all
+          git diff --exit-code -- main/apps_all.inc
+      - name: The contracts (ABI names, NVS keys, HTTP routes, console commands)
+        run: python3 tests/contracts/check_all.py
+      - name: Each third-party part is in NOTICE.md
+        run: python3 tests/licence/check_notice.py
+      - name: The web flasher of the site (the detection and the write plan, with a fake port)
+        run: node site/test/flasher.test.js
+      - name: The store page of the site (the index, its signature, the file checks)
+        run: node site/test/store.test.js
+      - name: The release tools (firmware manifests, OTA signature, signed store, web site, the check of a stranger)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/rt"
+          "$RUNNER_TEMP/rt/bin/pip" install --quiet cryptography
+          "$RUNNER_TEMP/rt/bin/python" tests/release/test_release.py
+      - name: The keys and the OTA mode of a public release build (sdk/tools/release_cfg.py)
+        run: python3 tests/release/test_release_cfg.py
+      - name: The tests of the clean-up proof tool (tests/refactor/same_code.py)
+        run: python3 tests/refactor/test_same_code.py
+      - name: The host unit tests of the core (tests/unit; ASan + UBSan)
+        run: CC=gcc python3 tests/unit/run.py
+      - name: The comments of the OS, the SDK, the simulator and the host tests (no dates, no quotes, no private places)
+        run: python3 tests/style/check_comments.py
+      - name: The board names stay out of the shared code (tests/style/check_board_if.py)
+        run: python3 tests/style/check_board_if.py
+      - name: The apps use only the public API and include the libs in the SDK form (tests/style/check_api.py)
+        run: python3 tests/style/check_api.py
+      - name: The API reference of the SDK is current (sdk/tools/gen_api_doc.py --check)
+        run: python3 sdk/tools/gen_api_doc.py --check
+      - name: The app.json of each app agrees with main/apps.json and its store.json (sdk/tools/app_json.py --check)
+        run: python3 sdk/tools/app_json.py --check
+      - name: No function over 150 lines (tests/style/check_fsize.py)
+        run: python3 tests/style/check_fsize.py
+      - name: boards.json agrees with the files of each board kind (tests/boards/check_boards.py)
+        run: python3 tests/boards/check_boards.py
+      - name: The format (clang-format 22.1.8; tests/style/check_format.py)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/cf"
+          "$RUNNER_TEMP/cf/bin/pip" install --quiet clang-format==22.1.8
+          CLANG_FORMAT="$RUNNER_TEMP/cf/bin/clang-format" python3 tests/style/check_format.py
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.28.0
+      GITLEAKS_SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Get gitleaks (a fixed version and its checksum)
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+      - name: The files (the default rules)
+        run: '"$RUNNER_TEMP/gitleaks" dir . --config .gitleaks.toml --redact --no-banner'
+      - name: The new commits
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            range="$PR_BASE..$PR_HEAD"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ] \
+               && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$BEFORE..$GITHUB_SHA"
+          else
+            # a new branch: its commits that main does not have
+            range="$(git merge-base origin/main "$GITHUB_SHA")..$GITHUB_SHA"
+          fi
+          echo "the commits: $range ($(git rev-list --count "$range") commits)"
+          "$RUNNER_TEMP/gitleaks" git . --log-opts="$range" --config .gitleaks.toml \
+            --redact --no-banner
+
+  host-fuzz:
+    name: host build + all-app fuzz (ASan, UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_MAXSIZE: 400M
+      CCACHE_COMPILERCHECK: content
+    steps:
+      - uses: actions/checkout@v7
+      - name: Get ccache
+        run: sudo apt-get install -y --no-install-recommends ccache || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache)
+      - uses: actions/cache@v6
+        with:
+          path: .ccache
+          key: host-ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: host-ccache-${{ runner.os }}-
+      - name: Build the 3.49, CoreS3 and Watcher fuzz binaries
+        run: |
+          clang --version | head -1
+          JOBS=$(nproc) CC="ccache clang" sh tests/host/build.sh
+          ccache --show-stats | head -12
+      - name: Run the fuzz (300 frames for each app, seed 1)
+        working-directory: tests/host
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+        run: |
+          for b in 349 s3 wt; do
+            echo "::group::fuzz$b"
+            ./fuzz$b.exe 300 1 > fuzz_$b.log 2>&1 || { tail -40 fuzz_$b.log; exit 1; }
+            tail -3 fuzz_$b.log
+            echo "::endgroup::"
+          done

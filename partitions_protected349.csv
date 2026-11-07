@@ -1,0 +1,11 @@
+# Protected lcd349 slim layout. Partition table offset: 0xE000. The signed
+# security bootloader needs more than 32 KB. Move intact NVS into the unused
+# gap after otadata; keep app, PHY and internal file-storage addresses.
+# NVS uses its own HMAC-derived encryption; do not set its flash-encryption flag.
+# Name,     Type, SubType, Offset,   Size,       Flags
+phy_init,   data, phy,     0xf000,   0x1000,     encrypted
+ota_0,      app,  ota_0,   0x10000,  0x380000,
+ota_1,      app,  ota_1,   0x390000, 0x380000,
+otadata,    data, ota,     0x710000, 0x2000,
+nvs,        data, nvs,     0x712000, 0x6000,
+storage,    data, fat,     0x720000, 0x8E0000,   encrypted

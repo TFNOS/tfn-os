@@ -1,0 +1,10 @@
+{
+ "tfn_app": 1,
+ "name": "TAPPER",
+ "sym": "app_tapper",
+ "group": "GAMES",
+ "version": "1.0.0",
+ "srcs": [
+  "app_tapper.c"
+ ]
+}

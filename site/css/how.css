@@ -1,0 +1,258 @@
+/* The page "How it works": the map of the three places, the cards, the two columns and the table. The colours come
+   from the tokens of site.css, so the light and the dark theme work with no more rules. */
+
+/* the links of the top bar stay on one line */
+.nav a {
+  white-space: nowrap;
+}
+
+.how-hero {
+  padding-bottom: 8px;
+}
+.how-title {
+  font-size: clamp(3rem, 10vw, 6.5rem);
+  margin-bottom: 18px;
+}
+.how-hero .hero-lede {
+  margin-bottom: 0.4em;
+}
+
+/* the map: the site, the boards, the computer; a column with the lines between them on a small screen */
+.map {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1.15fr) 150px minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+}
+.node {
+  position: relative;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+.node b {
+  display: block;
+  font-family: var(--font-d);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 2px 0 8px;
+}
+.node-k {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.node ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+.node li + li {
+  margin-top: 3px;
+}
+.node-boards {
+  border: 2px solid var(--violet);
+}
+.node-boards b {
+  color: var(--violet);
+}
+.node-site b {
+  color: var(--teal);
+}
+.node-pc b {
+  color: var(--ink);
+}
+.node-foot {
+  display: block;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+.radio {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+}
+.radio i {
+  display: block;
+  width: 5px;
+  border-radius: 2px;
+  background: var(--gold);
+}
+.radio i:nth-child(1) {
+  height: 7px;
+}
+.radio i:nth-child(2) {
+  height: 12px;
+}
+.radio i:nth-child(3) {
+  height: 17px;
+}
+
+/* a line between two places: a gold rule with its label */
+.edge {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+.edge::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 3px solid var(--gold);
+}
+.edge span {
+  position: relative;
+  background: var(--paper);
+  padding: 6px 4px;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+/* the cards of a section */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+.card {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 22px;
+}
+.card h3 {
+  margin: 0 0 0.4em;
+}
+.card p {
+  margin: 0 0 0.7em;
+}
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+/* two columns */
+.split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(24px, 4vw, 56px);
+}
+.split h3 {
+  margin: 0 0 0.5em;
+}
+.split h3 + * {
+  margin-top: 0;
+}
+.split p + h3,
+.split ol + p + h3 {
+  margin-top: 1.4em;
+}
+.how-specs {
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px 18px;
+}
+.join {
+  margin: 0 0 1em;
+  padding-left: 1.3em;
+}
+.join li + li,
+.does li + li,
+.doesnt li + li {
+  margin-top: 6px;
+}
+.does,
+.doesnt {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.doesnt li::marker {
+  color: var(--bad);
+}
+.does li::marker {
+  color: var(--teal);
+}
+.how-more {
+  margin-top: 1.2em;
+  color: var(--ink-2);
+}
+
+/* the table of the places */
+.table-wrap {
+  overflow-x: auto;
+  margin-bottom: 28px;
+}
+.where {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+.where th,
+.where td {
+  text-align: left;
+  vertical-align: top;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.where thead th {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.where tbody th {
+  font-weight: 700;
+}
+
+@media (max-width: 1000px) {
+  .map {
+    grid-template-columns: 1fr;
+    max-width: 560px;
+  }
+  .edge {
+    min-height: 92px;
+  }
+  .edge::before {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    border-top: 0;
+    border-left: 3px solid var(--gold);
+  }
+  .edge span {
+    padding: 6px 10px;
+    max-width: 30em;
+  }
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .how-specs {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .how-specs dd {
+    margin-bottom: 10px;
+  }
+}

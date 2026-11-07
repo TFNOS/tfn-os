@@ -1,0 +1,66 @@
+name: An app idea
+description: Propose a new app or a game for TFN OS, or a big change of an app.
+labels: ["app idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before you start an app, read `sdk/README.md` and `sdk/docs/howto.md`. For a game, also read
+        `sdk/docs/graphics.md`.
+  - type: input
+    id: name
+    attributes:
+      label: The name of the app
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: The kind of app
+      options:
+        - A game
+        - A utility
+        - A change of an app that exists
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What the app does
+      description: For a game, tell the core rule that makes it different from the games that people know.
+    validations:
+      required: true
+  - type: dropdown
+    id: boards
+    attributes:
+      label: The board kinds
+      multiple: true
+      options:
+        - Waveshare ESP32-S3-Touch-LCD-3.49
+        - M5Stack CoreS3 / CoreS3 SE
+        - Waveshare ESP32-S3-Touch-AMOLED-1.75C
+        - Waveshare ESP32-S3-Touch-AMOLED-1.8
+        - M5Stack Tab5
+        - SenseCAP Watcher
+        - All boards
+  - type: textarea
+    id: needs
+    attributes:
+      label: What the app needs
+      description: The network, Bluetooth, the pins, the microphone, the motion sensor, an SD card data pack, and the
+        ABI names that the firmware does not have yet (for them, also open an ABI request).
+  - type: textarea
+    id: data
+    attributes:
+      label: The art, the sound and the data
+      description: Where they come from, and their licence. Only data that you have the right to share can go in.
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who makes the app?
+      options:
+        - I want to make it
+        - I want to help
+        - It is only an idea
+    validations:
+      required: true

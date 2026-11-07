@@ -1,0 +1,43 @@
+/* The store page. It uses the tokens of site.css and the steps of install.css. */
+
+.app-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 14px;
+}
+
+.app-card {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-2);
+}
+
+.app-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 4px;
+}
+
+.app-card p {
+  max-width: 68ch;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+.app-meta {
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+.how li {
+  margin-bottom: 10px;
+  max-width: 72ch;
+}
+
+#kind {
+  max-width: 100%;
+  font: inherit;
+  padding: 6px 8px;
+}

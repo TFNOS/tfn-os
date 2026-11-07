@@ -1,0 +1,47 @@
+# The build output (ESP-IDF, the host tests, the SDK tools)
+build/
+build_*/
+managed_components/
+*.bin
+*.elf
+*.o
+*.exe
+*.pdb
+*.raw
+*.log
+
+# The local configuration (it can hold the WiFi settings, keys and addresses)
+sdkconfig
+sdkconfig.*
+!sdkconfig.defaults
+!sdkconfig.defaults.*
+main/tfn_local.h
+# the public keys of a release build (.github/workflows/release.yml writes them)
+main/tfn_release_keys.h
+*.local.json
+*.local.txt
+# flash copies of a board (they hold the NVS with the WiFi settings)
+backups/
+
+# The files that the tools and the checks make
+__pycache__/
+*.pyc
+.cache/
+.clangd
+sdk/out/
+sdk/tools/host/*.a
+sdk/tools/host/apps_gen/
+sdk/tools/host/obj_*/
+sdk/tools/host/iconflags_*.txt
+sdk/tools/host/src_stamp_*.txt
+tests/host/apps_gen/
+tests/host/obj_*/
+tests/host/rsp_*.txt
+tests/host/fuzz_box/
+tests/host/unit/
+tests/host/same_code/
+tests/host/hil/
+tests/host/pool_gate/
+tests/host/abi_tmp*/
+tests/host/abi_report.json
+apps/*/tools/*.png

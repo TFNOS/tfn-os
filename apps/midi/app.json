@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "MIDI",
+ "sym": "app_midictl",
+ "group": "UTIL",
+ "emoji": "🎚️",
+ "srcs": [
+  "app_midictl.c"
+ ],
+ "store": {
+  "en": "A MIDI controller over Bluetooth or USB. SIMPLE has one big slider with a role such as cutoff, pitch bend or volume. ADVANCED has 4 sliders and an XY pad, motion patterns, tilt and 5 presets. USB needs no driver.",
+  "he": "בקר MIDI דרך Bluetooth או USB. ב-SIMPLE יש מחוון גדול אחד עם תפקיד כמו CUTOFF, PITCH BEND או VOLUME. ב-ADVANCED יש 4 מחוונים ופד XY, דפוסי תנועה, הטיה ו-5 הגדרות מוכנות. USB לא צריך דרייבר."
+ }
+}

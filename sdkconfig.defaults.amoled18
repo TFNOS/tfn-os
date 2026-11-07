@@ -1,0 +1,12 @@
+# The Waveshare ESP32-S3-Touch-AMOLED-1.8. Use this file after sdkconfig.defaults, with its own
+# build folder and sdkconfig:
+#   idf.py -B build_am -D SDKCONFIG=sdkconfig.am
+#          -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.amoled18" build
+# 16 MB flash and 8 MB octal PSRAM, as the 3.49 (sdkconfig.defaults).
+CONFIG_TFN_TARGET_AMOLED18=y
+
+# The QSPI clock of the SH8601 (the Waveshare demo uses 40 MHz)
+CONFIG_TFN_LCD_PCLK_MHZ=80
+# the slim layout: small app slots, a big /data for the app files (partitions_slim.csv)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_slim.csv"

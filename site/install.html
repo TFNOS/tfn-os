@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Install TFN OS</title>
+<meta name="description" content="Install or update TFN OS on your board from the browser, with Web Serial.">
+<link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/install.css">
+<script src="js/theme.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Go to the content</a>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="TFN OS home">
+      <svg viewBox="0 0 34 14" aria-hidden="true"><rect x="1" y="1" width="32" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="4.5" width="5" height="5" rx="1" fill="#e6a315"/></svg>
+      TFN OS
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html#boards">Boards</a>
+      <a href="index.html#apps" class="hide-s">Apps</a>
+      <a href="how.html" class="hide-s">How it works</a>
+      <a href="install.html" aria-current="page">Install</a>
+      <a href="index.html#faq" class="hide-s">FAQ</a>
+    </nav>
+    <button class="theme-btn" type="button" data-theme-btn aria-label="Colour theme">Auto</button>
+  </div>
+</header>
+
+<main id="main" class="wrap flasher">
+  <h1 class="flasher-title">Install TFN OS</h1>
+  <p class="flasher-lede">This page finds your board, checks each file, and writes TFN OS to it through the USB port of your computer.</p>
+
+  <div id="testbar" class="testbar" hidden>
+    <label for="scenario"><b>Test mode.</b> A fake port and a fake board. Nothing goes to a real port.</label>
+    <select id="scenario"></select>
+  </div>
+
+  <p id="unsupported" class="note" hidden>This browser cannot talk to a USB port. Open this page in Chrome or Edge on a computer (Windows, macOS, Linux or ChromeOS).</p>
+
+  <section class="step" aria-labelledby="h-connect">
+    <h2 id="h-connect"><span class="step-n">1</span>Connect the board</h2>
+    <p>Connect the board with a USB cable that carries data. Click Connect, then choose the port of the board in the list of the browser.</p>
+    <p><button id="btn-connect" class="btn btn-primary" type="button">Connect</button></p>
+    <div id="detect-out" hidden>
+      <dl id="facts" class="specs facts-list"></dl>
+    </div>
+  </section>
+
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <section class="step" id="step-board" aria-labelledby="h-board" hidden>
+    <h2 id="h-board"><span class="step-n">2</span>Check your board</h2>
+    <p id="board-msg"></p>
+    <div id="choices" class="choices" role="radiogroup" aria-labelledby="h-board"></div>
+  </section>
+
+  <section class="step" id="step-mode" aria-labelledby="h-mode" hidden>
+    <h2 id="h-mode"><span class="step-n">3</span>Choose what to do</h2>
+    <p>The newest release for this board is TFN OS <b id="fw-version"></b>.</p>
+    <div class="modes">
+      <label class="mode">
+        <input type="radio" name="mode" id="mode-update" value="update">
+        <span><b>Update</b><small id="mode-update-note"></small></span>
+      </label>
+      <label class="mode">
+        <input type="radio" name="mode" id="mode-install" value="install">
+        <span><b>Install</b><small>Writes the whole system: the bootloader, the partition table, TFN OS and the start record.</small></span>
+      </label>
+    </div>
+    <p id="erase-warn" class="note">INSTALL erases all data on the board: its settings, its WiFi, its apps and its files. The SD card does not change.</p>
+    <p id="backup-opt" class="opt"><label><input type="checkbox" id="opt-backup"> Save a copy of the whole flash to a file first. This adds a few minutes. Keep the file private: it holds the WiFi passwords that the board knew.</label></p>
+
+    <div class="plan-wrap">
+      <table class="plan">
+        <caption>The files that the page writes</caption>
+        <thead><tr><th scope="col">File</th><th scope="col">Address</th><th scope="col">Size</th><th scope="col">SHA-256</th><th scope="col">Check</th></tr></thead>
+        <tbody id="plan-body"></tbody>
+      </table>
+    </div>
+
+    <p id="confirm-opt" class="opt"><label><input type="checkbox" id="opt-confirm"> The picture shows my board, and I know that INSTALL erases all data on it.</label></p>
+    <p><button id="btn-write" class="btn btn-primary" type="button" disabled>Install</button></p>
+  </section>
+
+  <section class="step" id="step-progress" aria-labelledby="prog-title" hidden>
+    <h2 id="prog-title">Writing</h2>
+    <div class="prog-row"><progress id="prog" max="1" value="0"></progress><span id="prog-pct"></span></div>
+    <p id="prog-text" aria-live="polite"></p>
+    <p id="backup-out" hidden>The copy of the flash is in your downloads. <a id="backup-link" href="#">Save it again</a></p>
+  </section>
+
+  <details class="log-box">
+    <summary>Log</summary>
+    <pre id="log"></pre>
+  </details>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>TFN OS is not made by Waveshare, M5Stack or Seeed Studio. The board names are the trademarks of their owners.</p>
+    <p>The flasher uses esptool-js 0.7.0 by Espressif (Apache License 2.0). <a href="licences.html">Licences</a></p>
+  </div>
+</footer>
+<script type="module" src="js/site.js"></script>
+<script type="module" src="js/flasher/ui.js"></script>
+</body>
+</html>

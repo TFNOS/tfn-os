@@ -1,0 +1,9 @@
+# Name,     Type, SubType, Offset,   Size
+# THE AMOLED-1.75C (32 MB flash, no SD card; the most room for the apps on this device): the slots and the offsets of the slim layout (partitions_slim.csv: ota_0 / ota_1 3.5 MB, otadata 0x710000),
+# and /data takes all the flash after them: 0x18E0000 = 24.9 MB. layout.c sees "other" and changes nothing.
+nvs,        data, nvs,     0x9000,   0x6000
+phy_init,   data, phy,     0xf000,   0x1000
+ota_0,      app,  ota_0,   0x10000,  0x380000
+ota_1,      app,  ota_1,   0x390000, 0x380000
+otadata,    data, ota,     0x710000, 0x2000
+storage,    data, fat,     0x720000, 0x18E0000

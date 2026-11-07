@@ -1,0 +1,6 @@
+# The commits that change only the format (white space, line breaks, braces). git blame skips them:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs   (GitHub reads this file by itself)
+# P2 step R3: clang-format with braces (each one proved with tests/refactor/same_code.py objects)
+2e944522a5bb1dbaca932ac5623b9e0c9e818e08
+a1b0ac8b07741e910889900e48b8740abafe5205
+a8c236ff4cd22a6dc7632a179ec6536daffe5969

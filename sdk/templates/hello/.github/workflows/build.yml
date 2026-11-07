@@ -1,0 +1,38 @@
+# The build of this app on each push, with the TFN OS SDK package only. The job runs in the ESP-IDF container (the
+# ESP-IDF version of the package and its compilers), gets the SDK package and builds the app for each kind.
+# The SDK package: the file tfn-sdk.zip of the newest release of TFN OS. To use another package, set the repo
+# variable TFN_SDK_URL (Settings > Secrets and variables > Actions > Variables) to the address of a tfn-sdk.zip.
+# The result: the app packages (out/<id>/<kind>/) as the artifact "app".
+name: build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: espressif/idf:v6.1
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Get the SDK package
+        env:
+          TFN_SDK_URL: ${{ vars.TFN_SDK_URL }}
+        run: |
+          url="${TFN_SDK_URL:-https://github.com/omeriko9/tfn-os/releases/latest/download/tfn-sdk.zip}"
+          curl -sSfL -o "$RUNNER_TEMP/tfn-sdk.zip" "$url"
+      - name: Build the app
+        run: |
+          . "$IDF_PATH/export.sh" > /dev/null
+          sh build.sh "$RUNNER_TEMP/tfn-sdk.zip"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app
+          path: out/
+          retention-days: 7

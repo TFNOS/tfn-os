@@ -1,0 +1,98 @@
+<style>
+.ha{max-width:1180px;margin:0 auto;padding:0 1.2em 2em}
+.ha *{box-sizing:border-box}
+.st{display:flex;align-items:center;gap:.8em;flex-wrap:wrap;background:#161a31;border:1px solid #262c52;border-radius:14px;padding:.8em 1em;margin:1em 0}
+.st .dot{width:10px;height:10px;border-radius:50%;background:#666}.st .dot.ok{background:#3ddc84;box-shadow:0 0 8px #3ddc8488}.st .dot.bad{background:#ff5a5f}
+.st .tx{flex:1;min-width:14em}.st .tx b{color:#fff}.st .tx small{display:block;color:#8a93c0;margin-top:.15em}
+.btn{background:#2d6cdf;color:#fff;border:0;border-radius:9px;padding:.55em 1em;font:inherit;font-size:.92em;cursor:pointer}
+.btn:hover{filter:brightness(1.15)}.btn.g{background:#262c52}.btn.s{padding:.3em .6em;font-size:.85em}.btn.ok{background:#1e9e5a}
+.btn:disabled{opacity:.45;cursor:default}
+.cfg{display:none;background:#161a31;border:1px solid #262c52;border-radius:14px;padding:1em;margin:-.4em 0 1em}
+.cfg.open{display:block}.cfg label{display:block;color:#8a93c0;font-size:.85em;margin:.7em 0 .3em}
+.in{width:100%;background:#0b0d1a;color:#e8ecff;border:1px solid #2a3058;border-radius:10px;padding:.65em .8em;font:inherit;outline:none}
+.in:focus{border-color:#5b8cff;box-shadow:0 0 0 3px #5b8cff33}
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:1.2em;align-items:start}
+@media (max-width:860px){.cols{grid-template-columns:1fr}}
+.pan{background:#12152a;border:1px solid #232850;border-radius:16px;padding:1em}
+.pan h3{margin:0 0 .7em;font-size:1.05em;color:#ffd84a;display:flex;justify-content:space-between;align-items:baseline}
+.pan h3 small{color:#8a93c0;font-weight:400;font-size:.8em}
+.sr{position:relative}.sr .in{padding-left:2.3em;font-size:1.05em}.sr:before{content:'\1F50D';position:absolute;left:.75em;top:.62em;opacity:.7}
+.chips{display:flex;flex-wrap:wrap;gap:.4em;margin:.7em 0 .9em}
+.chip{background:#1d2244;color:#cfd5ff;border:1px solid #2c3366;border-radius:999px;padding:.3em .8em;font-size:.85em;cursor:pointer;user-select:none}
+.chip.on{background:#5b8cff;border-color:#5b8cff;color:#fff}
+.res{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.6em}
+.card{display:flex;align-items:center;gap:.7em;background:#181c38;border:1px solid #262c52;border-radius:12px;padding:.65em .75em}
+.card .ic{font-size:1.45em;width:1.4em;text-align:center}.card .nm{flex:1;min-width:0}
+.card .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;font-weight:600}
+.card .nm small{display:block;color:#7c86b8;font-size:.78em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:.72em;border-radius:999px;padding:.1em .55em;background:#262c52;color:#cfd5ff;display:inline-block;margin-top:.25em}
+.pill.on{background:#1e6e45;color:#c8ffe0}.pill.na{background:#3a2a2a;color:#ffb3b3}
+.empty{color:#8a93c0;text-align:center;padding:1.5em .5em}
+.list .row{display:flex;align-items:center;gap:.55em;padding:.5em .4em;border-bottom:1px solid #20254a}
+.list .row:last-child{border-bottom:0}.list .no{color:#5b6496;width:1.4em;flex:none;text-align:right;font-size:.85em}
+.list .ic{font-size:1.2em;width:1.3em;text-align:center}.list .nm{flex:1;min-width:0}
+.list .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.list .nm small{display:block;color:#7c86b8;font-size:.76em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .ic,.list .ib{flex:none}
+.ib{background:none;padding:0;border:1px solid #2c3366;color:#cfd5ff;border-radius:8px;width:2em;height:2em;cursor:pointer;font-size:.95em}
+.ib:hover{background:#262c52}.ib:disabled{opacity:.3;cursor:default}.ib.x:hover{background:#5a1f2a;border-color:#8a2f3a}
+.msg{color:#8a93c0;font-size:.88em}
+</style>
+<div class=ha>
+<div class=st><span class=dot id=dot></span><div class=tx id=sttx>...</div>
+<button class='btn g' onclick="$('cfg').classList.toggle('open')">Connection</button></div>
+<div class=cfg id=cfg>
+<label>The address of Home Assistant (with no port, the board uses 8123)</label><input class=in id=url placeholder='http://homeassistant.local:8123'>
+<label>A long-lived access token (HA: your profile, Security). The board keeps it and never shows it again.</label>
+<input class=in type=password id=tok placeholder='(no token)'>
+<p style='margin:.9em 0 0'><button class=btn onclick='saveCfg()'>Save</button> <button class='btn g' onclick='test()'>Test</button> <span class=msg id=cm></span></p>
+</div>
+<div class=cols>
+<div class=pan><h3>Add devices <small id=rc></small></h3>
+<div class=sr><input class=in id=q placeholder='Search: kitchen, heater, living room...' oninput='later()' autocomplete=off></div>
+<div class=chips id=chips></div>
+<div class=res id=res><div class=empty>Type a part of a name, or choose a kind.</div></div>
+</div>
+<div class=pan><h3>On the board <small id=cc></small></h3><div class=list id=ch></div>
+<p class=msg style='margin:.8em 0 0'>The HOME app shows these in this order. A tap on the board does the main action; a long press opens the controls.</p></div>
+</div></div>
+<script>
+let C=[],T=0,K='',ON=false;const $=i=>document.getElementById(i);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const IC={light:'\u{1F4A1}',switch:'\u{1F50C}',climate:'\u{2744}\u{FE0F}',cover:'\u{1FA9F}',scene:'\u{1F3AC}',script:'\u{1F4DC}',fan:'\u{1F300}',
+lock:'\u{1F512}',media_player:'\u{25B6}\u{FE0F}',sensor:'\u{1F321}\u{FE0F}',binary_sensor:'\u{1F534}',input_boolean:'\u{1F518}',button:'\u{1F518}',
+input_button:'\u{1F518}',automation:'\u{2699}\u{FE0F}',siren:'\u{1F6A8}',vacuum:'\u{1F9F9}'};
+const KINDS=[['','All'],['light','Lights'],['switch','Switches'],['climate','Climate'],['cover','Covers'],['scene','Scenes'],['script','Scripts'],
+['fan','Fans'],['lock','Locks'],['media_player','Media'],['sensor','Sensors'],['binary_sensor','Binary sensors'],['input_boolean','Toggles'],['automation','Automations']];
+const ic=id=>IC[id.split('.')[0]]||'\u{25FB}\u{FE0F}';
+const pill=s=>{const on=['on','open','playing','unlocked','heat','cool','auto','dry','fan_only','heat_cool'].includes(s),na=['unavailable','unknown'].includes(s)||/^\d{4}-\d\d-\d\dT/.test(s);
+return '<span class="pill'+(on?' on':na?' na':'')+'">'+esc(/^\d{4}-\d\d-\d\dT/.test(s)?'scene':s)+'</span>'};
+$('chips').innerHTML=KINDS.map(([k,n])=>'<span class="chip'+(k==K?' on':'')+'" data-k="'+k+'">'+n+'</span>').join('');
+$('chips').onclick=e=>{const k=e.target.dataset.k;if(k===undefined)return;K=k;[...$('chips').children].forEach(c=>c.classList.toggle('on',c.dataset.k==K));search()};
+function status(ok,t,sub){$('dot').className='dot'+(ok===true?' ok':ok===false?' bad':'');$('sttx').innerHTML='<b>'+t+'</b>'+(sub?'<small>'+sub+'</small>':'')}
+function load(){fetch('/api/ha').then(r=>r.json()).then(j=>{$('url').value=j.url;
+$('tok').placeholder=j.token_set?'(a token is saved: type a new one only to change it)':'(no token)';C=j.items;show();
+if(!j.url||!j.token_set){status(false,'Home Assistant is not set up','Open Connection and give the address and a token.');$('cfg').classList.add('open')}else test(true)})}
+function show(){$('cc').textContent=C.length+' / 24';$('ch').innerHTML=C.length?C.map((c,i)=>'<div class=row><span class=no>'+(i+1)+'</span><span class=ic>'+ic(c.id)+'</span>'
++'<div class=nm><b>'+esc(c.name)+'</b><small>'+esc(c.id)+'</small></div>'
++'<button class=ib title="Up" onclick="mv('+i+',-1)"'+(i?'':' disabled')+'>&#8593;</button><button class=ib title="Down" onclick="mv('+i+',1)"'+(i<C.length-1?'':' disabled')+'>&#8595;</button>'
++'<button class="ib x" title="Remove" onclick="rm('+i+')">&#10005;</button></div>').join(''):'<div class=empty>Nothing yet. Add devices on the left.</div>'}
+function saveItems(){return fetch('/api/ha/items',{method:'POST',body:C.map(c=>c.id+'|'+c.name).join('\n')+'\n'}).then(show)}
+function mv(i,d){const j=i+d;if(j<0||j>=C.length)return;[C[i],C[j]]=[C[j],C[i]];saveItems()}
+function rm(i){C.splice(i,1);saveItems().then(()=>{if(R)draw()})}
+let R=null;
+function add(i){const e=R[i];if(C.some(c=>c.id==e.id))return;if(C.length>=24){alert('24 at most');return}C.push({id:e.id,name:e.name});saveItems().then(draw)}
+function saveCfg(){fetch('/api/ha/config',{method:'POST',body:$('url').value.trim()+'\n'+$('tok').value.trim()+'\n'}).then(r=>r.json())
+.then(j=>{$('cm').textContent=j.ok?'Saved.':'Not saved: '+j.error;$('tok').value='';load()})}
+function test(quiet){if(!quiet)$('cm').textContent='...';fetch('/api/ha/test').then(r=>r.json()).then(j=>{ON=j.ok;
+status(j.ok,j.ok?'Connected to Home Assistant':'Not connected ('+j.status+')',esc($('url').value)+' · '+C.length+' on the board');
+if(!quiet)$('cm').textContent=j.ok?'Connected.':'Not connected: '+j.message;if(!j.ok)$('cfg').classList.add('open')})}
+function later(){clearTimeout(T);T=setTimeout(search,350)}
+function draw(){$('rc').textContent=R.length?R.length+(R.length>=80?'+':'')+' found':'';
+$('res').innerHTML=R.length?R.map((e,i)=>{const has=C.some(c=>c.id==e.id);return '<div class=card><span class=ic>'+ic(e.id)+'</span><div class=nm><b>'+esc(e.name)+'</b><small>'+esc(e.id)+'</small>'+pill(e.state)+'</div>'
++(has?'<button class="btn s ok" disabled>On board</button>':'<button class="btn s" onclick="add('+i+')">+ Add</button>')+'</div>'}).join(''):'<div class=empty>Nothing found.</div>'}
+function search(){const q=$('q').value.trim();if(!q&&!K){R=null;$('rc').textContent='';$('res').innerHTML='<div class=empty>Type a part of a name, or choose a kind.</div>';return}
+$('res').innerHTML='<div class=empty>Searching...</div>';fetch('/api/ha/search?q='+encodeURIComponent(q)+'&d='+K).then(r=>r.json()).then(j=>{
+if(j.error){$('res').innerHTML='<div class=empty>'+esc(j.error)+'</div>';return}R=j;draw()})}
+load();
+</script></body></html>

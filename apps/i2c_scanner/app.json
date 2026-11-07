@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "I2C SCANNER",
+ "sym": "app_i2c",
+ "group": "UTIL",
+ "emoji": "🔎",
+ "new": true,
+ "srcs": [
+  "app_i2c.c",
+  "i2c_bus.c",
+  "i2c_db.c"
+ ],
+ "idf": "all",
+ "store": {
+  "en": "Finds each device on an I2C bus of the board, live: a map of the addresses, the chips of the board, the usual chips at each address and their ID registers, and the registers of a device. A wiring sketch. English and Hebrew.",
+  "he": "מוצא כל התקן על אפיק I2C של הלוח, בזמן אמת: מפת כתובות, רכיבי הלוח, הרכיבים הנפוצים בכל כתובת ואוגרי הזיהוי שלהם, והאוגרים של התקן. שרטוט חיווט. אנגלית ועברית."
+ }
+}
