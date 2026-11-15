@@ -44,7 +44,7 @@ sys.path.insert(0, HERE)
 import tfn_pkg  # noqa: E402
 
 KINDS = ('lcd349', 'cores3', 'am18', 'watcher', 'tab5', 'am175')
-HEADER_LIBS = ('tfdraw', 'tficon', 'kscroll', 'jingle', 'quest_tilt', 't5view', 'sndrel')
+HEADER_LIBS = ('tfdraw', 'tficon', 'kscroll', 'jingle', 'quest_tilt', 't5view', 'sndrel', 'rndlay')
 # the module libs: firmware modules (main/apps.json "modules"); their functions are ABI names, the package has only
 # their headers (an app includes "tfnet/tfnet.h" and calls the firmware), and the files of MODULE_SRC
 MODULE_LIBS = ('tfsfx', 'tfphys', 'tfnet', 'tfmqtt', 'zimread', 'zstd', 'rfpulse', 'rfdecode', 'irdecode', 'rfsrc',

@@ -227,6 +227,26 @@ p {
   background: var(--paper-2);
 }
 
+.gh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 10px;
+  margin-right: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.gh-btn:hover {
+  background: var(--paper-2);
+}
+
 .theme-btn {
   border: 1px solid var(--line);
   background: transparent;
@@ -969,8 +989,13 @@ p {
 }
 
 @media (max-width: 640px) {
-  .nav a.hide-s {
+  .nav a.hide-s,
+  .gh-btn .hide-s {
     display: none;
+  }
+
+  .gh-btn {
+    margin-right: 4px;
   }
 
   .top .wrap {

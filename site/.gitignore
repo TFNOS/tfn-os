@@ -2,3 +2,4 @@ firmware/
 deploy.local.json
 __pycache__/
 node_modules/
+stats/

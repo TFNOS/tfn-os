@@ -6,6 +6,7 @@ import { EspSession } from './esp.js';
 import { FakeEsp, FakeSerialPort } from './fake.js';
 import { detect, execute } from './flow.js';
 import { SCENARIOS } from './scenarios.js';
+import { boardId, stat } from '../stats.js';
 
 const FW = 'firmware/';
 // The index of the firmware: <meta name="tfn-firmware-index" content="..."> of the page, else firmware/index.json (the
@@ -165,6 +166,12 @@ async function onConnect() {
     state.det = await detect(p.port, p.makeEsp, log);
     state.esp = state.det.esp;
     showFacts(state.det);
+    const r = state.det.rom || {};
+    state.boardId = await boardId(r.mac);
+    stat('detect', {
+      chip: r.chip, flash: r.flashMB, id: state.boardId, tfn: state.det.tfn ? state.det.tfn.kind + ' ' + state.det.tfn.version : '',
+      err: state.det.decision.error,
+    });
     if (state.det.decision.error) {
       setError(state.det.decision.error);
       return;
@@ -179,6 +186,7 @@ async function onConnect() {
 }
 
 function connectFailed(e) {
+  stat('connect-fail', { err: e && e.name === 'NotFoundError' ? 'no port chosen' : e && e.message });
   if (e && e.name === 'NotFoundError') {
     setError('No port was chosen. Connect the board, click Connect, and choose its port.');
     return;
@@ -191,6 +199,7 @@ function connectFailed(e) {
 
 async function chooseBoard(board) {
   state.board = board;
+  stat('board', { kind: board.kind, id: state.boardId });
   show('step-mode', false);
   setError('');
   if (!board.web) {
@@ -208,6 +217,7 @@ async function chooseBoard(board) {
     state.manifest = await fetchJson(manUrl);
     state.fileBase = new URL('.', manUrl).href;
   } catch (e) {
+    stat('no-release', { kind: board.kind, err: e.message });
     setError(e.message);
     return;
   }
@@ -272,6 +282,7 @@ function updateWriteButton() {
 }
 
 function setStage(stage) {
+  state.stage = stage;
   $('prog-text').textContent = STAGES[stage] || stage;
   if (stage === 'erase' || stage === 'table' || stage === 'reset') {
     $('prog').removeAttribute('value');
@@ -302,6 +313,9 @@ async function onWrite() {
   show('step-progress', true);
   const verb = state.plan.mode === 'install' ? 'Installing TFN OS ' : 'Updating to TFN OS ';
   $('prog-title').textContent = verb + state.plan.version;
+  const t0 = Date.now();
+  const what = { kind: state.board.kind, mode: state.plan.mode, ver: state.plan.version, id: state.boardId };
+  stat('write', Object.assign({ backup: state.plan.mode === 'install' && $('opt-backup').checked ? 1 : 0 }, what));
   try {
     setStage('Checking the SHA-256 of each file');
     const files = await loadPlanFiles(state.plan, state.fileBase, fetchBytes, (f) => {
@@ -318,10 +332,12 @@ async function onWrite() {
     $('prog-text').textContent = 'Done. The board starts TFN OS ' + state.plan.version + '. ' +
       (state.plan.mode === 'install' ? 'On the board, open SETUP > WIFI to join your network.' : 'Your apps and settings stay.');
     log('Done: ' + state.plan.mode + ' ' + state.plan.version + ' for ' + state.board.kind + '.');
+    stat('done', Object.assign({ sec: Math.round((Date.now() - t0) / 1000) }, what));
     await state.esp.close();
     state.esp = null;
     state.plan = null;
   } catch (e) {
+    stat('fail', Object.assign({ stage: state.stage, err: e.message, sec: Math.round((Date.now() - t0) / 1000) }, what));
     log('Fault: ' + e.message);
     setError(e.message + ' Nothing more is written. Click Connect again to start over.');
     $('prog-text').textContent = 'Stopped.';
@@ -356,7 +372,10 @@ function init() {
     $('btn-connect').disabled = true;
     return;
   }
-  $('btn-connect').addEventListener('click', onConnect);
+  $('btn-connect').addEventListener('click', () => {
+    stat('connect');
+    onConnect();
+  });
   $('btn-write').addEventListener('click', onWrite);
   $('mode-update').addEventListener('change', renderPlan);
   $('mode-install').addEventListener('change', renderPlan);
