@@ -15,6 +15,13 @@ The release gets:
   tfn-sdk-V.zip              the SDK package
   tfn-keys.json              the public keys and their key IDs (the store key, the OTA release key, the backup key)
   SHA256SUMS                 the SHA-256 of each file (the form of sha256sum)
+The files of the web flasher (site/js/flasher), so that a web site can install a release from the release files:
+  tfn-os-V-<kind>-manifest.json   the manifest of the kind (site/tools/fw_manifest.py); each "path" is the name of a
+                                  release file in the same release (the app is tfn-os-V-<kind>.bin)
+  tfn-os-V-<kind>-<part>.bin      the other parts of the manifest (bootloader, partition-table, ota-data ...)
+  tfn-firmware.json               the index of the flasher (the form of firmware/index.json). Its name has no version:
+                                  GitHub gives it at releases/latest/download/. Each "manifest" is the path from there
+                                  to the manifest of this release: ../../download/vV/tfn-os-V-<kind>-manifest.json
 With --poolmgr (the folder poolmgr/ of the tree), also:
   channel.json               the channel of the pool manager: {"format": 1, "pages", "repo", "store_pub",
                              "ota_pub": [...], "release", "kinds"} (the public keys of this release; --pages = the
@@ -62,6 +69,46 @@ def full_image(folder, man):
             raise PackError('%s/%s is not the file of its manifest' % (man['kind'], f['path']))
         img[f['offset']:f['offset'] + len(data)] = data
     return bytes(img)
+
+
+FLASH_INDEX = 'tfn-firmware.json'
+
+
+def web_files(version, kind, folder, man, app_name, out):
+    """The files of the web flasher of one kind: the parts of the manifest as release files and the manifest with the
+    names of the release files. Returns the names (the app is the release file app_name, already in out)."""
+    names = []
+    rel = dict(man)
+    rel['files'] = []
+    for f in man['files']:
+        with open(os.path.join(folder, f['path']), 'rb') as h:
+            data = h.read()
+        if len(data) != f['size'] or hashlib.sha256(data).hexdigest() != f['sha256']:
+            raise PackError('%s/%s is not the file of its manifest' % (kind, f['path']))
+        if f['name'] == 'app':
+            name = app_name
+        else:
+            if not re.match(r'^[a-z0-9-]+$', f['name']):
+                raise PackError('%s: the part name "%s" cannot be a file name' % (kind, f['name']))
+            name = 'tfn-os-%s-%s-%s.bin' % (version, kind, f['name'])
+            with open(os.path.join(out, name), 'wb') as h:
+                h.write(data)
+            names.append(name)
+        e = dict(f)
+        e['path'] = name
+        rel['files'].append(e)
+    mname = 'tfn-os-%s-%s-manifest.json' % (version, kind)
+    with open(os.path.join(out, mname), 'w', encoding='utf-8', newline='\n') as h:
+        h.write(json.dumps(rel, indent=1) + '\n')
+    return names + [mname]
+
+
+def flash_index(version, kinds):
+    """tfn-firmware.json: the index of the web flasher for releases/latest/download/ (see the top)."""
+    return {'format': 1, 'release': version,
+            'kinds': {k: {'version': version,
+                          'manifest': '../../download/v%s/tfn-os-%s-%s-manifest.json' % (version, version, k)}
+                      for k in sorted(kinds)}}
 
 
 def zip_folder(src, dst, prefix):
@@ -166,6 +213,10 @@ def pack(version, firmware, store, sdk, out, store_pub, ota_pub, ota_pub2='', po
         with open(os.path.join(out, full), 'wb') as h:
             h.write(full_image(os.path.join(firmware, kind), man))
         names += [ota, full]
+        names += web_files(version, kind, os.path.join(firmware, kind), man, ota, out)
+    with open(os.path.join(out, FLASH_INDEX), 'w', encoding='utf-8', newline='\n') as h:
+        h.write(json.dumps(flash_index(version, idx['kinds']), indent=1) + '\n')
+    names.append(FLASH_INDEX)
     sz = 'tfn-store-%s.zip' % version
     zip_folder(store, os.path.join(out, sz), 'store/')
     sk = 'tfn-sdk-%s.zip' % version

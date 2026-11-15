@@ -454,7 +454,7 @@ p {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: #07071a url('../img/demo_poster.webp') center / cover no-repeat;
+  background: #07071a;
 }
 
 .hero-bg canvas {

@@ -8,6 +8,12 @@ import { detect, execute } from './flow.js';
 import { SCENARIOS } from './scenarios.js';
 
 const FW = 'firmware/';
+// The index of the firmware: <meta name="tfn-firmware-index" content="..."> of the page, else firmware/index.json (the
+// folder of site/tools/fw_manifest.py). A site that installs the GitHub release gives the index of the release files
+// (tfn-firmware.json of sdk/tools/release_pack.py). The path of each manifest is from the index, and the path of each
+// file is from its manifest: all files of an install come from the same release.
+const INDEX_META = document.querySelector('meta[name="tfn-firmware-index"]');
+const INDEX_URL = new URL((INDEX_META && INDEX_META.content) || FW + 'index.json', location.href).href;
 const FILTERS = [{ usbVendorId: 0x303a }, { usbVendorId: 0x1a86 }];
 const STAGES = {
   table: 'Reading the partition table of the board',
@@ -19,7 +25,7 @@ const STAGES = {
 };
 
 const $ = (id) => document.getElementById(id);
-const state = { port: null, esp: null, det: null, board: null, manifest: null, plan: null, busy: false };
+const state = { port: null, esp: null, det: null, board: null, manifest: null, fileBase: '', plan: null, busy: false };
 const testName = new URLSearchParams(location.search).get('test');
 
 function log(text) {
@@ -193,12 +199,14 @@ async function chooseBoard(board) {
     return;
   }
   try {
-    const idx = await fetchJson(FW + 'index.json');
+    const idx = await fetchJson(INDEX_URL);
     const entry = idx.kinds && idx.kinds[board.kind];
     if (!entry) {
       throw new Error('This site has no release for the ' + board.short + ' now.');
     }
-    state.manifest = await fetchJson(FW + entry.manifest);
+    const manUrl = new URL(entry.manifest, INDEX_URL).href;
+    state.manifest = await fetchJson(manUrl);
+    state.fileBase = new URL('.', manUrl).href;
   } catch (e) {
     setError(e.message);
     return;
@@ -296,7 +304,7 @@ async function onWrite() {
   $('prog-title').textContent = verb + state.plan.version;
   try {
     setStage('Checking the SHA-256 of each file');
-    const files = await loadPlanFiles(state.plan, FW + state.board.kind + '/', fetchBytes, (f) => {
+    const files = await loadPlanFiles(state.plan, state.fileBase, fetchBytes, (f) => {
       document.querySelector('#row-' + f.name + ' td:last-child').textContent = 'SHA-256 OK';
     });
     const backupBytes = state.plan.mode === 'install' && $('opt-backup').checked ? state.det.rom.flashMB * 1024 * 1024 : 0;

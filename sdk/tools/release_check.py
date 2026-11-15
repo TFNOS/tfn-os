@@ -331,6 +331,55 @@ def check_full(full, man):
     return out
 
 
+def check_web(folder, names, chk, kind, ver, man):
+    """The files of the web flasher of one kind (release_pack.py web_files): the manifest of the release has the same
+    parts as the manifest of the site, and each part is a release file with that size and SHA-256."""
+    mname = 'tfn-os-%s-%s-manifest.json' % (ver, kind)
+    if mname not in names:
+        chk.fault('the release has no %s (the web flasher cannot install it)' % mname)
+        return
+    rel = json.load(open(os.path.join(folder, mname), encoding='utf-8'))
+    strip = [{k: v for k, v in f.items() if k != 'path'} for f in man['files']]
+    if [{k: v for k, v in f.items() if k != 'path'} for f in rel.get('files', [])] != strip or \
+            {k: v for k, v in rel.items() if k != 'files'} != {k: v for k, v in man.items() if k != 'files'}:
+        chk.fault('%s is not the manifest of the site (other parts or values)' % mname)
+        return
+    bad = []
+    for f in rel['files']:
+        p = f['path']
+        if p not in names or '/' in p:
+            bad.append('%s: no release file %s' % (f['name'], p))
+            continue
+        data = open(os.path.join(folder, p), 'rb').read()
+        if len(data) != f['size'] or hashlib.sha256(data).hexdigest() != f['sha256']:
+            bad.append('%s: %s is not the file of the manifest' % (f['name'], p))
+    for b in bad:
+        chk.fault('%s: %s' % (mname, b))
+    if not bad:
+        chk.ok('%s: %d parts, each a release file with its SHA-256' % (mname, len(rel['files'])))
+
+
+def check_flash_index(folder, names, chk, mans):
+    """tfn-firmware.json: each kind of the release, with the path of its manifest from releases/latest/download/."""
+    if 'tfn-firmware.json' not in names:
+        chk.fault('the release has no tfn-firmware.json (the index of the web flasher)')
+        return
+    idx = json.load(open(os.path.join(folder, 'tfn-firmware.json'), encoding='utf-8'))
+    bad = []
+    for kind, man in sorted(mans.items()):
+        v = man['version']
+        want = '../../download/v%s/tfn-os-%s-%s-manifest.json' % (v, v, kind)
+        e = (idx.get('kinds') or {}).get(kind) or {}
+        if e.get('version') != v or e.get('manifest') != want:
+            bad.append(kind)
+    if idx.get('format') != 1 or set(idx.get('kinds') or {}) != set(mans):
+        bad.append('the kinds or the format')
+    if bad:
+        chk.fault('tfn-firmware.json: not the index of this release (%s)' % ', '.join(bad))
+    else:
+        chk.ok('tfn-firmware.json: %d kinds' % len(mans))
+
+
 def check_release(folder, site, chk, mans, ota_pub, store_idx):
     """Step 4."""
     names = set(read_sums(folder, chk))
@@ -362,6 +411,8 @@ def check_release(folder, site, chk, mans, ota_pub, store_idx):
                 chk.ok('%s: the same files at the same offsets as the install page' % full)
         else:
             chk.fault('the release has no %s' % full)
+        check_web(folder, names, chk, kind, ver, man)
+    check_flash_index(folder, names, chk, mans)
     zips = sorted(n for n in names if re.match(r'^tfn-store-.+\.zip$', n))
     if not zips:
         chk.fault('the release has no store zip (tfn-store-<version>.zip)')

@@ -48,6 +48,8 @@ It works in Chrome and Edge on a computer (Web Serial). The steps:
 
 An INSTALL can save a copy of the whole flash to a file first (the original firmware of a new board).
 
+THE SOURCE OF THE FILES. By default the page reads `firmware/index.json` (the folder of `tools/fw_manifest.py`). A page with `<meta name="tfn-firmware-index" content="URL">` reads that index instead: for example `tfn-firmware.json` of a GitHub release (`sdk/tools/release_pack.py`), at `releases/latest/download/` behind a proxy of the same site (the GitHub download host sends no CORS header, and the page allows `connect-src` only to its own site). The path of each manifest is from the index, and the path of each file is from its manifest, so all files of an install come from one release.
+
 The Tab5 has no web install: TFN OS runs there under a boot menu that is not in this repo. The page shows "Install
 guide coming" for it.
 
