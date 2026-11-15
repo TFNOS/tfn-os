@@ -250,6 +250,15 @@ static const pdef_t *lay_raw(void)
         s_cb[s_ni] = q->slot[q->nslot - 1];
         s_ni++;
     }
+#if BOARD_UI_GRID
+    // the native portrait panel: one row of chips (2 or fewer): RESUME and MENU come up a row (no empty band)
+    if (k == PL_NAT_P && s_ni <= 2 && q->nslot >= 3) {
+        const int up = q->slot[2].y - q->slot[0].y;
+        s_L.c[PC_RESUME].y = (int16_t)(s_L.c[PC_RESUME].y - up);
+        s_L.c[PC_MENU].y = (int16_t)(s_L.c[PC_MENU].y - up);
+        s_L.H = (int16_t)(s_L.H - up);
+    }
+#endif
     return &s_L;
 }
 // the box of the control c: PC_* or PC_N + a chip
@@ -794,7 +803,11 @@ static void draw_slider(const pdef_t *d, int c, int oy)
     int x0, x1;
     slider_track(&b, &x0, &x1);
     const int kr = b.h / 4 < 10 ? 10 : b.h / 4 > 18 ? 18 : b.h / 4;
+#if BOARD_UI_GRID
+    const int cy = b.y + b.h - kr - 3, th = 14;  // (the soft look: a thick round track)
+#else
     const int cy = b.y + b.h - kr - 3, th = kr < 14 ? 8 : 10;
+#endif
     const int kx = x0 + (int)lroundf(v * (float)(x1 - x0));
     ui_rrect(x0 - th / 2, cy - th / 2, x1 - x0 + th, th, th / 2, THEME_PANEL_TRACK);
     if (vol) {
@@ -811,11 +824,18 @@ static void draw_slider(const pdef_t *d, int c, int oy)
     }
     const uint16_t knob = boosted ? boost : accent;
     const bool grab = s_grab == c || (s_adjust && s_focus == c);
+#if BOARD_UI_GRID
+    // the soft look: a white knob with a soft halo of the colour of the slider (bigger while a finger moves it)
+    (void)knob;
+    ui_circle(kx, cy, kr + (grab ? 8 : 4), muted ? THEME_PANEL_TEXT_DIM : accent, grab ? 110 : 60);
+    ui_circle(kx, cy, kr, THEME_PANEL_KNOB, 255);
+#else
     if (grab) {
         ui_circle(kx, cy, kr + 5, knob, 90);
     }
     ui_circle(kx, cy, kr, THEME_PANEL_KNOB, 255);
     ui_circle(kx, cy, kr - 4, muted ? THEME_PANEL_TEXT_DIM : knob, 255);
+#endif
 }
 static void draw_button(const pdef_t *d, int c, int oy)
 {
@@ -827,11 +847,24 @@ static void draw_button(const pdef_t *d, int c, int oy)
     if (down) {
         fill = res ? THEME_PANEL_RESUME_DOWN : THEME_PANEL_BTN_DOWN;
     }
+#if BOARD_UI_GRID
+    // the soft look: a round pill with no edge line
+    (void)edge;
+    if (!down) {
+        fill = res ? THEME_PANEL_GR_RESUME : THEME_PANEL_GR_BTN;
+    }
+    ui_rrect(b.x, b.y, b.w, b.h, b.h / 2, fill);
+    if (down && !res) {  // the fill of the hold of MENU
+        int k = (int)((s_ptick - s_press_t) * (b.w - 8) / MENU_HOLD_MS);
+        ui_rrect(b.x + 4, b.y + 4, k < b.w - 8 ? k : b.w - 8, b.h - 8, (b.h - 8) / 2, THEME_PANEL_HOLD);
+    }
+#else
     ui_rbox(b.x, b.y, b.w, b.h, 14, fill, edge, 2);
     if (down && !res) {  // the fill of the hold of MENU
         int k = (int)((s_ptick - s_press_t) * (b.w - 8) / MENU_HOLD_MS);
         ui_rrect(b.x + 4, b.y + 4, k < b.w - 8 ? k : b.w - 8, b.h - 8, 10, THEME_PANEL_HOLD);
     }
+#endif
     const char *s = PTXT[s_phe][res                                ? PT_RESUME
                                 : (!down && s_ptick < s_hold_hint) ? PT_HOLD
                                 : s_pmenu                          ? PT_SETUP
@@ -868,7 +901,19 @@ static void draw_chip(const pdef_t *d, int c, int oy)
                           : loss                                  ? THEME_PANEL_CHIP_LOSS_EDGE
                           : i == CHIP_NOTE && notify_unread(NULL) ? THEME_PANEL_CHIP_UNREAD_EDGE
                                                                   : THEME_PANEL_CHIP_EDGE;
+#if BOARD_UI_GRID
+    // the soft look: a round box; an edge line only when it tells something (unread notices, a hold acts, armed)
+    if (!armed && !down) {
+        fill = THEME_PANEL_GR_BTN;
+    }
+    if (edge == THEME_PANEL_CHIP_EDGE) {
+        ui_rrect(b.x, b.y, b.w, b.h, 18, fill);
+    } else {
+        ui_rbox(b.x, b.y, b.w, b.h, 18, fill, edge, 2);
+    }
+#else
     ui_rbox(b.x, b.y, b.w, b.h, 12, fill, edge, 2);
+#endif
     if (down && loss) {  // the fill of a hold (1 s acts)
         int k = (int)((s_ptick - s_press_t) * (b.w - 8) / ACT2_HOLD_MS);
         ui_rrect(b.x + 4, b.y + 4, k < b.w - 8 ? k : b.w - 8, b.h - 8, 9, THEME_PANEL_CHIP_HOLD);
@@ -932,16 +977,29 @@ void sysui_panel_draw(bool live)
     if (shown <= 0) {
         return;
     }
+#if BOARD_UI_GRID
+    // the soft look: a near-black card with big round corners, a soft shade under it, no edge line
+    for (int j = 0; j < 16 && shown + j < gfx_h; j++) {
+        ui_rrect_a(0, shown - 14 + j, gfx_w, 1, 0, THEME_PANEL_GR_SHADE, 150 - j * 9);
+    }
+    ui_rrect(0, oy - 32, gfx_w, H + 32, 28, THEME_PANEL_GR_BG);
+    ui_rrect(gfx_w / 2 - 22, shown - 12, 44, 6, 3, THEME_PANEL_TEXT_DIM);  // the handle
+#else
     ui_rrect(0, oy - 24, gfx_w, H + 24, 18, THEME_PANEL_BG);
     gfx_fill_rect(18, shown - 2, gfx_w - 36, 2, THEME_PANEL_EDGE);
     ui_rrect(gfx_w / 2 - 20, shown - (gfx_round() ? 44 : 9), 40, 5, 2,
              THEME_PANEL_TEXT_DIM);  // the handle (round: where the circle is wide)
+#endif
     // the app name
     const app_t *a = app_current();
     if (a && a->name && d->tx1 > d->tx0) {  // (the round layouts: no name)
         const kfont_t *const F[] = {KFS[d->ft], &KF_TEXT, &KF_NAME, &KF_LABEL};
         const kfont_t *f = ui_text_fit(F, 4, a->name, d->tx1 - d->tx0);
+#if BOARD_UI_GRID
+        ui_text_c(f, (d->tx0 + d->tx1) / 2, oy + (d->ty0 + d->ty1 + f->asc) / 2, a->name, THEME_PANEL_TEXT);
+#else
         ui_text_c(f, (d->tx0 + d->tx1) / 2, oy + (d->ty0 + d->ty1 + f->asc) / 2, a->name, THEME_PANEL_APP_NAME);
+#endif
     }
     if (s_focus >= 0 && s_pst == PS_OPEN) {
         draw_ring(d, s_focus, oy);

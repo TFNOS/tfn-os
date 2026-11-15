@@ -172,6 +172,41 @@ void wifi_radio_restart(int ch, bool full)
     }
 }
 
+// DEEP IDLE and the power test (power.c): the radio stops (off = true), or starts again and connects (off = false).
+// While it is off the state is WIFI_IDLE with no address (the watchers, the beacons and the apps see no network).
+static bool s_sleep_was;  // the radio stopped with a connection (or a connect): it connects again at the start
+bool wifi_can_sleep(void)
+{
+    return !s_capture_active && !s_ap_on && !s_user_off && !s_scanning && s_state == WIFI_CONNECTED;
+}
+
+void wifi_radio_sleep(bool off)
+{
+    if (s_capture_active) {
+        return;
+    }
+    if (off) {
+        wifi_ap_record_t ap;
+        // (a check with no connect: FAILED; the next check tries again)
+        s_sleep_was = s_state == WIFI_CONNECTED || s_state == WIFI_CONNECTING || s_state == WIFI_FAILED;
+        s_restart_ms = esp_timer_get_time() / 1000;
+        s_restart_eat = esp_wifi_sta_get_ap_info(&ap) == ESP_OK;
+        s_state = WIFI_IDLE;
+        s_ip[0] = 0;
+        ESP_LOGI(TAG, "the radio sleeps");
+        esp_wifi_stop();
+        return;
+    }
+    ESP_LOGI(TAG, "the radio starts (connect again %d)", (int)s_sleep_was);
+    esp_wifi_start();
+    if (s_sleep_was) {
+        s_ip[0] = 0;
+        s_retry = 0;
+        s_state = WIFI_CONNECTING;
+        connect_on(s_last_ch > 0 ? s_last_ch : 0);
+    }
+}
+
 // The web server can fail to start when an app uses most of the internal RAM.
 // Then a timer tries again each 5 s while the board has a network.
 static esp_timer_handle_t s_http_retry;

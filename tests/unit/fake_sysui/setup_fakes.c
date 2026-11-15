@@ -423,3 +423,35 @@ const char *wifi_web_ip(void)
 {
     return "192.0.2.10";
 }
+
+// SETUP > STANDBY (standby_page.c) and the deep standby choice of SETUP (power.c): no page, no choice
+void standby_page_open(void)
+{
+}
+
+void standby_page_update(int64_t now)
+{
+    (void)now;
+}
+
+bool standby_page_input(const input_event_t *ev, int64_t now)
+{
+    (void)ev;
+    (void)now;
+    return true;
+}
+
+void standby_page_render(int64_t now)
+{
+    (void)now;
+}
+
+int power_deep_choice(void)
+{
+    return 0;
+}
+
+void power_set_deep_choice(int i)
+{
+    (void)i;
+}

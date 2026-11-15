@@ -28,3 +28,6 @@ main/layout_table.inc
 main/menu_font.inc
 main/tab5_panels.inc
 main/tfn_abi.inc
+libs/hebcal/hc_parsha.inc
+libs/interfont/sb_fonts.inc
+main/standby_roots.inc

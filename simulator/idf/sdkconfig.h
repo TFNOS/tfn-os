@@ -1,6 +1,6 @@
 // The simulator: the Waveshare ESP32-S3-Touch-LCD-3.49 (or another board of build.py --frame: SIM_FRAME_CORES3 = the
 // CoreS3 and its 320 x 240 frame, SIM_FRAME_WATCHER = the round SenseCAP Watcher, SIM_FRAME_AM175 = the round
-// AMOLED-1.75C, SIM_FRAME_TAB5 = the Tab5 and its tablet UI) with the defaults of main/Kconfig.projbuild and
+// AMOLED-1.75C, SIM_FRAME_TAB5 = the Tab5 and its tablet UI, SIM_FRAME_AM18 = the AMOLED-1.8) with the defaults of main/Kconfig.projbuild and
 // sdkconfig.defaults. (It is found
 // before tests/host/inc*/sdkconfig.h.) Only the values that the code reads are here; the options of the IDF that select
 // hardware code (PM, the console UART) stay off.
@@ -13,6 +13,8 @@
 #define CONFIG_TFN_TARGET_AMOLED175 1
 #elif SIM_FRAME_TAB5
 #define CONFIG_TFN_TARGET_TAB5 1
+#elif SIM_FRAME_AM18
+#define CONFIG_TFN_TARGET_AMOLED18 1
 #else
 #define CONFIG_TFN_TARGET_WS349 1
 #endif

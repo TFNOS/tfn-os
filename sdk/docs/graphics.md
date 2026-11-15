@@ -16,7 +16,7 @@ tool. A tool that a game needs for a rebuild of its data goes into `apps/<app>/t
 
 | Class | The pictures come from | Drawn on the board | Data | Examples |
 | --- | --- | --- | --- | --- |
-| A. Code-drawn 2D | C code in each frame | all | none | PONG, TILES, SPLAT, RUN, MURANO, ORBITAL, GLASSHOUSE, SUMMER CUP, COIL RIDER, JELLY COURIER |
+| A. Code-drawn 2D | C code in each frame | all | none | PONG, TILES, SPLAT, RUN, MURANO, ORBITAL, GLASSHOUSE, SUMMER CUP, COIL RIDER, JELLY COURIER, TRIVIA |
 | B. Cartoon puppets | C code (`libs/toon`) | all | none | FIGHT |
 | C. Code-drawn quest scenes | shapes in C (`*_art.inc`) | all, the still layer cached | none | KEEPER, ROOM, SIDE B |
 | D. Offline art generators | Python or JS art code (pixel art, canvas) | blits of sprites and tiles | in the app | CRUISE, SCENES, GUMMY SIEGE |
@@ -54,6 +54,12 @@ the horizon of CROAK and PIER, the tiles in space of STAR ROAD.
   JELLY COURIER (a soft moped that tows a trailer of jelly: the drawing core of SUMMER CUP with a camera roll as a
   shear of the whole picture, a town of hashed pastel houses in the far pass of rows, glossy jelly as layered ellipses
   with squash and stretch: `apps/jelly/jl_draw.inc`, `jl_rig.inc`).
+  TRIVIA (a quiz: cards with a border band and a gloss, Fluent Emoji icons and a logo made on the PC, the Hebrew text
+  drawn by the app; the background leaves out the boxes that a solid card covers, so each px of the frame is written
+  once: `apps/trivia/tv_draw.inc`).
+  RIM RUNNER (neon rings on deep black: each ring of the wheel is a table of colours by the distance to the ring,
+  made once into a picture of row spans and copied in each frame; the things are drawn over it with dirty tiles of
+  16 x 8 px: `apps/rim_runner/rr_view.inc`).
 - Strong points: no data, any layout per board kind, fast to change, small app files.
 - Weak points: the look stays "drawn". Flat code art is not enough for the big games (see section 4). Good for
   arcade toys, instruments, board games and abstract looks (neon, glow).

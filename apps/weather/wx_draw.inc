@@ -32,7 +32,11 @@ static bool band_r(int rg, uint32_t key, int x0, int y0, int x1, int y1)
     int fw = gfx_w;
     // (the copy holds the largest frame: 172 x 640, or the Tab5 frame 360 x 640)
     if (!s_pic) {
-        s_pic = heap_caps_malloc((LCD_W * LCD_H > 172 * 640 ? LCD_W * LCD_H : 172 * 640) * 2, MALLOC_CAP_SPIRAM);
+        int n = LCD_W * LCD_H > 172 * 640 ? LCD_W * LCD_H : 172 * 640;
+        if (gfx_w * gfx_h > n) {
+            n = gfx_w * gfx_h;  // (the round frame: 466 x 466)
+        }
+        s_pic = heap_caps_malloc((size_t)n * 2, MALLOC_CAP_SPIRAM);
     }
     if (y0 < 0) {
         y0 = 0;
@@ -693,13 +697,17 @@ static void draw_tiles(const wx_t *w, int64_t now, int y)
 static void draw_hero(const wx_t *w, const place_t *pl, int64_t now, int top, int64_t t)
 {
     int cx = W / 2 + (int)s_xoff;
+    const int nw = s_rnd ? W - 150 : W - 84;  // (the round frame: the chord at the line of the place)
+    if (s_rnd) {
+        top += H * 60 / 466;
+    }
     // the place, with a pin for MY PLACE
     char nb[64];
     snprintf(nb, sizeof nb, "%s", pl->name);
-    const kfont_t *nf = tfd_pick(&WK_PLACE, tfd_pick(&WK_COND, &WK_TEXT, nb, W - 84), nb, W - 84);
-    stext_c(nf, cx, top + 36, nb, C_TEXT, W - 84);
+    const kfont_t *nf = tfd_pick(&WK_PLACE, tfd_pick(&WK_COND, &WK_TEXT, nb, nw), nb, nw);
+    stext_c(nf, cx, top + 36, nb, C_TEXT, nw);
     if (pl->here) {
-        int px = cx + (s_he ? 1 : -1) * ((ui_text_w(nf, nb) < W - 84 ? ui_text_w(nf, nb) : W - 84) / 2 + 10);
+        int px = cx + (s_he ? 1 : -1) * ((ui_text_w(nf, nb) < nw ? ui_text_w(nf, nb) : nw) / 2 + 10);
         tfd_disc((float)px, (float)top + 24, 4.5f, C_TEXT, 256);
         tfd_line(px - 3.5f, top + 26.5f, px, top + 33, 2, C_TEXT, 256);
         tfd_line(px + 3.5f, top + 26.5f, px, top + 33, 2, C_TEXT, 256);
@@ -745,7 +753,7 @@ static void draw_hero(const wx_t *w, const place_t *pl, int64_t now, int top, in
     stext_c(&WK_TEXT, cx, top + 228, hl, C_TEXT, W - 12);
     t_str_u(a1, sizeof a1, w->feels);
     snprintf(hl, sizeof hl, "%s %s", TX(T_FEELS), a1);
-    stext_c(&WK_LABEL, cx, top + 248, hl, C_DIM, W - 12);
+    stext_c(s_rnd ? &WK_TEXT : &WK_LABEL, cx, top + 248 + (s_rnd ? 4 : 0), hl, C_DIM, W - 12);
     // the rain soon: a small sign
     int m;
     int rs = rain_soon(w, now, &m);
@@ -764,13 +772,13 @@ static void draw_hero(const wx_t *w, const place_t *pl, int64_t now, int top, in
 // the button of the places (the start side of the top) and the state (the other side)
 static void draw_top_buttons(int64_t t, int top)
 {
-    int bx = sx(24), by = top + 28;
+    int bx = sx(s_rnd ? W / 2 - 46 : 24), by = top + (s_rnd ? H * 40 / 466 : 28);
     tfd_disc((float)bx, (float)by, 17, tfd_rgb(0, 0, 0), 60);
     for (int k = 0; k < 3; k++) {
         tfd_disc((float)bx - 6, (float)by - 6 + k * 6, 1.4f, C_TEXT, 256);
         tfd_rrect(bx - 3, by - 7 + k * 6, 10, 2, 1, C_TEXT, 256);
     }
-    int ox = sx(W - 24);
+    int ox = sx(s_rnd ? W / 2 + 46 : W - 24);
     if (updating(s_cur) || (s_rq_mine >= 0 && s_rq_what == RQ_IP)) {
         spinner(ox, by, 8, t, C_TEXT);
     } else if (!s_wifi) {
@@ -809,7 +817,7 @@ static void draw_page(int64_t t)
 {
     int64_t now = unix_now();
     s_skw = W;
-    s_skh = 360;
+    s_skh = s_rnd ? H : 360;  // (the round frame: the sky fills the circle)
     if (s_cur >= s_npl) {
         // no place yet: the sky and "finding your place"
         if (band(RG_TOP, kmix(1, (int)(t / 33)), 0, H)) {
@@ -885,12 +893,21 @@ static void draw_page(int64_t t)
             // the small head: the place and the temperature now
             char tt[16];
             t_str(tt, sizeof tt, w->t);
-            stext_c(tfd_pick(&WK_COND, tfd_pick(&WK_TEXT, &WK_LABEL, pl->name, W - 100), pl->name, W - 100),
-                    W / 2 - (s_he ? -8 : 8), 33, pl->name, C_TEXT, W - 100);
-            if (w->fetched) {
-                num_end(&WF_NUM, W - 10, 34, tt, C_TEXT);
+            if (s_rnd) {  // (the round frame: both in the middle of the cap, under the keys)
+                stext_c(tfd_pick(&WK_COND, &WK_TEXT, pl->name, W / 2), W / 2, HDR_H - 12, pl->name, C_TEXT, W / 2);
+                tfd_rect(0, HDR_H - 1, W, 1, tfd_rgb(255, 255, 255), 30);
+                if (w->fetched) {
+                    const int nw2 = mf_width(&WF_NUM, tt, 0), nx = W / 2 + (s_he ? -1 : 1) * (W / 4 + 10);
+                    mf_text(&WF_NUM, nx - nw2 / 2, HDR_H - 11, tt, C_TEXT, 255, 0);
+                }
+            } else {
+                stext_c(tfd_pick(&WK_COND, tfd_pick(&WK_TEXT, &WK_LABEL, pl->name, W - 100), pl->name, W - 100),
+                        W / 2 - (s_he ? -8 : 8), 33, pl->name, C_TEXT, W - 100);
+                if (w->fetched) {
+                    num_end(&WF_NUM, W - 10, 34, tt, C_TEXT);
+                }
+                tfd_rect(0, HDR_H - 1, W, 1, tfd_rgb(255, 255, 255), 30);
             }
-            tfd_rect(0, HDR_H - 1, W, 1, tfd_rgb(255, 255, 255), 30);
         }
         draw_top_buttons(t, compact ? 0 : -sc);
         band_end(0, tb);
@@ -1212,6 +1229,13 @@ static void chevron(int cx, int cy, bool left, uint16_t c)
 static void list_head(const char *title)
 {
     tfd_rect(0, 0, W, LIST_Y, tfd_rgb(16, 22, 34), 256);
+    if (s_rnd) {  // (the round frame: the back key at the top, the title under it)
+        tfd_rect(0, LIST_Y - 1, W, 1, tfd_rgb(255, 255, 255), 30);
+        tfd_disc((float)W / 2, (float)LIST_Y * 40 / 104, 22, tfd_rgb(40, 52, 76), 256);
+        chevron(W / 2, LIST_Y * 40 / 104, !s_he, C_TEXT);
+        tfd_text_c(tfd_pick(&WK_PLACE, &WK_COND, title, W - 140), W / 2, LIST_Y - 14, title, C_TEXT, W - 140);
+        return;
+    }
     tfd_rect(0, LIST_Y - 1, W, 1, tfd_rgb(255, 255, 255), 30);
     chevron(s_he ? W - 24 : 24, 28, !s_he, C_TEXT);
     const kfont_t *f = tfd_pick(&WK_PLACE, &WK_COND, title, W - 60);
@@ -1237,9 +1261,9 @@ static void draw_lists(int64_t t)
             break;
         }
         if (r == s_lhot) {
-            tfd_rect(0, y, W, rh, tfd_rgb(255, 255, 255), 20);
+            tfd_rect(LI, y, W - 2 * LI, rh, tfd_rgb(255, 255, 255), 20);
         }
-        tfd_rect(12, y + rh - 1, W - 24, 1, tfd_rgb(255, 255, 255), 18);
+        tfd_rect(12 + LI, y + rh - 1, W - 24 - 2 * LI, 1, tfd_rgb(255, 255, 255), 18);
         if (s_sc == SC_PLACES) {
             const place_t *pl = &s_pl[r];
             const wx_t *w = &s_wx[r];
@@ -1248,7 +1272,7 @@ static void draw_lists(int64_t t)
             float el = un ? sun_elev(pl->lat, pl->lon, un) : 30;
             uint16_t c0 = el > 6 ? tfd_rgb(50, 120, 210) : el > -6 ? tfd_rgb(200, 120, 100) : tfd_rgb(20, 28, 64);
             uint16_t c1 = el > 6 ? tfd_rgb(140, 190, 240) : el > -6 ? tfd_rgb(250, 170, 110) : tfd_rgb(40, 50, 96);
-            int wx0 = s_he ? W - 50 : 8;
+            int wx0 = s_he ? W - 50 - LI : 8 + LI;
             for (int j = 0; j < 42; j++) {
                 tfd_hspan(wx0 + (j < 5 || j > 36 ? 3 : 0), wx0 + 42 - (j < 5 || j > 36 ? 3 : 0), y + 15 + j,
                           tfd_mix(c0, c1, j * 256 / 41), 256);
@@ -1257,7 +1281,7 @@ static void draw_lists(int64_t t)
             if (w->fetched) {
                 wicon(icon_of(w->code, el > -0.8f), 26, wx0 + 21, y + 36);
             }
-            int nx0 = s_he ? 44 : 56, nx1 = s_he ? W - 56 : W - 44;
+            int nx0 = s_he ? 44 + LI : 56 + LI, nx1 = s_he ? W - 56 - LI : W - 44 - LI;
             char nb[64];
             snprintf(nb, sizeof nb, "%s%s", pl->here ? "\xe2\x80\xa2 " : "", pl->name);
             const kfont_t *f =
@@ -1268,7 +1292,7 @@ static void draw_lists(int64_t t)
             if (w->fetched) {
                 char b[16];
                 t_str(b, sizeof b, w->t);
-                num_end(&WF_NUM, W - 12, y + 42, b, C_TEXT);
+                num_end(&WF_NUM, W - 12 - LI, y + 42, b, C_TEXT);
             }
             if (s_hold_row == r) {
                 float kk = (float)(t - s_hold_t) / 1000.0f;
@@ -1279,10 +1303,10 @@ static void draw_lists(int64_t t)
             }
         } else if (s_add_tab == 2) {
             const geo_t *g = &s_res[r];
-            text_at(&WK_COND, 16, W - 44, y + 25, g->name, C_TEXT);
-            text_at(&WK_LABEL, 16, W - 44, y + 44, g->sub, C_DIM);
+            text_at(&WK_COND, 16 + LI, W - 44 - LI, y + 25, g->name, C_TEXT);
+            text_at(&WK_LABEL, 16 + LI, W - 44 - LI, y + 44, g->sub, C_DIM);
             bool have = place_find(g->lat, g->lon) >= 0;
-            int px = sx(W - 24);
+            int px = sx(W - 24 - LI);
             if (have) {
                 tfd_line(px - 6, y + 27, px - 1, y + 32, 2.2f, C_GOLD, 256);
                 tfd_line(px - 1, y + 32, px + 7, y + 21, 2.2f, C_GOLD, 256);
@@ -1293,19 +1317,19 @@ static void draw_lists(int64_t t)
             }
         } else if (r == 0) {
             // the search row: a field with a lens
-            tfd_rrect(10, y + 8, W - 20, rh - 16, 12, tfd_rgb(32, 42, 60), 256);
-            int lx = sx(28);
+            tfd_rrect(10 + LI, y + 8, W - 20 - 2 * LI, rh - 16, 12, tfd_rgb(32, 42, 60), 256);
+            int lx = sx(28 + LI);
             tfd_ring((float)lx - 1, (float)y + 25, 6, 1.8f, C_DIM, 256);
             tfd_line(lx + 3, y + 29, lx + 8, y + 34, 2.2f, C_DIM, 256);
-            text_at(&WK_TEXT, 42, W - 14, y + 32, TX(T_SEARCH), C_DIM);
+            text_at(&WK_TEXT, 42 + LI, W - 14 - LI, y + 32, TX(T_SEARCH), C_DIM);
         } else {
             int p = add_preset(r);
             if (p < 0) {
                 continue;
             }
-            text_at(&WK_COND, 16, W - 44, y + 34, s_he ? PRESETS[p].he : PRESETS[p].en, C_TEXT);
+            text_at(&WK_COND, 16 + LI, W - 44 - LI, y + 34, s_he ? PRESETS[p].he : PRESETS[p].en, C_TEXT);
             bool have = place_find(PRESETS[p].lat, PRESETS[p].lon) >= 0;
-            int px = sx(W - 24);
+            int px = sx(W - 24 - LI);
             if (have) {
                 tfd_line(px - 6, y + 27, px - 1, y + 32, 2.2f, C_GOLD, 256);
                 tfd_line(px - 1, y + 32, px + 7, y + 21, 2.2f, C_GOLD, 256);
@@ -1324,18 +1348,28 @@ static void draw_lists(int64_t t)
     // the head, the tabs, the bottom (after the rows: a row that scrolls goes under them)
     if (s_sc == SC_PLACES) {
         list_head(TX(T_PLACES));
-        tfd_rect(0, H - 70, W, 70, bg, 256);
-        tfd_rrect(14, H - 60, W - 28, 46, 23, tfd_rgb(46, 92, 170), 256);
-        tfd_rrect(14, H - 60, W - 28, 1, 0, tfd_rgb(255, 255, 255), 60);
-        tfd_text_c(&WK_TEXT, W / 2, H - 31, TX(T_ADD), C_TEXT, W - 40);
-        if (s_npl > 1) {
-            tfd_text_c(&WK_LABEL, W / 2, H - 76, TX(T_HOLD), C_FAINT, W - 16);
+        if (s_rnd) {  // (the round frame: the key in the bottom cap, the hint over it)
+            const int by = list_bottom() + 6, bw = W * 220 / 466;
+            tfd_rect(0, list_bottom(), W, H - list_bottom(), bg, 256);
+            tfd_rrect(W / 2 - bw / 2, by, bw, 50, 25, tfd_rgb(46, 92, 170), 256);
+            tfd_text_c(&WK_TEXT, W / 2, by + 32, TX(T_ADD), C_TEXT, bw - 20);
+            if (s_npl > 1) {
+                tfd_text_c(&WK_LABEL, W / 2, list_bottom() - 6, TX(T_HOLD), C_FAINT, W - 120);
+            }
+        } else {
+            tfd_rect(0, H - 70, W, 70, bg, 256);
+            tfd_rrect(14, H - 60, W - 28, 46, 23, tfd_rgb(46, 92, 170), 256);
+            tfd_rrect(14, H - 60, W - 28, 1, 0, tfd_rgb(255, 255, 255), 60);
+            tfd_text_c(&WK_TEXT, W / 2, H - 31, TX(T_ADD), C_TEXT, W - 40);
+            if (s_npl > 1) {
+                tfd_text_c(&WK_LABEL, W / 2, H - 76, TX(T_HOLD), C_FAINT, W - 16);
+            }
         }
     } else {
         list_head(s_add_tab == 2 ? TX(T_SEARCH) : TX(T_ADD));
         tfd_rect(0, LIST_Y, W, 50, bg, 256);
         for (int k = 0; k < 2; k++) {
-            int x0 = (k == 0) != (s_he != 0) ? 10 : W / 2 + 2, ww = W / 2 - 12;
+            int x0 = (k == 0) != (s_he != 0) ? 10 + LI : W / 2 + 2, ww = W / 2 - 12 - LI;
             bool on = s_add_tab == k;
             tfd_rrect(x0, LIST_Y + 8, ww, 34, 17, on ? tfd_rgb(46, 92, 170) : tfd_rgb(30, 38, 54), 256);
             const char *lab = TX(k == 0 ? T_ISRAEL : T_WORLD);

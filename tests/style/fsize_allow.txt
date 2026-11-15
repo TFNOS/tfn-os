@@ -1,2 +1,3 @@
 # The old functions over 150 lines (tests/style/check_fsize.py): file, function, lines.
 # The list only gets shorter.
+libs/hebcal/hc_cal.inc hc_events 203

@@ -62,6 +62,7 @@ The header has 3 sections. The tables give each name, the value of the CoreS3, a
 | `BOARD_TOUCH_LOGICAL` | 0 | `board_touch_points()` gives logical points of the current frame |
 | `BOARD_WHEEL` | 0 | A rotary wheel with a button |
 | `BOARD_UI_TABLET` | 0 | The tablet UI: the menu of icons, the home bar, the big layouts |
+| `BOARD_UI_GRID` | 0 | The grid UI of a small portrait panel: the menu as a grid of big icons, the soft panel |
 | `BOARD_HI_FRAME` | 0 | An app can draw at the panel resolution (`gfx_hi_want()`, `gfx_hi()`) |
 | `BOARD_ROUND_ZOOM` | 0 | A round panel shows the frame of the apps zoomed to the width of the circle |
 | `BOARD_UI_SMOOTH_TEXT` | 0 | The system pages use the anti-aliased font |

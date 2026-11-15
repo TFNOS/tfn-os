@@ -760,7 +760,7 @@ static bool background(void)
 const app_t app_serial = {
         .name = "SERIAL MONITOR",
         .landscape = true,
-        .round_fit = true,
+        .round = APP_ROUND_HI,  // (the round boards: the native round frame, the middle box of ser_draw.inc)
         .run = true,
         .enter = enter,
         .leave = leave,

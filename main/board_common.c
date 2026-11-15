@@ -19,6 +19,18 @@ __attribute__((weak)) bool board_ohm_read(int *mv)
     return false;
 }
 
+// The external power: not known (no charge status line). power.c uses the battery voltage trend.
+__attribute__((weak)) int board_ext_power(void)
+{
+    return -1;
+}
+
+// The shunt voltage of a battery current monitor in uV (the Tab5 INA226), or INT32_MIN: no such chip.
+__attribute__((weak)) int board_bat_shunt_uv(void)
+{
+    return INT32_MIN;
+}
+
 // The touch log of TOUCH LAB (tfn/board.h): no reports on a board with no log (board.c of the 3.49 has the real
 // ones).
 __attribute__((weak)) void board_touch_log(bool on)
@@ -34,4 +46,9 @@ __attribute__((weak)) int board_touch_reports(touch_rep_t *out, int max)
 __attribute__((weak)) int board_touch_read_len_get(void)
 {
     return 0;
+}
+
+// Display off in the DEEP IDLE (board.c of the 3.49). The other boards: nothing.
+__attribute__((weak)) void board_display_off(void)
+{
 }

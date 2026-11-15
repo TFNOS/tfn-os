@@ -25,6 +25,7 @@
 
 #include <math.h>
 #include <string.h>
+#include "power.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/i2c_master.h"
@@ -945,7 +946,7 @@ static void imu_task(void *arg)
             s_slow = slow;
             wake = xTaskGetTickCount();
         }
-        vTaskDelayUntil(&wake, s_slow ? pdMS_TO_TICKS(40) : per);
+        vTaskDelayUntil(&wake, s_slow ? pdMS_TO_TICKS(power_x() & PWX_IMU ? 1000 : 40) : per);
         imu_step();
     }
 }

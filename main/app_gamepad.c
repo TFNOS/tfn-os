@@ -97,6 +97,39 @@ static const char *TAG = "pad";
 #define BODY_H    190
 #define HELP_Y    284
 #define HELP_S    2  // the text scale of the link help
+#elif BOARD_ROUND
+// The round panels (APP_ROUND_HI: 466 x 466 on the AMOLED-1.75C, 412 x 412 on the Watcher). The values are for 466;
+// GR() scales them to the frame. The top cap has the link state and the profile, the middle band the link help, the
+// controls fill the wide middle of the circle, SELECT and START (or the web line) are on the bottom cap.
+#define GR(v)     ((v) * gfx_w / 466)
+#define SCR_W     gfx_w
+#define SCR_H     gfx_h
+#define TOP_H     GR(112)
+#define PREV_X    GR(96)  // the profile box of the top cap
+#define NEXT_X    GR(370)
+#define ARROW_W   GR(48)
+#define DPAD_X    GR(120)
+#define DPAD_Y    GR(272)
+#define DPAD_ARM  GR(66)
+#define DPAD_W    GR(46)
+#define DPAD_ZONE GR(200)
+#define ABXY_X    GR(346)
+#define ABXY_Y    GR(272)
+#define ABXY_OFF  GR(50)
+#define ABXY_R    GR(27)
+#define SEL_X     GR(131)  // SELECT and START: on the bottom cap, below the d-pad zone
+#define STA_X     GR(243)
+#define SS_Y      GR(362)
+#define SS_W      GR(92)
+#define SS_H      GR(44)
+#define BTN_HIT   GR(64)
+#define BODY_RX   GR(92)
+#define BODY_RY   GR(80)
+#define BODY_Y    GR(200)
+#define BODY_H    GR(150)
+#define HELP_Y    GR(136)  // the baseline of the first line of the link help
+#define WEB_Y     GR(432)  // the baseline of the web line
+#define GP_XY              // (button_at: the button places come from the frame, not a constant table)
 #else
 // CoreS3 (320 x 240)
 #define SCR_W     320
@@ -157,6 +190,21 @@ static const char *TAG = "pad";
 #define DR_PRO_W   206
 #define DR_PRO_H   68
 #define DR_CLOSE_Y 262
+#elif BOARD_ROUND
+#define DR_SEL_X   GR(63)  // (all inside the circle: SELECT and START, then CALIBRATE and the profile)
+#define DR_STA_X   GR(238)
+#define DR_SS_Y    GR(100)
+#define DR_SS_W    GR(165)
+#define DR_SS_H    GR(92)
+#define DR_CAL_X   GR(63)
+#define DR_CAL_Y   GR(204)
+#define DR_CAL_W   GR(165)
+#define DR_CAL_H   GR(60)
+#define DR_PRO_X   GR(238)
+#define DR_PRO_Y   GR(204)
+#define DR_PRO_W   GR(165)
+#define DR_PRO_H   GR(60)
+#define DR_CLOSE_Y GR(290)
 #else
 #define DR_SEL_X   10
 #define DR_STA_X   166
@@ -176,6 +224,9 @@ static const char *TAG = "pad";
 // (the values of the 3.49 and the CoreS3, when the layout above does not set them)
 #ifndef TOP_TS
 #define TOP_TS 1
+#endif
+#ifndef GP_XY
+#define GP_XY static
 #endif
 #ifndef BTN_HIT
 #define BTN_HIT 46
@@ -351,6 +402,11 @@ static int dpad_at(int x, int y)
     if (x >= DPAD_ZONE) {
         return -2;
     }
+#if BOARD_ROUND
+    if (y >= SS_Y - 8) {
+        return -2;  // (SELECT and START are below the d-pad)
+    }
+#endif
     float dx = (float)(x - DPAD_X), dy = (float)(y - DPAD_Y);
     if (dx * dx + dy * dy < 14 * 14) {
         return -1;
@@ -374,8 +430,8 @@ static int button_at(int x, int y)
             return 0;
         }
     }
-    static const int16_t BX[4] = {ABXY_X, ABXY_X + ABXY_OFF, ABXY_X - ABXY_OFF, ABXY_X};
-    static const int16_t BY[4] = {ABXY_Y + ABXY_OFF, ABXY_Y, ABXY_Y, ABXY_Y - ABXY_OFF};
+    GP_XY const int16_t BX[4] = {ABXY_X, ABXY_X + ABXY_OFF, ABXY_X - ABXY_OFF, ABXY_X};
+    GP_XY const int16_t BY[4] = {ABXY_Y + ABXY_OFF, ABXY_Y, ABXY_Y, ABXY_Y - ABXY_OFF};
     static const uint8_t BN[4] = {BTN_A, BTN_B, BTN_X, BTN_Y};
     int best = 0, bd = BTN_HIT * BTN_HIT;
     for (int i = 0; i < 4; i++) {
@@ -1305,6 +1361,8 @@ static void gp_input(const input_event_t *ev)
         if (ev->x >= 200 && ev->x < 310 && ev->y >= 96 && ev->y < 140) {
 #elif BOARD_UI_TABLET
         if (ev->x >= 160 && ev->x < 300 && ev->y >= 196 && ev->y < 260) {
+#elif BOARD_ROUND
+        if (ev->x >= GR(93) && ev->x < GR(223) && ev->y >= GR(256) && ev->y < GR(316)) {
 #else
         if (ev->x >= 50 && ev->x < 150 && ev->y >= 130 && ev->y < 174) {
 #endif
@@ -1594,7 +1652,7 @@ static void draw_top(void)
 #endif
 }
 
-#else
+#elif !BOARD_ROUND
 static void draw_top(void)
 {
     gfx_fill_rect(0, 0, SCR_W, TOP_H, rgb(16, 18, 40));
@@ -1654,6 +1712,7 @@ static void draw_top(void)
 
 #endif
 
+#if !BOARD_ROUND
 // the pull-down panel: SELECT and START (big), CALIBRATE, the profile, CLOSE
 static void draw_drawer(void)
 {
@@ -1744,6 +1803,7 @@ static void draw_web_line(int x, int w)
         gfx_text_center_in(x, w, WEB_Y, "WIFI OR HOTSPOT: EDIT THE PROFILES ON THE WEB", HELP_S, rgb(80, 86, 130));
     }
 }
+#endif
 
 // the inner ring of the stick picture, a part of the radius: the dead zone of the tilt, or
 // (RETRO MOVE) the speed for a press
@@ -1874,7 +1934,7 @@ static void draw_retro(void)
     }
 }
 
-#else
+#elif !BOARD_ROUND
 static void draw_retro(void)
 {
     // left: the direction lamps and the tilt
@@ -1952,6 +2012,7 @@ static void draw_dpad(void)
     }
 }
 
+#if !BOARD_ROUND
 static void face_button(int x, int y, const char *l, uint16_t c, bool on)
 {
     if (on) {
@@ -1998,6 +2059,7 @@ static void draw_buttons_mode(void)
     draw_link_help(0, SCR_W, HELP_Y);
 #endif
 }
+#endif
 
 #if BOARD_BAR_SCREEN
 static void draw_motion(void)
@@ -2149,7 +2211,7 @@ static void draw_motion(void)
     }
 }
 
-#else
+#elif !BOARD_ROUND
 static void draw_motion(void)
 {
     uint16_t on = s_rep.buttons;
@@ -2254,7 +2316,7 @@ static void draw_confirm(void)
     gfx_text_center_in(340, 140, 218, "NO", 3, c_text);
 }
 
-#else
+#elif !BOARD_ROUND
 static void draw_confirm(void)
 {
     gfx_darken_rect(0, 0, SCR_W, SCR_H, 2);
@@ -2268,6 +2330,10 @@ static void draw_confirm(void)
     gfx_text_center_in(170, 100, 145, "NO", 2, c_text);
 }
 
+#endif
+
+#if BOARD_ROUND
+#include "app_gamepad_round.inc"
 #endif
 
 static void gp_render(int64_t now)
@@ -2286,11 +2352,15 @@ static void gp_render(int64_t now)
         break;
     }
     draw_top();
-#if BOARD_BAR_SCREEN
+#if BOARD_ROUND
+    draw_web_line(0, SCR_W);
+    gp_round_notes(now);
+#elif BOARD_BAR_SCREEN
     draw_web_line(200, 240);
 #else
     draw_web_line(0, SCR_W);
 #endif
+#if !BOARD_ROUND
     if (s_pop_at && now - s_pop_at < 900) {
         int w = gfx_text_width(s_pop, 2) + 20;
         int y = TOP_H + 6 + (int)((now - s_pop_at) / 60);
@@ -2340,6 +2410,7 @@ static void gp_render(int64_t now)
                            rgb(160, 255, 190));
 #endif
     }
+#endif
     draw_drawer();
     if (s_confirm) {
         draw_confirm();
@@ -2397,4 +2468,5 @@ const app_t app_gamepad = {
         .draw_icon = gp_icon,
         .awake = gp_awake,
         .run = true,  // the settings panel: it sends on under it (no buttons down: the panel has the fingers)
+        .round = BOARD_ROUND ? APP_ROUND_HI : 0,
 };

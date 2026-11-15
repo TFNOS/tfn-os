@@ -119,6 +119,13 @@ int tfn_group_of(const app_t *a);
 bool tfn_icon_ok(const uint8_t *b, size_t len);
 bool tfn_icon_draw(const uint8_t *b, size_t len, int x, int y, int s);
 void tfn_icon_plain(const char *name, int x, int y, int s);
+#if BOARD_UI_GRID
+// The grid menu (BOARD_UI_GRID): with tfn_icon_ask(true), an app icon whose file is not in memory does not read the
+// card in the draw: a low task reads it, and the icon draws a plain tile now. tfn_icon_missed() = an icon drew a plain
+// tile for that reason since the last call (the call clears it, and frees the old icon files that the task read).
+void tfn_icon_ask(bool on);
+bool tfn_icon_missed(void);
+#endif
 // The decoded frames of the icons (a slot for each icon that shows; about 16 KB of PSRAM each) go: an app that is not
 // the menu opens, or the icons of the STORE go.
 void tfn_icon_cache_free(void);

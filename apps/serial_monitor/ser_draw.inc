@@ -9,6 +9,12 @@
 //   SETTINGS    the baud (AUTO, TYPE), the format, the common settings, the line end, the view, SELF TEST, the source
 //   SEND        the line (the keyboard), TEXT or HEX, the line end, the lines sent before
 
+// THE ROUND FRAME (APP_ROUND_HI): the state line (or BACK and the title) in the top cap of the circle, the keys in a
+// row in the bottom cap. The terminal fills the band between the caps (the bigger mono face); the rows of the chips of
+// SETTINGS and SEND follow the chord of the circle down to its bottom. rl_origin.h moves each draw call of this file
+// (also the sketch) right by rl_ox, and the touch targets move with them. The Rubik faces are KF_TEXT at the least.
+#include "rndlay/rndlay.h"
+#include "rndlay/rl_origin.h"
 #include "rfpulse/rfp_sketch.inc"
 
 #define C_BG    rgb(7, 10, 16)
@@ -44,6 +50,21 @@ static void layout(void)
     s_ty0 = s_top_h + 3;
     s_tx1 = s_narrow ? s_W - 4 : s_W - 108;
     s_ty1 = s_narrow ? s_H - 48 : s_H - 2;
+    rl_ox = 0;
+    rl_big = gfx_round() ? 2 : 0;  // (the round frame: KF_TEXT at the least)
+    if (gfx_round()) {
+        s_top_h = rl_t_top();
+        rl_ox = gfx_w / 2 - rl_half(s_top_h + 16, 12);
+        s_W = gfx_w - 2 * rl_ox;
+        s_H = rl_t_bot();
+        s_narrow = true;
+        s_ty0 = s_top_h + 3;
+        s_ty1 = s_H - 4;
+        // (the terminal: the chord at the top of the band, a little wider than the box)
+        const int tw = 2 * rl_half(s_ty0 + 6, 8);
+        s_tx0 = gfx_w / 2 - tw / 2 - rl_ox;
+        s_tx1 = s_tx0 + tw;
+    }
 }
 
 // ---------------------------------------------------------------- the touch targets
@@ -84,6 +105,7 @@ static int s_nhit;
 static void hit(int x, int y, int w, int h, int id, int arg)
 {
     if (s_nhit < HITN) {
+        x += rl_ox;  // (the round frame: the place on the screen)
         s_hit[s_nhit++] = (hit_t){(int16_t)x, (int16_t)y, (int16_t)w, (int16_t)h, (int16_t)id, (int16_t)arg};
     }
 }
@@ -238,18 +260,47 @@ static int chip_w(const char *s, bool word)
 }
 static void chip(int x, int y, const char *s, bool word, bool on, int id, int arg)
 {
-    const int w = chip_w(s, word), h = 30;
-    tfd_rrect(x, y, w, h, 15, on ? C_ACC : C_BTN, 256);
+    const bool rd = gfx_round();  // (the round frame: a chip of 44 px for KF_TEXT)
+    const int w = chip_w(s, word), h = rd ? 44 : 30;
+    tfd_rrect(x, y, w, h, h / 2, on ? C_ACC : C_BTN, 256);
     if (word) {
-        tfd_text_c(&KF_LABEL, x + w / 2, y + 20, s, on ? C_BG : C_TEXT, w);
+        tfd_text_c(&KF_LABEL, x + w / 2, y + (rd ? 29 : 20), s, on ? C_BG : C_TEXT, w);
     } else {
-        mf_text(&SER_NUM, x + 10, y + 20, s, on ? C_BG : C_TEXT, 255, 0);
+        mf_text(&SER_NUM, x + 10, y + (rd ? 28 : 20), s, on ? C_BG : C_TEXT, 255, 0);
     }
     hit(x, y, w, h, id, arg);
 }
 
+// the round frame: the top cap. BACK and the title, or the dot and the baud (a tap: SETTINGS), then the source and the
+// counters (rl_ox = 0 here: the cap uses the whole width)
+static void top_cap(const char *back_title, uint16_t dc, const char *baud, const char *line2, uint16_t c2)
+{
+    const int ox = rl_ox, W = gfx_w;
+    rl_ox = 0;
+    gfx_fill_rect(0, 0, W, s_top_h, C_PANEL);
+    const int lw = 2 * rl_half(s_top_h, 2);
+    gfx_fill_rect(W / 2 - lw / 2, s_top_h, lw, 1, C_LINE);
+    if (back_title) {
+        const int bw = W * 104 / 466, by = W * 22 / 466;
+        tfd_rrect(W / 2 - bw / 2, by, bw, 32, 16, C_BTN, 256);
+        tfd_text_c(&KF_NAME, W / 2, by + 22, TX(T_BACK), C_TEXT, bw - 8);
+        hit(W / 2 - bw / 2 - 10, 0, bw + 20, by + 40, H_BACK, 0);
+        tfd_text_c(&KF_NAME, W / 2, s_top_h - 12, back_title, C_TEXT, 2 * rl_half(s_top_h - 26, 20));
+    } else {
+        const int bw = mf_width(&SER_NUM, baud, 0), y = W * 50 / 466;
+        tfd_disc((float)(W / 2 - bw / 2 - 14), (float)(y - 6), 4.5f, dc, 256);
+        mf_text(&SER_NUM, W / 2 - bw / 2, y, baud, C_ACC, 255, 0);
+        hit(W / 2 - bw / 2 - 30, 0, bw + 60, y + 8, H_SET, 0);
+        tfd_text_c(&KF_LABEL, W / 2, W * 77 / 466, line2, c2, 2 * rl_half(W * 60 / 466, 24));
+    }
+    rl_ox = ox;
+}
 static void top_bar(const char *back_title)
 {
+    if (gfx_round() && back_title) {
+        top_cap(back_title, 0, NULL, NULL, 0);
+        return;
+    }
     tfd_rect(0, 0, s_W, s_top_h, C_PANEL, 256);
     tfd_rect(0, s_top_h, s_W, 1, C_LINE, 256);
     const int base = s_top_h / 2 + 6;
@@ -285,6 +336,12 @@ static void top_bar(const char *back_title)
     if (err) {
         snprintf(all + k, sizeof all - (size_t)k, "  ERR %u", (unsigned)err);
     }
+    if (gfx_round()) {
+        char l2[140];
+        snprintf(l2, sizeof l2, "%s   %s", sb, all);
+        top_cap(NULL, dc, b, l2, err ? C_NOTE : C_DIM);
+        return;
+    }
     const int rw = mf_width(&SER_M11, all, 0);
     mf_text(&SER_M11, s_W - 8 - rw, base - 1, all, err ? C_NOTE : C_DIM, 255, 0);
     // the source between them, if it fits
@@ -302,7 +359,7 @@ static void toast_draw(void)
     const int w = ui_text_w(&KF_NAME, s_toast) + 28;
     const int ww = w > s_W - 20 ? s_W - 20 : w;
     const int cx = s_narrow ? s_W / 2 : (s_W - 104) / 2;
-    const int y = s_narrow ? s_H - 86 : s_top_h + 8;
+    const int y = gfx_round() ? s_H - 44 : s_narrow ? s_H - 86 : s_top_h + 8;
     const int a = s_now - s_toast_t > 2200 ? (int)(256 * (2600 - (s_now - s_toast_t)) / 400) : 256;
     tfd_rrect(cx - ww / 2, y, ww, 34, 10, rgb(36, 54, 78), a);
     tfd_text_c(&KF_NAME, cx, y + 23, s_toast, C_TEXT, ww - 16);
@@ -311,7 +368,17 @@ static void toast_draw(void)
 // the column of buttons at the right end (the 3.49) or the bar at the bottom (the 320 x 240 frame)
 static void side_buttons(const char *const *l, const int *id, const bool *hot, int n)
 {
-    if (s_narrow) {
+    if (gfx_round()) {  // (the keys in a row in the bottom cap; rl_ox = 0 here: the screen points)
+        const int ox = rl_ox, y = rl_t_key();
+        rl_ox = 0;
+        rl_t_bcap(y - 6, C_PANEL, C_LINE);
+        for (int i = 0; i < n; i++) {
+            int x, w;
+            rl_t_keyx(i, n, &x, &w);
+            button(x, y, w, rl_t_kh(), l[i], hot[i], id[i], 0);
+        }
+        rl_ox = ox;
+    } else if (s_narrow) {
         const int g = 6, w = (s_W - (n + 1) * g) / n, y = s_H - 42;
         tfd_rect(0, y - 4, s_W, 46, C_PANEL, 256);
         for (int i = 0; i < n; i++) {
@@ -334,8 +401,14 @@ static void draw_wire(void)
     const rfp_conn_t *k = rfp_board_uart();
     static const sk_pin_t PINS[3] = {{"TX", RFP_PAD_RX}, {"RX", RFP_PAD_TX}, {"GND", RFP_PAD_GND}};
     const sk_dev_t dev = {TX(T_DEVICE), PINS, 3};
-    // the title (the 3.49: left of the grip of the panel), the levels
-    tfd_text_s(&KF_LABEL, 8, BAR ? 290 : s_W - 8, 17, TX(T_CONNECT), C_TEXT, s_he);
+    // the title (the 3.49: left of the grip of the panel; the round frame: in the top cap), the levels
+    if (gfx_round()) {
+        top_cap(NULL, 0, "", "", 0);
+        s_nhit = 0;  // (no SETTINGS key in the cap of THE WIRING)
+        tfd_text_c(&KF_NAME, s_W / 2, s_top_h - 16, TX(T_CONNECT), C_TEXT, 2 * rl_half(s_top_h - 18, 8));
+    } else {
+        tfd_text_s(&KF_LABEL, 8, BAR ? 290 : s_W - 8, 17, TX(T_CONNECT), C_TEXT, s_he);
+    }
     const char *st;
     uint16_t sc;
     if (!ser_is_open()) {
@@ -370,15 +443,21 @@ static void draw_wire(void)
         tfd_text_c(&KF_NAME, (s_W - 104) / 2, s_H - 64, TX(T_LEVELS), C_NOTE, s_W - 116);
         tfd_text_c(&KF_NAME, (s_W - 104) / 2, s_H - 36, st, sc, s_W - 116);
 #else
-        sk_draw(k, &dev, &SER_M11, 4, 24, s_W - 4, s_H - 70, s_he);
-        tfd_text_c(&KF_LABEL, s_W / 2, s_H - 72, TX(T_LEVELS), C_NOTE, s_W - 12);
-        tfd_text_c(&KF_LABEL, s_W / 2, s_H - 54, st, sc, s_W - 12);
+        if (gfx_round()) {  // (the sketch in the band, the two notes under it)
+            sk_draw(k, &dev, &SER_M13, 0, s_top_h + 4, s_W, s_H - 54, s_he);
+            tfd_text_c(&KF_LABEL, s_W / 2, s_H - 30, TX(T_LEVELS), C_NOTE, s_W - 12);
+            tfd_text_c(&KF_LABEL, s_W / 2, s_H - 6, st, sc, s_W - 12);
+        } else {
+            sk_draw(k, &dev, &SER_M11, 4, 24, s_W - 4, s_H - 70, s_he);
+            tfd_text_c(&KF_LABEL, s_W / 2, s_H - 72, TX(T_LEVELS), C_NOTE, s_W - 12);
+            tfd_text_c(&KF_LABEL, s_W / 2, s_H - 54, st, sc, s_W - 12);
+        }
 #endif
     }
     const char *l[2] = {TX(T_CONNECTED), TX(T_DEMO)};
     const int id[2] = {H_CONNECTED, H_DEMO};
     const bool hot[2] = {s_st.rx > 0, false};
-    if (bus && s_narrow) {  // (the M5-Bus takes the left side: the buttons under the texts)
+    if (bus && s_narrow && !gfx_round()) {  // (the M5-Bus takes the left side: the buttons under the texts)
         button(130, s_H - 70, 184, 30, l[0], hot[0], id[0], 0);
         button(130, s_H - 36, 184, 30, l[1], false, id[1], 0);
     } else {
@@ -391,6 +470,9 @@ static void draw_wire(void)
 static int s_cols;
 static const mfont_t *term_font(void)
 {
+    if (gfx_round()) {  // (the round frame: the biggest mono face that gives 8 bytes a row of HEX)
+        return 39 * 9 + 4 <= s_tx1 - s_tx0 ? &SER_NUM : &SER_M13;
+    }
     return s_narrow || s_view == 1 ? &SER_M11 : &SER_M13;
 }
 
@@ -421,7 +503,7 @@ static void draw_text(void)
 {
     const mfont_t *f = term_font();
     const int adv = mf_width(f, "M", 0);
-    s_lh = f == &SER_M13 ? 16 : 14;
+    s_lh = f == &SER_NUM ? 21 : f == &SER_M13 ? 16 : 14;
     s_cols = (s_tx1 - s_tx0) / adv;
     const uint32_t end = s_paused ? s_pause_ln : s_nln;
     const uint32_t first = end > LN ? end - LN : 0;
@@ -499,10 +581,10 @@ static void draw_text(void)
 
 static void draw_hex(void)
 {
-    const mfont_t *f = &SER_M11;
+    const mfont_t *f = gfx_round() ? term_font() : &SER_M11;
     const int adv = mf_width(f, "M", 0);
     const int bpr = s_narrow ? 8 : 16;
-    s_lh = 14;
+    s_lh = f == &SER_NUM ? 21 : f == &SER_M13 ? 16 : 14;
     const uint32_t end = s_paused ? s_pause_hx : s_nhx;
     const uint32_t first = end > HX ? (end - HX + bpr - 1) / bpr * bpr : 0;
     const int total = (int)((end - first + bpr - 1) / bpr);
@@ -560,7 +642,8 @@ static void draw_auto(void)
     tfd_rrect(x + 16, y + 42, (w - 32) * (s_auto + 1) / NAUTO, 10, 5, C_ACC, 256);
     char s[48];
     snprintf(s, sizeof s, "%d / %d", s_auto + 1, NAUTO);
-    mf_text(&SER_M11, x + w / 2 - mf_width(&SER_M11, s, 0) / 2, y + 70, s, C_DIM, 255, 0);
+    const mfont_t *mf = gfx_round() ? &SER_M13 : &SER_M11;
+    mf_text(mf, x + w / 2 - mf_width(mf, s, 0) / 2, y + 70, s, C_DIM, 255, 0);
 }
 
 static void draw_term(void)
@@ -571,10 +654,11 @@ static void draw_term(void)
     } else {
         draw_text();
     }
-    if (!s_follow || s_paused) {  // LIVE: back to the end of the rows
-        const int w = 84, h = 32, x = s_tx1 - w - 6, y = s_ty1 - h - 4;
-        tfd_rrect(x, y, w, h, 16, C_ACC, 240);
-        tfd_text_c(&KF_LABEL, x + w / 2, y + 21, TX(T_LIVE), C_BG, w - 8);
+    if (!s_follow || s_paused) {      // LIVE: back to the end of the rows
+        const bool rd = gfx_round();  // (the round frame: a key of 48 px)
+        const int w = rd ? 100 : 84, h = rd ? 48 : 32, x = s_tx1 - w - 6, y = s_ty1 - h - 4;
+        tfd_rrect(x, y, w, h, h / 2, C_ACC, 240);
+        tfd_text_c(&KF_LABEL, x + w / 2, y + (rd ? 31 : 21), TX(T_LIVE), C_BG, w - 8);
         hit(x, y, w, h, H_LIVE, 0);
     }
     draw_auto();
@@ -590,31 +674,47 @@ static void draw_term(void)
 typedef struct {
     int x0, x1, x, y, h;
 } flow_t;
+// the round frame: the start and the end of the row at f->y follow the chord of the circle (the points of the origin)
+static void flow_row(flow_t *f)
+{
+    if (gfx_round()) {
+        int x, w;
+        rl_t_row(f->y, 44, s_top_h, gfx_h - 16, 18, &x, &w);
+        f->x0 = x - rl_ox;
+        f->x1 = x + w - rl_ox;
+    }
+}
 static void flow_label(flow_t *f, const char *s)
 {
-    f->x = f->x0;
+    const bool rd = gfx_round();
     f->y += f->h ? f->h + 10 : 6;
-    tfd_text_s(&KF_LABEL, f->x0 + 2, f->x1 - 2, f->y + 13, s, C_DIM, s_he);
-    f->y += 18;
+    flow_row(f);
+    f->x = f->x0;
+    tfd_text_s(&KF_LABEL, f->x0 + 2, f->x1 - 2, f->y + (rd ? 18 : 13), s, C_DIM, s_he);
+    f->y += rd ? 26 : 18;
+    flow_row(f);
+    f->x = f->x0;
     f->h = 0;
 }
 // the place of the next chip of width w (a new row when it does not fit)
 static void flow_next(flow_t *f, int w, int *x, int *y)
 {
+    const int ch = gfx_round() ? 44 : 30;
     if (f->x + w > f->x1 && f->x > f->x0) {
+        f->y += ch + 6;
+        flow_row(f);
         f->x = f->x0;
-        f->y += 36;
     }
     *x = f->x;
     *y = f->y;
     f->x += w + 6;
-    f->h = 30;
+    f->h = ch;
 }
 static void fchip(flow_t *f, const char *s, bool word, bool on, int id, int arg)
 {
     int x, y;
     flow_next(f, chip_w(s, word), &x, &y);
-    if (y + 30 >= s_top_h && y < s_H) {
+    if (y + 30 >= s_top_h && y < (gfx_round() ? gfx_h : s_H)) {
         chip(x, y, s, word, on, id, arg);
     }
 }
@@ -693,9 +793,9 @@ static void draw_set(void)
             fchip(&f, TX(T_SELFTEST), true, false, H_TEST, 0);
         }
     }
-    // the end of the list: the scroll limit
+    // the end of the list: the scroll limit (the round frame: the list goes down to the bottom of the circle)
     const int content = f.y + 40 + (int)s_set_scroll - s_top_h;
-    const float mx = (float)(content - (s_H - s_top_h));
+    const float mx = (float)(content - ((gfx_round() ? gfx_h - 60 : s_H) - s_top_h));
     if (s_set_scroll > mx) {
         s_set_scroll = mx > 0 ? mx : 0;
     }
@@ -706,23 +806,26 @@ static void draw_set(void)
 
 static void draw_send(void)
 {
-    const int g = 6, x1 = s_narrow ? s_W - g : s_W - 110;
-    int y = s_top_h + 6;
+    const bool rd = gfx_round();
+    const int g = 6, x1 = s_narrow ? s_W - g : s_W - 110, lh = rd ? 54 : 42;  // (the round frame: a field of 54 px)
+    int y = s_top_h + (rd ? 10 : 6);
     // the line (a tap opens the keyboard)
-    tfd_rrect(g, y, x1 - g, 42, 8, C_PANEL, 256);
-    tfd_rrect(g, y + 40, x1 - g, 2, 1, C_LINE, 256);
+    tfd_rrect(g, y, x1 - g, lh, 8, C_PANEL, 256);
+    tfd_rrect(g, y + lh - 2, x1 - g, 2, 1, C_LINE, 256);
     char b[120];
     vis(b, s_line, (int)strlen(s_line));
     if (b[0]) {
-        mf_text(&SER_NUM, g + 10, y + 27, b, C_TEXT, 255, 0);
+        mf_text(&SER_NUM, g + 10, y + lh / 2 + 6, b, C_TEXT, 255, 0);
     } else {
-        tfd_text_s(&KF_LABEL, g + 10, x1 - 10, y + 27, s_send_hex ? TX(T_BADHEX) : "...", C_FAINT, s_he);
+        tfd_text_s(&KF_LABEL, g + 10, x1 - 10, y + (rd ? 34 : 27), s_send_hex ? TX(T_BADHEX) : "...", C_FAINT, s_he);
     }
-    hit(g, y, x1 - g, 42, H_LINE, 0);
-    y += 48;
+    hit(g, y, x1 - g, lh, H_LINE, 0);
+    y += lh + 6;
     flow_t f = {g, x1, g, y - 6, 0};
     f.h = 0;
     f.y = y;
+    flow_row(&f);
+    f.x = f.x0;
     fchip(&f, TX(T_TEXT), true, !s_send_hex, H_MODE, 0);
     fchip(&f, "HEX", false, s_send_hex, H_MODE, 1);
     if (!s_send_hex) {  // (the line end: one chip; a tap gives the next one)
@@ -741,14 +844,14 @@ static void draw_send(void)
                 memcpy(b + 19, "...", 4);
             }
             int x, yy;
-            const int w = mf_width(&SER_NUM, b, 0) + 20;
+            const int w = mf_width(&SER_NUM, b, 0) + 20, ch = rd ? 44 : 30;
             flow_next(&f, w, &x, &yy);
-            if (yy + 30 > (s_narrow ? s_H - 48 : s_H)) {
+            if (yy + ch > (rd ? s_H : s_narrow ? s_H - 48 : s_H)) {
                 break;
             }
-            tfd_rrect(x, yy, w, 30, 15, C_ROW, 256);
-            mf_text(&SER_NUM, x + 10, yy + 20, b, C_TXC, 255, 0);
-            hit(x, yy, w, 30, H_HIST, i);
+            tfd_rrect(x, yy, w, ch, ch / 2, C_ROW, 256);
+            mf_text(&SER_NUM, x + 10, yy + (rd ? 28 : 20), b, C_TXC, 255, 0);
+            hit(x, yy, w, ch, H_HIST, i);
         }
     }
     top_bar(TX(T_SEND));
@@ -770,6 +873,9 @@ static void render(int64_t now)
     tfd_screen();
     tfd_noclip();
     s_nhit = 0;
+    if (gfx_round()) {
+        gfx_fill(C_BG);  // (the whole circle: the box below covers only its middle)
+    }
     tfd_rect(0, 0, s_W, s_H, C_BG, 256);
     switch (s_scr) {
     case SC_WIRE:
@@ -789,6 +895,7 @@ static void render(int64_t now)
 }
 
 // ---------------------------------------------------------------- the menu icon
+#include "rndlay/rl_origin_end.h"  // (the menu icon draws at its own points)
 #include "tficon/tficon.h"
 // the menu icon: a terminal window: lines of text come in at the bottom and go up; a cursor blinks; a cable
 static void icon(int x, int y, int s)

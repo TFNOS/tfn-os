@@ -145,6 +145,56 @@ extern int fil_io_n;
 #define TXT_X     14
 #define TXT_W     604
 #define TXT_LH    22
+#elif BOARD_ROUND
+// The round panels (APP_ROUND_HI: 466 x 466 on the AMOLED-1.75C, 412 x 412 on the Watcher; FR() scales the values of
+// 466 to the frame). The top cap has the title (the path, the name) and the space, the middle box (MB_X .. MB_X + MB_W,
+// y LIST_Y .. LIST_B) has the rows, the text or the buttons, the bottom cap has the buttons UP, MORE, BACK, CLOSE or
+// STOP (y BAR_Y, BAR_H). The drawing of the round pages: app_files_round.inc.
+#define FR(v)     ((v) * gfx_w / 466)
+#define SW        gfx_w
+#define SH        gfx_h
+#define MB_X      FR(50)
+#define MB_W      FR(366)
+#define HEAD_H    FR(96)
+#define UP_W      FR(105)
+#define MORE_X    FR(238)
+#define PATH_X    FR(123)
+#define PATH_W    FR(220)
+#define PATH_B1   FR(52)
+#define PATH_B2   FR(80)
+#define LIST_Y    FR(96)
+#define LIST_B    FR(374)  // the bottom of the middle box
+#define BAR_Y     FR(382)  // the buttons of the bottom cap
+#define BAR_H     FR(52)
+#define ROW_H     FR(58)
+#define ROW_W     MB_W
+#define ICON_X    (MB_X + FR(10))
+#define ICON_W    FR(36)
+#define NAME_X    (MB_X + FR(56))
+#define SIZE_R    (MB_X + MB_W - FR(10))
+#define SBAR_X    (MB_X + MB_W + FR(4))
+#define TWO_LINES 1
+#define HOME_H    FR(96)
+#define TOOLS_X   FR(133)
+#define TOOLS_W   FR(200)
+#define TILE_Y    FR(98)
+#define TILE_H    FR(126)
+#define TILE_W    FR(360)
+#define TILE1_X   FR(53)
+#define TILE2_X   FR(53)
+#define TILE2_Y   FR(232)
+#define PAN_H     FR(96)
+#define PAN_COLS  2
+#define CLOSE_W   FR(110)
+#define ASK_Y     FR(226)
+#define ASK_H     FR(110)  // the two answers: side by side in the middle box
+#define ASK_W     (MB_W / 2)
+#define ASK_B1    FR(150)
+#define ASK_B2    FR(192)
+#define TXT_TOP   FR(96)
+#define TXT_X     (MB_X + FR(4))
+#define TXT_W     (MB_W - FR(8))
+#define TXT_LH    22
 #else
 // the 320 x 240 frame (the CoreS3, the AMOLED, the Watcher with round_fit): two lines in each row of 58 px
 #define SW        320
@@ -188,13 +238,21 @@ extern int fil_io_n;
 #ifndef T5P
 #define T5P 0
 #endif
+#if BOARD_ROUND
+#define LST_H (LIST_B - LIST_Y)
+#else
 #define LST_H (SH - LIST_Y)
+#endif
 #if BOARD_BAR_SCREEN || BOARD_UI_TABLET
 #define WIDE_UI 1  // a frame of 640 px width (3 columns of buttons)
 #else
 #define WIDE_UI 0
 #endif
+#if BOARD_ROUND
+#define TXT_H (LIST_B - TXT_TOP)
+#else
 #define TXT_H (SH - TXT_TOP)
+#endif
 
 #define DRAG_PX      10    // finger travel that puts out the light of a row
 #define ASK_GUARD_MS 450   // a touch that starts this soon after a question opens does nothing

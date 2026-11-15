@@ -8,6 +8,11 @@ static int list_at(int x, int y)
     if (y >= HEAD_H && fil_list_busy()) {
         return CT_EMPTY;  // (the list is not complete: no row)
     }
+#if BOARD_ROUND
+    if (y >= LIST_B) {
+        return y >= BAR_Y - 6 ? (x < SW / 2 ? CT_UP : CT_MORE) : CT_EMPTY;  // (UP and MORE: the bottom cap)
+    }
+#endif
     if (y < HEAD_H) {
         if (x < UP_W + 6) {
             return CT_UP;
@@ -29,6 +34,15 @@ static int list_at(int x, int y)
 
 static int home_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (y >= BAR_Y - 6) {
+        return CT_TOOLS;  // (CARD TOOLS: the bottom cap)
+    }
+    if (ui_hit(x, y, TILE1_X, TILE_Y, TILE_W, TILE_H, 0)) {
+        return CT_CARD;
+    }
+    return ui_hit(x, y, TILE2_X, TILE2_Y, TILE_W, TILE_H, 0) ? CT_BOARD : -1;
+#endif
     if (y < HOME_H && x >= TOOLS_X - 4) {
         return CT_TOOLS;
     }
@@ -208,6 +222,9 @@ static void ask_input(const input_event_t *ev)
 
 static int view_back_at(int x, int y)
 {
+#if BOARD_ROUND
+    return (y < TXT_TOP || (y >= BAR_Y - 6 && abs(x - SW / 2) < FR(90))) ? CT_CLOSE : -1;  // (the title, BACK)
+#endif
     return (y < TXT_TOP && x < UP_W + 6) ? CT_CLOSE : -1;
 }
 
@@ -285,7 +302,11 @@ static void info_input(const input_event_t *ev)
 
 static void job_input(const input_event_t *ev)
 {
+#if BOARD_ROUND
+    bool on = fil_job.kind != J_FORMAT && ev->y >= BAR_Y - 6 && abs(ev->x - SW / 2) < FR(90);  // (the bottom cap)
+#else
     bool on = fil_job.kind != J_FORMAT && ui_hit(ev->x, ev->y, STOP_X, SH - STOP_H - 6, STOP_W, STOP_H + 6, 0);
+#endif
     if (ev->kind == IN_DOWN) {
         fil_hot = on ? CT_STOP : -1;
     } else if (ev->kind == IN_UP) {

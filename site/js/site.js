@@ -146,7 +146,51 @@ function initTabs() {
   });
 }
 
+// The trailer: one video (the sharp copy at the shape of the 3.49 screen). The background of the hero is a canvas that
+// draws the frames of the same video (one download, the same moment); CSS makes it dark and soft. The button turns on
+// the sound. With "reduce motion", nothing moves until the user plays the video (the poster picture stays behind).
+function initReel() {
+  const reel = document.querySelector('[data-reel]');
+  const bg = document.querySelector('[data-reel-bg]');
+  const snd = document.querySelector('[data-reel-snd]');
+  if (!reel) {
+    return;
+  }
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (still) {
+    reel.removeAttribute('autoplay');
+    reel.pause();
+    reel.setAttribute('controls', '');
+  }
+  if (bg && !still) {
+    const ctx = bg.getContext('2d');
+    let last = 0;
+    const draw = (t) => {
+      // (about 20 frames a second is enough for a soft background)
+      if (!reel.paused && reel.readyState >= 2 && t - last > 45) {
+        last = t;
+        ctx.drawImage(reel, 0, 0, bg.width, bg.height);
+        bg.parentElement.classList.add('live');
+      }
+      requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+  }
+  if (snd) {
+    snd.addEventListener('click', () => {
+      const on = reel.muted;
+      reel.muted = !on;
+      if (on && reel.paused) {
+        reel.play().catch(() => {});
+      }
+      snd.setAttribute('aria-pressed', on ? 'true' : 'false');
+      snd.textContent = on ? 'Sound off' : 'Sound on';
+    });
+  }
+}
+
 initTheme();
 initShelf();
 initThumbs();
 initTabs();
+initReel();

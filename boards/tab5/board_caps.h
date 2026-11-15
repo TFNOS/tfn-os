@@ -27,6 +27,9 @@
 // the tablet UI: the menu of icons, the home bar at the bottom edge, the big layouts of the system apps and of
 // the apps
 #define BOARD_UI_TABLET 1
+// the grid UI of a small portrait panel (the AMOLED-1.8): the menu as a grid of big icons with a status bar that
+// is easy to read (menu_grid.c), and the soft look of the settings panel (sysui_panel.c)
+#define BOARD_UI_GRID 0
 // the HI frame (gfx_hi_want/gfx_hi): an app can draw at the panel resolution
 #define BOARD_HI_FRAME 1
 // BOARD_ROUND_ZOOM: the round panel shows the frame of the apps zoomed to the width of the circle (its corners

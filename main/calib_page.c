@@ -26,8 +26,17 @@
 #include "imu.h"
 #include "input.h"
 #include "tfn/theme.h"
+#include "set_round.h"
 
 static const char *TAG = "calib";
+
+// THE ROUND FRAME (gfx_round()): the title and the state on the top cap, the help, the sides and the buttons in the
+// middle box, BACK on the bottom cap; the 5 targets inside the circle.
+#if BOARD_ROUND
+#define CB_RND gfx_round()
+#else
+#define CB_RND false
+#endif
 
 enum {
     K_TOUCH,
@@ -47,6 +56,16 @@ static int btn_h(void)
 }
 static void btn_top(int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    if (CB_RND) {
+        // (TOUCH TEST: CALIBRATE at the left of RESET; TILT CALIBRATE: RESET in the middle)
+        *w = RS(150);
+        *h = RS(50);
+        *x = s_kind == K_TILT ? gfx_w / 2 - *w / 2 : gfx_w / 2 - RS(6) - *w;
+        *y = s_kind == K_TILT ? RS(330) : RS(318);
+        return;
+    }
+#endif
     *w = btn_w();
     *h = btn_h();
     *x = gfx_w - *w - 6;
@@ -54,6 +73,15 @@ static void btn_top(int *x, int *y, int *w, int *h)
 }
 static void btn_bot(int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    if (CB_RND) {
+        *w = RS(150);
+        *h = RS(50);
+        *x = gfx_w / 2 + RS(6);
+        *y = RS(318);
+        return;
+    }
+#endif
     *w = btn_w();
     *h = btn_h();
     *x = gfx_w - *w - 6;
@@ -61,6 +89,12 @@ static void btn_bot(int *x, int *y, int *w, int *h)
 }
 static void button(int x, int y, int w, int h, const char *t, uint16_t bg)
 {
+#if BOARD_ROUND
+    if (CB_RND) {
+        rr_btn(x, y, w, h, t, bg, THEME_CALIB_BTN_TEXT);
+        return;
+    }
+#endif
     gfx_fill_rect(x, y, w, h, bg);
     gfx_frame_rect(x, y, w, h, 1, THEME_CALIB_BTN_EDGE);
     int sc = gfx_text_width(t, 2) <= w - 6 ? 2 : 1;  // (CALIBRATE on the CoreS3: small)
@@ -69,6 +103,13 @@ static void button(int x, int y, int w, int h, const char *t, uint16_t bg)
 // a result message in the middle band: big text if it fits, else small
 static void msg_text(const char *s)
 {
+#if BOARD_ROUND
+    if (CB_RND) {
+        ui_rrect(RB_X, gfx_h / 2 - RS(24), RB_W, RS(48), RS(12), s_kind == K_TILT ? THEME_CALIB_OK_BG : 0);
+        rr_line(&KF_TEXT, gfx_h / 2 + KF_TEXT.asc / 2, s, THEME_CALIB_TEXT);
+        return;
+    }
+#endif
     int sc = gfx_text_width(s, 2) <= gfx_w - BACK_W - 48 ? 2 : 1;
     gfx_text_center_in(BACK_W, gfx_w - BACK_W, gfx_h / 2 - (sc == 2 ? 7 : 4), s, sc, THEME_CALIB_TEXT);
 }
@@ -98,8 +139,26 @@ static bool reset_tap(int64_t now)
 
 static void back_button(void)
 {
+#if BOARD_ROUND
+    if (CB_RND) {
+        rr_back("< BACK", false, THEME_CALIB_BACK, THEME_CALIB_BACK, THEME_CALIB_BACK_TEXT, THEME_CALIB_BACK_TEXT);
+        return;
+    }
+#endif
     gfx_fill_rect(0, 0, BACK_W - 6, gfx_h, THEME_CALIB_BACK);
     gfx_text_center_in(0, BACK_W - 6, gfx_h / 2 - 14, "<", 4, THEME_CALIB_BACK_TEXT);
+}
+
+// BACK of the round frame (the bottom cap)
+static bool back_at(int x, int y)
+{
+#if BOARD_ROUND
+    return rr_back_at(x, y);
+#else
+    (void)x;
+    (void)y;
+    return false;
+#endif
 }
 
 // ---------------------------------------------------------------- the touch
@@ -116,6 +175,16 @@ static bool s_res_ok;
 
 static void target_logical(int i, int *x, int *y)
 {
+#if BOARD_ROUND
+    if (CB_RND) {
+        // (the round frame: the 4 targets on a square inside the circle, the check in the middle)
+        static const float RX[N_TGT] = {0.27f, 0.73f, 0.73f, 0.27f, 0.54f},
+                           RY[N_TGT] = {0.27f, 0.27f, 0.73f, 0.73f, 0.5f};
+        *x = (int)(RX[i] * gfx_w);
+        *y = (int)(RY[i] * gfx_h);
+        return;
+    }
+#endif
     static const float FX[N_TGT] = {0.20f, 0.88f, 0.88f, 0.20f, 0.54f}, FY[N_TGT] = {0.22f, 0.22f, 0.78f, 0.78f, 0.50f};
     *x = (int)(FX[i] * gfx_w);
     *y = (int)(FY[i] * gfx_h);
@@ -284,6 +353,13 @@ static void touch_render(int64_t now)
         gfx_fill_circle(tx, ty, 3, rgb(255, 60, 60));
         char t[48];
         snprintf(t, sizeof t, "TAP THE CENTER OF THE TARGET (%d / %d)", s_step + 1, N_TGT);
+#if BOARD_ROUND
+        if (CB_RND) {
+            snprintf(t, sizeof t, "TAP THE CENTER (%d / %d)", s_step + 1, N_TGT);
+            rr_line(&KF_TEXT, ty < gfx_h / 2 ? RS(390) : RS(96), t, THEME_CALIB_TEXT);
+            return;
+        }
+#endif
         int ty2 = ty < gfx_h / 2 ? gfx_h - 26 : 10;
         gfx_text_center_in(0, gfx_w, ty2, t, gfx_w > 400 ? 2 : 1, THEME_CALIB_TEXT);
         return;
@@ -303,10 +379,23 @@ static void touch_render(int64_t now)
     reset_button(bx, by, bw, bh, now);
     float m[6];
     bool on = input_touch_cal_get(m);
-    gfx_text(BACK_W + 8, 8, "TOUCH TEST", 2, THEME_CALIB_TEXT);
-    gfx_text(BACK_W + 8, 28, on ? "CALIBRATION: ON" : "CALIBRATION: OFF", 1,
-             on ? THEME_CALIB_OK : THEME_CALIB_TEXT_OFF);
-    if (gfx_w > 400) {
+#if BOARD_ROUND
+    if (CB_RND) {
+        rr_head("TOUCH TEST", on ? "CALIBRATION: ON" : "CALIBRATION: OFF", THEME_CALIB_TEXT,
+                on ? THEME_CALIB_OK : THEME_CALIB_TEXT_OFF);
+        rr_line(&KF_TEXT, RS(170), "RED: THE PANEL READS THIS", THEME_CALIB_HELP);
+        rr_line(&KF_TEXT, RS(200), "GREEN: THE BOARD USES THIS", THEME_CALIB_HELP);
+        rr_line(&KF_TEXT, RS(230), "GREEN MUST BE UNDER YOUR FINGER", THEME_CALIB_HELP);
+    } else
+#endif
+    {
+        gfx_text(BACK_W + 8, 8, "TOUCH TEST", 2, THEME_CALIB_TEXT);
+        gfx_text(BACK_W + 8, 28, on ? "CALIBRATION: ON" : "CALIBRATION: OFF", 1,
+                 on ? THEME_CALIB_OK : THEME_CALIB_TEXT_OFF);
+    }
+    if (CB_RND) {
+        // (the round frame: the help is on the head lines above)
+    } else if (gfx_w > 400) {
         gfx_text(BACK_W + 8, gfx_h - 26, "RED: THE PANEL. GREEN: THE BOARD USES THIS.", 1, THEME_CALIB_HELP);
         gfx_text(BACK_W + 8, gfx_h - 14, "THE GREEN CROSS MUST BE UNDER YOUR FINGER.", 1, THEME_CALIB_HELP);
     } else {
@@ -316,9 +405,20 @@ static void touch_render(int64_t now)
         gfx_text(BACK_W + 8, 86, "GREEN MUST BE UNDER YOUR FINGER.", 1, THEME_CALIB_HELP);
     }
     if (s_step >= N_TGT) {
-        gfx_fill_rect(BACK_W + 20, gfx_h / 2 - 16, gfx_w - BACK_W - 40, 32,
-                      s_res_ok ? THEME_CALIB_OK_BG : THEME_CALIB_FAULT_BG);
-        msg_text(s_res);
+        if (!CB_RND) {
+            gfx_fill_rect(BACK_W + 20, gfx_h / 2 - 16, gfx_w - BACK_W - 40, 32,
+                          s_res_ok ? THEME_CALIB_OK_BG : THEME_CALIB_FAULT_BG);
+        }
+#if BOARD_ROUND
+        if (CB_RND) {
+            ui_rrect(RB_X, gfx_h / 2 - RS(24), RB_W, RS(48), RS(12),
+                     s_res_ok ? THEME_CALIB_OK_BG : THEME_CALIB_FAULT_BG);
+            rr_line(&KF_TEXT, gfx_h / 2 + KF_TEXT.asc / 2, s_res, THEME_CALIB_TEXT);
+        } else
+#endif
+        {
+            msg_text(s_res);
+        }
     }
     int16_t rx[INPUT_MAX_POINTS], ry[INPUT_MAX_POINTS], cx[INPUT_MAX_POINTS], cy[INPUT_MAX_POINTS];
     int n = input_points_raw(rx, ry, INPUT_MAX_POINTS), nc = input_points(cx, cy, INPUT_MAX_POINTS);
@@ -345,7 +445,7 @@ static bool touch_input(const input_event_t *ev, int64_t now)
     if (ev->kind != IN_TAP) {
         return false;
     }
-    if (ev->x < BACK_W) {
+    if (CB_RND ? back_at(ev->x, ev->y) : ev->x < BACK_W) {
         return true;
     }
     int bx, by, bw, bh;
@@ -475,8 +575,18 @@ static void tilt_update(int64_t now)
     }
 }
 
+#if BOARD_ROUND
+static void tilt_render_round(int64_t now);
+#endif
+
 static void tilt_render(int64_t now)
 {
+#if BOARD_ROUND
+    if (CB_RND) {
+        tilt_render_round(now);
+        return;
+    }
+#endif
     gfx_fill(THEME_CALIB_BG);
     back_button();
     int bx, by, bw, bh;
@@ -540,12 +650,67 @@ static void tilt_render(int64_t now)
     }
 }
 
+#if BOARD_ROUND
+// the round frame: the title on the top cap, the help, the 6 sides (3 x 2), the reading and RESET in the middle box
+static void tilt_render_round(int64_t now)
+{
+    gfx_fill(THEME_CALIB_BG);
+    rr_head("TILT CALIBRATE", "6 SIDES, STILL FOR 1 S EACH", THEME_CALIB_TEXT, THEME_CALIB_TILT_HELP);
+    rr_line(&KF_LABEL, RS(126), "SCREEN UP, SCREEN DOWN, EACH LONG EDGE,", THEME_CALIB_TILT_HELP);
+    rr_line(&KF_LABEL, RS(144), "EACH SHORT END. A CLICK FOR EACH SIDE", THEME_CALIB_TILT_HELP);
+    static const char *const NAME[6] = {"+X", "-X", "+Y", "-Y", "+Z", "-Z"};
+    const int g = RS(6), w = (RB_W - 2 * g) / 3, h = RS(60), y0 = RS(158);
+    for (int i = 0; i < 6; i++) {
+        int x = RB_X + (i % 3) * (w + g), y = y0 + (i / 3) * (h + g);
+        ui_rbox(x, y, w, h, RS(10), s_have[i] ? THEME_CALIB_SIDE_DONE : THEME_CALIB_SIDE,
+                s_have[i] ? THEME_CALIB_SIDE_DONE_EDGE : THEME_CALIB_SIDE_EDGE, 1);
+        ui_text_c(&KF_BIG, x + w / 2, y + RS(30), NAME[i], THEME_CALIB_TEXT);
+        char t[16];
+        if (s_have[i]) {
+            snprintf(t, sizeof t, "%+.3f G", (double)s_val[i]);
+        } else {
+            snprintf(t, sizeof t, "--");
+        }
+        ui_text_c(&KF_LABEL, x + w / 2, y + h - RS(10), t, THEME_CALIB_SIDE_VALUE);
+    }
+    float a[3], w3[3], off[3], gain[3];
+    imu_raw(a, w3);
+    imu_accel_cal_get(off, gain);
+    bool on = imu_accel_cal_on();
+    float r = sqrtf(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]), c = r;
+    if (on) {
+        float b[3];
+        for (int k = 0; k < 3; k++) {
+            b[k] = (a[k] - off[k]) * gain[k];
+        }
+        c = sqrtf(b[0] * b[0] + b[1] * b[1] + b[2] * b[2]);
+    }
+    char t[80];
+    snprintf(t, sizeof t, "NOW %.2f G", (double)r);
+    if (on) {
+        snprintf(t + strlen(t), sizeof t - strlen(t), ", CALIBRATED %.2f G", (double)c);
+    }
+    rr_line(&KF_TEXT, RS(304), t, THEME_CALIB_NOW);
+    int barw = RS(200), bx = gfx_w / 2 - barw / 2;
+    ui_rrect(bx, RS(314), barw, RS(8), RS(4), THEME_CALIB_TRACK);
+    ui_rrect(bx, RS(314), (int)(barw * fminf(1, s_still_t)), RS(8), RS(4),
+             s_taken ? THEME_CALIB_BAR_DONE : THEME_CALIB_BAR);
+    int x, y, bw, bh;
+    btn_top(&x, &y, &bw, &bh);
+    reset_button(x, y, bw, bh, now);
+    back_button();
+    if (s_tmsg[0] && now - s_tmsg_at < 4000) {
+        msg_text(s_tmsg);
+    }
+}
+#endif
+
 static bool tilt_input(const input_event_t *ev, int64_t now)
 {
     if (ev->kind != IN_TAP) {
         return false;
     }
-    if (ev->x < BACK_W) {
+    if (CB_RND ? back_at(ev->x, ev->y) : ev->x < BACK_W) {
         return true;
     }
     int bx, by, bw, bh;

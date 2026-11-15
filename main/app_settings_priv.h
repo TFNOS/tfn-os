@@ -34,6 +34,7 @@
 #include "usb_phones.h"
 #include "notify.h"
 #include "notify_page.h"
+#include "standby_page.h"
 #include "sysui.h"
 #include "web_auth.h"
 #include "device_guard.h"
@@ -43,7 +44,7 @@
 #define GUARD_BUILD 0
 #endif
 #include "../libs/kscroll/kscroll.h"
-#if BOARD_UI_SMOOTH_TEXT
+#if BOARD_UI_SMOOTH_TEXT || BOARD_ROUND
 // THE TAB5 TEXT (also the AMOLED-1.75C): the dot font of the 3.49 rows is coarse at 1280 x 720 and on the scaled
 // frame of a fine AMOLED. Each
 // gfx_text* call of this page uses an anti-aliased font of about the same size. scale 1 = KF_LABEL, 2 = KF_TEXT,
@@ -151,6 +152,80 @@ void set_t5_text_center_in(int x, int w, int y, const char *s, int sc, uint16_t 
 #define SLP_PREV_X MINUS_X
 #define TILT_CX    276
 #define TILT_R     20
+#if BOARD_ROUND
+// THE ROUND LIST: in the native round frame (APP_ROUND_HI: 466 x 466, 412 on the Watcher; SR() scales the values of
+// 466) the title is on the top cap, the rows are in a middle box (y SET_LIST_Y .. SET_LIST_B), BACK is on the bottom
+// cap. The other pages of SETUP show the 320 x 240 frame in the circle: each value below chooses at run time (the
+// values of the 320 x 240 frame after ':').
+#define SET_RND gfx_round()
+#define SR(v)   ((v) * gfx_w / 466)
+enum {
+    SF_BACK_W = BACK_W,
+    SF_LIST_X = LIST_X,
+    SF_LIST_W = LIST_W,
+    SF_ROW_H = ROW_H,
+    SF_MINUS_X = MINUS_X,
+    SF_BAR_X = BAR_X,
+    SF_BAR_W = BAR_W,
+    SF_PLUS_X = PLUS_X,
+    SF_SLP_NEXT_X = SLP_NEXT_X,
+    SF_SLP_NEXT_W = SLP_NEXT_W,
+    SF_HS_PREV_X = HS_PREV_X,
+    SF_HS_NEXT_X = HS_NEXT_X,
+    SF_BTN_W = BTN_W,
+    SF_CTL_H = CTL_H
+};
+#undef SCR_W
+#undef SCR_H
+#undef BACK_W
+#undef LIST_X
+#undef LIST_W
+#undef ROW_H
+#undef MINUS_X
+#undef BAR_X
+#undef BAR_W
+#undef PLUS_X
+#undef SLP_NEXT_X
+#undef SLP_NEXT_W
+#undef HS_PREV_X
+#undef HS_NEXT_X
+#undef BTN_W
+#undef CTL_H
+#undef SBAR_X
+#undef CTL_Y
+#undef RIGHT_X
+#undef RIGHT_W
+#undef TILT_CX
+#define SCR_W      (SET_RND ? gfx_w : 320)
+#define SCR_H      (SET_RND ? gfx_h : 240)
+#define BACK_W     (SET_RND ? 0 : SF_BACK_W)
+#define LIST_X     (SET_RND ? SR(64) : SF_LIST_X)
+#define LIST_W     (SET_RND ? SR(338) : SF_LIST_W)
+#define ROW_H      (SET_RND ? SR(92) : SF_ROW_H)
+#define BTN_W      (SET_RND ? SR(56) : SF_BTN_W)
+#define CTL_H      (SET_RND ? SR(46) : SF_CTL_H)
+#define MINUS_X    (SET_RND ? LIST_X + SR(12) : SF_MINUS_X)
+#define BAR_X      (SET_RND ? MINUS_X + BTN_W + SR(10) : SF_BAR_X)
+#define BAR_W      (SET_RND ? LIST_W - 2 * BTN_W - SR(44) : SF_BAR_W)
+#define PLUS_X     (SET_RND ? BAR_X + BAR_W + SR(10) : SF_PLUS_X)
+#define SLP_NEXT_X (SET_RND ? MINUS_X + BTN_W + SR(10) : SF_SLP_NEXT_X)
+#define SLP_NEXT_W (SET_RND ? LIST_X + LIST_W - SR(12) - SLP_NEXT_X : SF_SLP_NEXT_W)
+#define HS_PREV_X  (SET_RND ? MINUS_X : SF_HS_PREV_X)
+#define HS_NEXT_X  (SET_RND ? HS_PREV_X + BTN_W + SR(10) : SF_HS_NEXT_X)
+#define SBAR_X     (SET_RND ? LIST_X + LIST_W + SR(8) : 312)
+#define CTL_Y      (SET_RND ? SR(38) : 26)
+#define RIGHT_X    (SET_RND ? LIST_X + LIST_W - SR(12) - RIGHT_W : 200)
+#define RIGHT_W    (SET_RND ? SR(130) : 100)
+#define TILT_CX    (SET_RND ? LIST_X + LIST_W - SR(40) : 276)
+#define SET_LIST_Y (SET_RND ? SR(96) : 0)  // the top of the rows
+#define SET_LIST_B (SET_RND ? SR(380) : SCR_H)
+#define SET_BACK_Y SR(388)  // BACK: the bottom cap
+#define SET_BACK_H SR(50)
+#endif
+#endif
+#ifndef SET_LIST_Y
+#define SET_LIST_Y 0  // the rows: from the top of the screen to its bottom
+#define SET_LIST_B SCR_H
 #endif
 
 enum {
@@ -163,6 +238,7 @@ enum {
     R_LANG,
     R_SLEEP,
     R_POWER,
+    R_DEEP,  // DEEP IDLE: OFF / 10 S / 30 S / 60 S (power.h)
     R_MOVE,
     R_SKEY,
     R_WIFI,
@@ -171,6 +247,7 @@ enum {
     R_WEBPASS,
     R_FRIENDS,
     R_NOTIFY,
+    R_STANDBY,  // STANDBY: the screen at a wake and in the idle menu (standby_page.h)
     R_TILT,
     R_ASCALE,
     R_TCAL,
@@ -184,7 +261,7 @@ enum {
     R_ABOUT,
     N_ROWS
 };
-#define MAX_SCROLL (set_nrows * ROW_H - SCR_H + 4)
+#define MAX_SCROLL (set_nrows * ROW_H - (SET_LIST_B - SET_LIST_Y) + 4)
 
 enum {
     CTRL_NONE,
@@ -201,6 +278,8 @@ enum {
     CTRL_SLEEP_NEXT,
     CTRL_PWOFF_PREV,
     CTRL_PWOFF_NEXT,
+    CTRL_DEEP_PREV,
+    CTRL_DEEP_NEXT,
     CTRL_WIFI,
     CTRL_HS_PREV,
     CTRL_HS_NEXT,
@@ -225,7 +304,8 @@ enum {
     CTRL_UISND,
     CTRL_PUB,
     CTRL_POOL,
-    CTRL_STORE
+    CTRL_STORE,
+    CTRL_STANDBY
 };
 
 // pages
@@ -240,7 +320,8 @@ enum {
     PAGE_NOTIFY,
     PAGE_SAVED,
     PAGE_PUB,
-    PAGE_POOL
+    PAGE_POOL,
+    PAGE_STANDBY
 };
 
 // the WiFi page and its keyboard. THE THUMB: the rows are 43 px (3.49, 5.7 mm) and 58 px (the 320 x 240

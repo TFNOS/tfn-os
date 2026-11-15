@@ -10,3 +10,5 @@ esp_err_t web_server_start(void);
 
 // The server, or NULL before the start.
 httpd_handle_t web_server_handle(void);
+// ms (esp_timer): the last new connection to the web server (0 = none yet)
+int64_t web_server_last_ms(void);

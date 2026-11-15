@@ -358,6 +358,11 @@ int fk_close(int s)
 }
 
 // ---------------------------------------------------------------- the OS
+bool power_deep_now(void)
+{
+    return false;  // (no DEEP IDLE in the link tests)
+}
+
 wifi_state_t wifi_state(void)
 {
     return (wifi_state_t)fk_wifi;

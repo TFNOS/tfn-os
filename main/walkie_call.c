@@ -32,8 +32,9 @@ enum {
 };
 #define CALL_EVERY_MS  1500
 #define CALL_MAX_MS    30000
-#define ASK_GONE_MS    5000   // the question closes when no CALL came for this long (the caller stopped)
-#define ANSWER_KEEP_MS 10000  // the answer waits this long for WALKIE
+#define CALL_DEEP_MS   LAN_DEEP_GONE_MS  // a friend in DEEP IDLE: until its next check
+#define ASK_GONE_MS    5000              // the question closes when no CALL came for this long (the caller stopped)
+#define ANSWER_KEEP_MS 10000             // the answer waits this long for WALKIE
 
 static int64_t wc_now(void)
 {
@@ -342,7 +343,7 @@ void walkie_call_update(int64_t now)
     if (wc_st == WKC_CALLING) {
         if (wc_fi < 0 || wc_fi >= friends_count()) {
             wc_st = WKC_IDLE;
-        } else if (now - wc_t0 > CALL_MAX_MS) {
+        } else if (now - wc_t0 > (lan_peer_deep(friends_get(wc_fi)->mac) ? CALL_DEEP_MS : CALL_MAX_MS)) {
             wc_send(wc_fi, OP_CANCEL);
             wc_ended(WKC_NO_ANSWER, now);
         } else if (now - wc_sent >= CALL_EVERY_MS) {

@@ -69,6 +69,7 @@ static const con_cmd_t CON_CMDS[] = {
         {"shot", con_shot},
         {"wake", con_wake},
         {"panel", con_panel},
+        {"dispoff", con_dispoff},
         {"kbd", con_kbd},
         {"evlog", con_evlog},
         {"sleepnow", con_sleepnow},
@@ -98,6 +99,7 @@ static const con_cmd_t CON_CMDS[] = {
         {"tap", con_tap},
         {"ltap", con_tap},
         {"clock", con_clock},
+        {"standby", con_standby},
 #if CONFIG_TFN_EXTRA_OREF
         {"oref", con_oref},
 #endif

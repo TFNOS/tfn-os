@@ -15,7 +15,7 @@ its own functions (the free first stops each sound that uses the block).
   python simulator/build.py --apps on       # the apps that are "on" in main/apps.json (all apps is the default)
   python simulator/build.py --apps slim     # the slim firmware of the 3.49 (the core apps only)
   python simulator/build.py --setup         # Windows: get the pinned portable compiler (Zig) if there is none
-  python simulator/build.py --frame watcher # another board: cores3, watcher, am175, tab5 (.build/all-<frame>)
+  python simulator/build.py --frame watcher # another board: cores3, watcher, am175, tab5, am18 (.build/all-<frame>)
 """
 import argparse
 import concurrent.futures
@@ -51,7 +51,8 @@ APP_SETS = ("all", "on", "slim")
 # (simulator/idf/sdkconfig.h selects the board; the capabilities come from boards/<kind>/board_caps.h)
 FRAMES = {"lcd349": ("inc349", []), "cores3": ("incs3", ["-DSIM_FRAME_CORES3=1"]),
           "watcher": ("incwt", ["-DSIM_FRAME_WATCHER=1"]), "am175": ("incwt", ["-DSIM_FRAME_AM175=1"]),
-          "tab5": ("incs3", ["-DSIM_FRAME_TAB5=1"])}
+          "tab5": ("incs3", ["-DSIM_FRAME_TAB5=1"]),
+          "am18": ("incs3", ["-DSIM_FRAME_AM18=1"])}
 # the files whose info lines (ESP_LOGI) of a frame name a variable that only the board build (ESP_PLATFORM) has: they
 # compile with no info lines, as in the host fuzz (simulator/idf/esp_log.h SIM_LOG_INFO_OFF). A fix of the file
 # removes its entry.
@@ -388,7 +389,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--apps", default="all", help="all (default), on, slim, or a selection file (JSON) of apps_gen.py")
     p.add_argument("--frame", default="lcd349", choices=sorted(FRAMES), help="the board: lcd349 (default), cores3 "
-                   "(the 320 x 240 frame), watcher or am175 (the round boards), tab5 (the tablet UI)")
+                   "(the 320 x 240 frame), watcher or am175 (the round boards), tab5 (the tablet UI), am18 (the AMOLED-1.8)")
     p.add_argument("--setup", action="store_true", help="get the pinned portable compiler (Zig) if there is none")
     p.add_argument("--force", action="store_true", help="compile all files again")
     p.add_argument("-j", "--jobs", type=int, help="parallel compiles (default: the count of CPUs)")

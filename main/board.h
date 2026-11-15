@@ -31,6 +31,8 @@ void board_speaker(bool on);
 // (the 3.49 LCD must stay awake: its chip also reads the touch panel). false: both back as
 // before (the amplifier state of board_speaker()). The backlight is separate (board_backlight()).
 void board_screen_sleep(bool sleep);
+// The 3.49 in the DEEP IDLE (power.c): display off, and no touch read until board_screen_sleep(false). Others: nothing.
+void board_display_off(void);
 // While the screen sleeps, keep the amplifier on (an app plays sound in the background).
 void board_speaker_hold(bool hold);
 
@@ -82,3 +84,9 @@ float board_chip_temp(void);
 // battery at most every 2 s, so a call in each frame is cheap. *mv (can be NULL) = the
 // battery voltage in mV.
 int board_battery(bool *charging, int *mv);
+// The external power (a charger or a PC on the USB-C): 1 = there, 0 = not there, -1 = the board cannot tell (the 3.49:
+// power.c then uses the trend of the battery voltage). A weak version in board_common.c gives -1.
+int board_ext_power(void);
+// The shunt voltage of a battery current monitor in uV (the Tab5 INA226; the "shunt" field of /api/power), or
+// INT32_MIN when the board has no such chip.
+int board_bat_shunt_uv(void);

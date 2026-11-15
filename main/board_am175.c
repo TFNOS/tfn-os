@@ -1191,6 +1191,11 @@ int board_battery(bool *charging, int *mv)
     return axp2101_battery(s_axp, charging, mv);
 }
 
+int board_ext_power(void)
+{
+    return axp2101_vbus(s_axp);
+}
+
 void board_power_off(void)
 {
     ESP_LOGI(TAG, "power off");

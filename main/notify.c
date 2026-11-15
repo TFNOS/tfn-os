@@ -984,11 +984,28 @@ static void center_input(const input_event_t *ev)
     }
 }
 
+// the soft look of BOARD_UI_GRID (the AMOLED-1.8): the black of the AMOLED and round boxes with no edge line (an edge
+// only on TAP AGAIN); the other boards: the boxes with an edge line
+#if BOARD_UI_GRID
+#define NT_BG                                THEME_NOTE_GR_BG
+#define NT_BOX(x, y, w, h, r, fill, edge, t) nt_soft_box(x, y, w, h, r, fill, edge)
+static void nt_soft_box(int x, int y, int w, int h, int r, uint16_t fill, uint16_t edge)
+{
+    if (edge == THEME_NOTE_ARMED_EDGE) {
+        ui_rbox(x, y, w, h, r + 6, fill, edge, 2);
+    } else {
+        ui_rrect(x, y, w, h, r + 6, fill);
+    }
+}
+#else
+#define NT_BG                                THEME_NOTE_BG
+#define NT_BOX(x, y, w, h, r, fill, edge, t) ui_rbox(x, y, w, h, r, fill, edge, t)
+#endif
 static void center_draw(void)
 {
     const cgeo_t g = cgeo();
     const kfont_t *ft = big_ui() ? &KF_TEXT : &KF_NAME, *fs = big_ui() ? &KF_NAME : &KF_LABEL;
-    gfx_fill(THEME_NOTE_BG);
+    gfx_fill(NT_BG);
     const int top = g.y0 + g.head, sc = ks_ipos(&s_cks);
     if (!s_c_n) {
         ui_text_c(ft, (g.x0 + g.x1) / 2, (top + g.y1) / 2 + 6, "NO NOTIFICATIONS", THEME_NOTE_EMPTY);
@@ -1001,7 +1018,7 @@ static void center_draw(void)
         const notice_t *n = &s_c_rows[i];
         int x0 = g.x0 + g.pad + (i == s_c_sw ? (int)s_c_sx : 0), w = g.x1 - g.x0 - 2 * g.pad;
         const bool down = s_c_press == i * 4;
-        ui_rbox(x0, y, w, s_c_h[i], 12, down ? THEME_NOTE_CARD_DOWN : THEME_NOTE_CARD, THEME_NOTE_CARD_EDGE, 1);
+        NT_BOX(x0, y, w, s_c_h[i], 12, down ? THEME_NOTE_CARD_DOWN : THEME_NOTE_CARD, THEME_NOTE_CARD_EDGE, 1);
         notice_icon(n->app, x0 + g.pad, y + (g.row - g.icon) / 2, g.icon);
         const int tx = x0 + g.pad + g.icon + g.pad, tw = x0 + w - g.pad - tx;
         char age[12], line[NT_TEXT + 8];
@@ -1024,11 +1041,11 @@ static void center_draw(void)
             int bx, by, bw, bh;
             row_button(&g, i, k, na, y, &bx, &by, &bw, &bh);
             const bool bd = s_c_press == i * 4 + 1 + k;
-            ui_rbox(bx, by, bw, bh, 10,
-                    bd       ? THEME_NOTE_ACT_DOWN
-                    : k == 0 ? THEME_NOTE_ACT_FIRST
-                             : THEME_NOTE_ACT,
-                    THEME_NOTE_ACT_EDGE, 1);
+            NT_BOX(bx, by, bw, bh, 10,
+                   bd       ? THEME_NOTE_ACT_DOWN
+                   : k == 0 ? THEME_NOTE_ACT_FIRST
+                            : THEME_NOTE_ACT,
+                   THEME_NOTE_ACT_EDGE, 1);
             fit_line(fs, n->act[k], bw - 10, line, sizeof line);
             ui_text_c(fs, bx + bw / 2, by + (bh + fs->asc) / 2 - 1, line, THEME_NOTE_ACT_TEXT);
         }
@@ -1038,9 +1055,9 @@ static void center_draw(void)
         ui_rrect_a(g.x1 - 6, top + 4 + at, 3, sz, 1, THEME_NOTE_SCROLL, al > 255 ? 255 : al);
     }
     // the head over the list (the text of the list does not obey a clip box)
-    gfx_fill_rect(g.x0, 0, g.x1 - g.x0, top, THEME_NOTE_BG);
+    gfx_fill_rect(g.x0, 0, g.x1 - g.x0, top, NT_BG);
     if (round_ui()) {
-        gfx_fill_rect(0, 0, gfx_w, g.y0, THEME_NOTE_BG);
+        gfx_fill_rect(0, 0, gfx_w, g.y0, NT_BG);
     }
     const bool note_on = mono_ms() < s_c_note_until;
     if (round_ui()) {  // (round: the title small and centred over the head row)
@@ -1050,16 +1067,16 @@ static void center_draw(void)
         ui_text(ft, g.x0 + g.pad, top - (g.head - ft->asc) / 2, note_on ? s_c_note : "NOTIFICATIONS",
                 note_on ? THEME_NOTE_OK : THEME_NOTE_TEXT);
     }
-    ui_rbox(g.x1 - 50, g.y0 + 4, 44, g.head - 8, 10, s_c_press == C_CLOSE ? THEME_NOTE_BTN_DOWN : THEME_NOTE_BTN,
-            THEME_NOTE_BTN_EDGE, 1);
+    NT_BOX(g.x1 - 50, g.y0 + 4, 44, g.head - 8, 10, s_c_press == C_CLOSE ? THEME_NOTE_BTN_DOWN : THEME_NOTE_BTN,
+           THEME_NOTE_BTN_EDGE, 1);
     ui_text_c(ft, g.x1 - 28, g.y0 + (g.head + ft->asc) / 2 - 1, "X", THEME_NOTE_TEXT);
     if (s_c_n) {
         const bool armed = mono_ms() - s_c_clear_arm < 3000;
-        ui_rbox(g.x1 - 54 - 148, g.y0 + 4, 140, g.head - 8, 10,
-                armed                  ? THEME_NOTE_ARMED
-                : s_c_press == C_CLEAR ? THEME_NOTE_BTN_DOWN
-                                       : THEME_NOTE_BTN,
-                armed ? THEME_NOTE_ARMED_EDGE : THEME_NOTE_BTN_EDGE, 1);
+        NT_BOX(g.x1 - 54 - 148, g.y0 + 4, 140, g.head - 8, 10,
+               armed                  ? THEME_NOTE_ARMED
+               : s_c_press == C_CLEAR ? THEME_NOTE_BTN_DOWN
+                                      : THEME_NOTE_BTN,
+               armed ? THEME_NOTE_ARMED_EDGE : THEME_NOTE_BTN_EDGE, 1);
         ui_text_c(fs, g.x1 - 54 - 78, g.y0 + (g.head + fs->asc) / 2 - 1, armed ? "TAP AGAIN" : "CLEAR ALL",
                   THEME_NOTE_TEXT);
     }

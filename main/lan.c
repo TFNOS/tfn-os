@@ -14,6 +14,7 @@
 #include "friends.h"
 #include "lan.h"
 #include "link.h"
+#include "power.h"
 #include "notify.h"
 #include "settings.h"
 #include "wifi.h"
@@ -25,14 +26,16 @@ static const char *TAG = "lan";
 
 #define BEACON_MS 2000
 // the beacon: 'A' 'B', version, MAC (6), name (16), app (12), then flags (1): bit 0 = "linked" (a link in
-// use, link_in_use: the manager does not read the board and takes no picture of its screen). A receiver reads at
-// least B_LEN bytes, so the old boards and the old manager ignore the flags.
+// use, link_in_use: the manager does not read the board and takes no picture of its screen), bit 1 = "deep" (DEEP
+// IDLE, power.h: the radio sleeps between the checks; the others keep the board on their list for LAN_DEEP_GONE_MS).
+// A receiver reads at least B_LEN bytes, so the old boards and the old manager ignore the flags.
 #define B_MAGIC0  'A'
 #define B_MAGIC1  'B'
 #define B_VERSION 1
 #define B_LEN     (3 + 6 + 16 + 12)
 #define B_FLAGS   B_LEN
 #define BF_LINKED 1
+#define BF_DEEP   2
 // a link packet: 'A' 'D', MAC (6), the link packet
 #define D_MAGIC0 'A'
 #define D_MAGIC1 'D'
@@ -65,6 +68,7 @@ typedef struct {
     uint32_t lip, vip;
     int64_t lseen, vseen;
     bool friend;  // a friend of this board (a full table gives a friend the place of another board)
+    bool deep;    // its last beacon had BF_DEEP
 } peer_t;
 static peer_t s_peer[LAN_PEERS];
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
@@ -84,7 +88,14 @@ static bool pool_take(int in, const uint8_t mac[6])
     return friends_pool_take(in, mac, true, tfn_pool_strict(), tfn_pool_role(tfn_pool_member(mac)));
 }
 
-static void peer_seen(const uint8_t mac[6], uint32_t ip, bool vpn, const char *name, const char *app)
+// the time with no beacon before a board leaves the list (a board in DEEP IDLE: longer)
+static int64_t gone_ms(const peer_t *q)
+{
+    return q->deep ? LAN_DEEP_GONE_MS : LAN_GONE_MS;
+}
+
+// flags: the flags byte of its beacon, -1 = not a beacon (the flags stay)
+static void peer_seen(const uint8_t mac[6], uint32_t ip, bool vpn, const char *name, const char *app, int flags)
 {
     if (tfn_pool_on() && !pool_take(FRIENDS_IN_PEER, mac)) {
         return;  // (STRICT: a board that is not a member and not a friend is not in the table)
@@ -99,7 +110,7 @@ static void peer_seen(const uint8_t mac[6], uint32_t ip, bool vpn, const char *n
         }
     }
     for (int i = 0; i < LAN_PEERS && k < 0; i++) {
-        if (!s_peer[i].p.seen || t - s_peer[i].p.seen > LAN_GONE_MS) {
+        if (!s_peer[i].p.seen || t - s_peer[i].p.seen > gone_ms(&s_peer[i])) {
             k = i;
         }
     }
@@ -126,6 +137,9 @@ static void peer_seen(const uint8_t mac[6], uint32_t ip, bool vpn, const char *n
             q->lseen = t;
         }
         q->friend = fr;
+        if (flags >= 0) {
+            q->deep = (flags & BF_DEEP) != 0;
+        }
         if (name && name[0]) {
             memcpy(q->p.name, name, 15);
             q->p.name[15] = 0;
@@ -146,12 +160,12 @@ int lan_peers(lan_peer_t *out, int max)
     portENTER_CRITICAL(&s_mux);
     for (int i = 0; i < LAN_PEERS && n < max; i++) {
         peer_t *q = &s_peer[i];
-        if (!q->p.seen || t - q->p.seen > LAN_GONE_MS) {
+        if (!q->p.seen || t - q->p.seen > gone_ms(q)) {
             continue;
         }
         out[n] = q->p;
-        bool lan = !g_lan_vpn_only && q->lseen && t - q->lseen <= LAN_GONE_MS;
-        if (g_lan_vpn_only && !(q->vseen && t - q->vseen <= LAN_GONE_MS)) {
+        bool lan = !g_lan_vpn_only && q->lseen && t - q->lseen <= gone_ms(q);
+        if (g_lan_vpn_only && !(q->vseen && t - q->vseen <= gone_ms(q))) {
             continue;
         }
         out[n].ip = lan ? q->lip : q->vip;
@@ -185,7 +199,7 @@ void lan_send_link(const uint8_t *pkt, int len)
     portENTER_CRITICAL(&s_mux);
     for (int i = 0; i < LAN_PEERS; i++) {
         const peer_t *q = &s_peer[i];
-        if (!q->p.seen || t - q->p.seen > LAN_GONE_MS) {
+        if (!q->p.seen || t - q->p.seen > gone_ms(q)) {
             continue;
         }
         // only to the boards with the same app open (their beacon says it): a game sends about 70 packets each
@@ -195,8 +209,8 @@ void lan_send_link(const uint8_t *pkt, int len)
             !(walkie_family(q->p.app) && walkie_family(me->name))) {
             continue;  // (WALKIE and TALKIE: one family)
         }
-        const bool lan = !g_lan_vpn_only && q->lseen && t - q->lseen <= LAN_GONE_MS;
-        if (g_lan_vpn_only && !(q->vseen && t - q->vseen <= LAN_GONE_MS)) {
+        const bool lan = !g_lan_vpn_only && q->lseen && t - q->lseen <= gone_ms(q);
+        if (g_lan_vpn_only && !(q->vseen && t - q->vseen <= gone_ms(q))) {
             continue;
         }
         ip[n++] = lan ? q->lip : q->vip;
@@ -227,6 +241,19 @@ static int seal_udp(uint8_t *b, int n, int cap, const uint8_t to[6])
     }
     b[2] = 1;  // (the pool went away now)
     return n;
+}
+
+bool lan_peer_deep(const uint8_t mac[6])
+{
+    bool d = false;
+    portENTER_CRITICAL(&s_mux);
+    for (int i = 0; i < LAN_PEERS; i++) {
+        if (s_peer[i].p.seen && !memcmp(s_peer[i].p.mac, mac, 6)) {
+            d = s_peer[i].deep;
+        }
+    }
+    portEXIT_CRITICAL(&s_mux);
+    return d;
 }
 
 bool lan_send_call(const uint8_t to[6], uint8_t op)
@@ -385,7 +412,7 @@ static void send_beacon(uint32_t to)
     if (a) {
         strncpy((char *)b + 25, a->name, 11);
     }
-    b[B_FLAGS] = link_in_use() ? BF_LINKED : 0;
+    b[B_FLAGS] = (link_in_use() ? BF_LINKED : 0) | (power_deep_now() ? BF_DEEP : 0);
     if (tfn_pool_plain_beacon()) {
         send_to(to, b, B_LEN + 1);
     }
@@ -436,7 +463,7 @@ static void on_pool_beacon(const uint8_t *buf, int n, uint32_t ip, bool vpn)
     name[15] = 0;
     memcpy(app, p + 22, 11);
     app[11] = 0;
-    peer_seen(p, ip, vpn, name, app);
+    peer_seen(p, ip, vpn, name, app, p[B_FLAGS - 3]);
 }
 
 // a WALKIE call: version 1, or version 2 of the pool (n >= C_LEN). The receive function gets the op with
@@ -455,7 +482,7 @@ static void on_call(const uint8_t *buf, int n, uint32_t ip, bool vpn)
     } else if (tfn_pool_on() && !pool_take(FRIENDS_IN_V3, buf + 3)) {
         return;
     }
-    peer_seen(buf + 3, ip, vpn, NULL, NULL);
+    peer_seen(buf + 3, ip, vpn, NULL, NULL, -1);
     void (*cb)(const uint8_t *, uint8_t) = s_call_rx;
     if (cb && (buf[2] == V_SEALED || !(op & LAN_CALL_SEALED))) {
         cb(buf + 3, op);  // (a version 1 op with the high bit: no call)
@@ -475,7 +502,7 @@ static void on_invite_pkt(const uint8_t *buf, int n, uint32_t ip, bool vpn)
     } else if (tfn_pool_on() && !pool_take(FRIENDS_IN_V3, buf + 3)) {
         return;
     }
-    peer_seen(buf + 3, ip, vpn, NULL, NULL);
+    peer_seen(buf + 3, ip, vpn, NULL, NULL, -1);
     char app[I_NAME];
     memcpy(app, buf + 9, I_NAME - 1);
     app[I_NAME - 1] = 0;
@@ -541,7 +568,7 @@ static void lan_rx(const uint8_t *buf, int n, uint32_t from_ip)
             name[15] = 0;
             memcpy(app, e + 26, 11);
             app[11] = 0;
-            peer_seen(e, ip, true, name, app);
+            peer_seen(e, ip, true, name, app, -1);
         }
         return;
     }
@@ -569,9 +596,9 @@ static void lan_rx(const uint8_t *buf, int n, uint32_t from_ip)
         name[15] = 0;
         memcpy(app, buf + 25, 11);
         app[11] = 0;
-        peer_seen(mac, from_ip, vpn, name, app);
+        peer_seen(mac, from_ip, vpn, name, app, n > B_LEN ? buf[B_FLAGS] : 0);
     } else if (buf[0] == D_MAGIC0 && buf[1] == D_MAGIC1 && n > 8) {
-        peer_seen(mac, from_ip, vpn, NULL, NULL);
+        peer_seen(mac, from_ip, vpn, NULL, NULL, -1);
         void (*cb)(const uint8_t *, const uint8_t *, int) = s_rx;
         if (cb) {
             cb(mac, buf + 8, n - 8);

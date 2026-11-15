@@ -7,7 +7,17 @@
 uint32_t set_free_int, set_free_ps, set_free_fs;
 float set_chip_c = NAN;  // the temperature of the chip (board_chip_temp, once a second)
 
-#if BOARD_UI_SMOOTH_TEXT
+#if BOARD_UI_SMOOTH_TEXT || BOARD_ROUND
+// (a round board with no smooth text in the 320 x 240 frame, the Watcher: the dot font in that frame, as before)
+#define SET_DOT (!BOARD_UI_SMOOTH_TEXT && !gfx_round())
+#pragma push_macro("gfx_text")
+#pragma push_macro("gfx_text_width")
+#pragma push_macro("gfx_text_center")
+#pragma push_macro("gfx_text_center_in")
+#undef gfx_text
+#undef gfx_text_width
+#undef gfx_text_center
+#undef gfx_text_center_in
 static const kfont_t *t5_font(int sc)
 {
     return sc <= 1 ? &KF_LABEL : sc == 2 ? &KF_TEXT : sc == 3 ? &KF_BIG : &KF_TITLE;
@@ -18,20 +28,36 @@ static int t5_base(int y, int sc)
 }
 void set_t5_text(int x, int y, const char *s, int sc, uint16_t c)
 {
+    if (SET_DOT) {
+        gfx_text(x, y, s, sc, c);
+        return;
+    }
     ui_text(t5_font(sc), x, t5_base(y, sc), s, c);
 }
 int set_t5_text_width(const char *s, int sc)
 {
-    return ui_text_w(t5_font(sc), s);
+    return SET_DOT ? gfx_text_width(s, sc) : ui_text_w(t5_font(sc), s);
 }
 void set_t5_text_center(int y, const char *s, int sc, uint16_t c)
 {
+    if (SET_DOT) {
+        gfx_text_center(y, s, sc, c);
+        return;
+    }
     ui_text_c(t5_font(sc), gfx_w / 2, t5_base(y, sc), s, c);
 }
 void set_t5_text_center_in(int x, int w, int y, const char *s, int sc, uint16_t c)
 {
+    if (SET_DOT) {
+        gfx_text_center_in(x, w, y, s, sc, c);
+        return;
+    }
     ui_text_c(t5_font(sc), x + w / 2, t5_base(y, sc), s, c);
 }
+#pragma pop_macro("gfx_text")
+#pragma pop_macro("gfx_text_width")
+#pragma pop_macro("gfx_text_center")
+#pragma pop_macro("gfx_text_center_in")
 #endif
 
 // ---------------------------------------------------------------- drawing the list
@@ -160,6 +186,10 @@ static void sleep_ctl(int cy)
 static void pwoff_ctl(int cy)
 {
     value_ctl(cy, POWER_OFF_NAMES[power_off_choice()], CTRL_PWOFF_PREV, CTRL_PWOFF_NEXT);
+}
+static void deep_ctl(int cy)
+{
+    value_ctl(cy, POWER_DEEP_NAMES[power_deep_choice()], CTRL_DEEP_PREV, CTRL_DEEP_NEXT);
 }
 
 // HOTSPOT: < mode > and START / STOP
@@ -308,6 +338,19 @@ static void row_tcal(int y, int cy)
              1, set_c_dim);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_TCAL, false);
 }
+// the POWER OFF and DEEP IDLE rows (on the battery): the text and < value >
+static void row_battery(int i, int y, int cy)
+{
+    const bool deep = i == R_DEEP;
+    gfx_text(TEXT_X, y + 12, deep ? "DEEP IDLE" : "POWER OFF", 2, set_c_text);
+    gfx_text(TEXT_X, y + 32, deep ? "ON BATTERY: CHECK FOR NEWS THIS OFTEN" : "SCREEN OFF THIS LONG, ON BATTERY", 1,
+             set_c_dim);
+    if (deep) {
+        deep_ctl(cy);
+    } else {
+        pwoff_ctl(cy);
+    }
+}
 // the WAKE ON MOVE row: the state and ON / OFF
 static void row_move(int y, int cy)
 {
@@ -380,6 +423,14 @@ static void row_notify(int y, int cy, char *buf, size_t bsz)
 #endif
     gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_NOTIFY, false);
+}
+// the STANDBY row: on or off, the face, OPEN
+static void row_standby(int y, int cy, char *buf, size_t bsz)
+{
+    gfx_text(TEXT_X, y + 12, "STANDBY", 2, set_c_text);
+    snprintf(buf, bsz, "%s. AT A WAKE AND AFTER 1 MIN IN THE MENU", standby_state_text());
+    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_STANDBY, false);
 }
 // the TEMPERATURE row: the temperature of the chip in green, yellow or red
 static void row_temp(int y, char *buf, size_t bsz)
@@ -473,7 +524,11 @@ static void row_open(int r, int y, int cy, char *buf, size_t bsz)
         row_dev(y, cy);
         return;
     }
-    (r == R_PUB ? row_pub : r == R_POOL ? row_pool : r == R_STORE ? row_store : row_notify)(y, cy, buf, bsz);
+    (r == R_PUB       ? row_pub
+     : r == R_POOL    ? row_pool
+     : r == R_STORE   ? row_store
+     : r == R_STANDBY ? row_standby
+                      : row_notify)(y, cy, buf, bsz);
 }
 
 static void draw_row(int i, int64_t now)
@@ -541,9 +596,8 @@ static void draw_row(int i, int64_t now)
         sleep_ctl(cy);
         break;
     case R_POWER:
-        gfx_text(TEXT_X, y + 12, "POWER OFF", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, "SCREEN OFF THIS LONG, ON BATTERY", 1, set_c_dim);
-        pwoff_ctl(cy);
+    case R_DEEP:
+        row_battery(i, y, cy);
         break;
     case R_MOVE:
         row_move(y, cy);
@@ -586,6 +640,7 @@ static void draw_row(int i, int64_t now)
         break;
     case R_DEV:
     case R_NOTIFY:
+    case R_STANDBY:
     case R_PUB:
     case R_POOL:
     case R_STORE:
@@ -630,6 +685,19 @@ static void draw_row(int i, int64_t now)
 }
 #else
 // a short note at the right end of the name line
+static void note(int y, const char *s, uint16_t c);
+// the POWER OFF and DEEP IDLE rows (on the battery)
+static void row_battery_n(int i, int y, int cy)
+{
+    const bool deep = i == R_DEEP;
+    gfx_text(TEXT_X, y + 6, deep ? "DEEP IDLE" : "POWER OFF", 2, set_c_text);
+    note(y, deep ? "CHECK ON BATTERY" : "IDLE ON BATTERY", set_c_dim);
+    if (deep) {
+        deep_ctl(cy);
+    } else {
+        pwoff_ctl(cy);
+    }
+}
 static void note(int y, const char *s, uint16_t c)
 {
     gfx_text(NOTE_R - gfx_text_width(s, 1), y + 10, s, 1, c);
@@ -738,6 +806,15 @@ static void row_notify(int y, int cy, char *buf, size_t bsz)
     gfx_text(TEXT_X, cy + 22, buf, 1, set_c_dim);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_NOTIFY, false);
 }
+// the STANDBY row: on or off, the face, OPEN
+static void row_standby(int y, int cy, char *buf, size_t bsz)
+{
+    gfx_text(TEXT_X, y + 6, "STANDBY", 2, set_c_text);
+    snprintf(buf, bsz, "%s", standby_state_text());
+    gfx_text(TEXT_X, cy + 10, buf, 1, set_c_dim);
+    gfx_text(TEXT_X, cy + 22, "AT A WAKE", 1, set_c_dim);
+    button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_STANDBY, false);
+}
 // the TRUSTED PUBLISHERS row: the count of the keys and OPEN
 static void row_pub(int y, int cy, char *buf, size_t bsz)
 {
@@ -836,7 +913,11 @@ static void row_about(int y, char *buf, size_t bsz)
 // the rows with a button at the right that opens a page or changes one setting
 static void row_open(int r, int y, int cy, char *buf, size_t bsz)
 {
-    (r == R_PUB ? row_pub : r == R_POOL ? row_pool : r == R_STORE ? row_store : row_notify)(y, cy, buf, bsz);
+    (r == R_PUB       ? row_pub
+     : r == R_POOL    ? row_pool
+     : r == R_STORE   ? row_store
+     : r == R_STANDBY ? row_standby
+                      : row_notify)(y, cy, buf, bsz);
 }
 
 static void draw_row(int i, int64_t now)
@@ -918,9 +999,8 @@ static void draw_row(int i, int64_t now)
         sleep_ctl(cy);
         break;
     case R_POWER:
-        gfx_text(TEXT_X, y + 6, "POWER OFF", 2, set_c_text);
-        note(y, "IDLE ON BATTERY", set_c_dim);
-        pwoff_ctl(cy);
+    case R_DEEP:
+        row_battery_n(i, y, cy);
         break;
     case R_MOVE: {
         bool on = store_get("wake_mv", 1) != 0;
@@ -954,6 +1034,7 @@ static void draw_row(int i, int64_t now)
         row_friends(y, cy, buf, sizeof(buf));
         break;
     case R_NOTIFY:
+    case R_STANDBY:
     case R_PUB:
     case R_POOL:
     case R_STORE:
@@ -994,12 +1075,37 @@ static void draw_row(int i, int64_t now)
 }
 #endif
 
+#if BOARD_ROUND
+// The caps of the round list: SETUP on the top cap, BACK on the bottom cap, the scroll bar beside the rows.
+static void list_caps_round(void)
+{
+    gfx_fill_rect(0, 0, SCR_W, SET_LIST_Y, THEME_SETUP_BG);
+    gfx_fill_rect(0, SET_LIST_B, SCR_W, SCR_H - SET_LIST_B, THEME_SETUP_BG);
+    ui_text_c(&KF_BIG, SCR_W / 2, SR(70), "SETUP", set_c_accent);
+    bool hot = set_active == CTRL_BACK;
+    int bx = SCR_W / 2 - SR(80);
+    ui_rrect(bx, SET_BACK_Y, SR(160), SET_BACK_H, SET_BACK_H / 3, hot ? set_c_accent : set_c_box);
+    ui_text_c(&KF_TEXT, SCR_W / 2, SET_BACK_Y + SET_BACK_H / 2 + KF_TEXT.asc / 2, "< BACK",
+              hot ? THEME_SETUP_TEXT_HOT : set_c_text);
+    int lh = SET_LIST_B - SET_LIST_Y, track = lh - 8, th = track * lh / (set_nrows * ROW_H);
+    float f = tfn_clampf(set_scroll / (float)MAX_SCROLL, 0, 1);
+    ui_rrect(SBAR_X, SET_LIST_Y + 4, 6, track, 3, set_c_card2);
+    ui_rrect(SBAR_X, SET_LIST_Y + 4 + (int)(f * (track - th)), 6, th, 3, set_c_line);
+}
+#endif
+
 void set_list_render(int64_t now)
 {
     gfx_fill(THEME_SETUP_BG);
     for (int i = 0; i < set_nrows; i++) {
         draw_row(i, now);
     }
+#if BOARD_ROUND
+    if (SET_RND) {
+        list_caps_round();
+        return;
+    }
+#endif
     set_back_strip(set_active == CTRL_BACK);
     gfx_text(4, 4, "SETUP", 1, set_c_accent);
     // the scroll bar

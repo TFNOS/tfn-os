@@ -63,6 +63,21 @@
 #define PPM_MIN     5.0f
 #define PPM_MAX     6.6f
 #define LV_S        2  // the text of the buttons and the speaker: 2 times
+#elif BOARD_ROUND
+// THE ROUND PANEL (APP_ROUND_HI: the 1.75C 466 x 466, 0.095 mm a px; the Watcher 412 x 412): a round yellow plate.
+// The level, the ruler and the protractor fill the circle; the tabs on the bottom arc, HOLD and CAL on the side
+// arcs, the speaker on the left arc. RU(): a value of the 466 layout on this panel.
+#define RU(v)       ((v) * BOARD_ROUND_HI / 466)
+#define PPM_DEF     (BOARD_ROUND_HI_MM_PX > 0 ? 1.0f / BOARD_ROUND_HI_MM_PX : 1.0f / BOARD_NATIVE_MM_PX)
+#define CAL_MM      30
+#define CAL_MM_TEXT "30"
+#define LAND_W      BOARD_ROUND_HI
+#define LAND_H      BOARD_ROUND_HI
+#define PORT_W      BOARD_ROUND_HI
+#define PORT_H      BOARD_ROUND_HI
+#define PPM_MIN     (PPM_DEF * 0.85f)
+#define PPM_MAX     (PPM_DEF * 1.15f)
+#define LV_S        2  // the text of the buttons and the speaker: 2 times
 #else
 // The 2.0 inch 320 x 240 panel: an active area of about 40.8 x 30.6 mm (0.1275 mm pixels).
 #define PPM_DEF     7.843f
@@ -591,20 +606,74 @@ static int hit(int x, int y)
     }
     return B_NONE;
 }
+#elif BOARD_ROUND
+// the half width of the circle at the row y
+static int rchord(int y)
+{
+    int r = LAND_W / 2, dy = y - LAND_H / 2;
+    return dy * dy >= r * r ? 0 : (int)sqrtf((float)(r * r - dy * dy));
+}
+// the 3 tabs: a row on the bottom arc
+static void tab_rect(int i, int *x, int *y, int *w, int *h)
+{
+    int gap = RU(6), half = rchord(RU(430)) - RU(6);
+    *y = RU(384);
+    *h = RU(46);
+    *w = (2 * half - 2 * gap) / N_TABS;
+    *x = LAND_W / 2 - half + i * (*w + gap);
+}
+
+// HOLD on the left arc, CAL on the right arc (the ruler: CAL at the top right of its reading)
+static void btn_rect(int b, int *x, int *y, int *w, int *h)
+{
+    if (s_tab == TAB_RULER) {
+        *x = RU(318);
+        *y = RU(80);
+        *w = RU(80);
+        *h = RU(50);
+        return;
+    }
+    *x = b == B_HOLD ? RU(14) : RU(376);
+    *y = RU(232);
+    *w = RU(76);
+    *h = RU(62);
+}
+#define SND_RX RU(30)  // the speaker: on the left arc over HOLD
+#define SND_RY RU(158)
+
+static int hit(int x, int y)
+{
+    int bx, by, bw, bh;
+    for (int i = 0; i < N_TABS; i++) {
+        tab_rect(i, &bx, &by, &bw, &bh);
+        if (in_rect(x, y, bx - 2, by - 2, bw + 4, bh + 4)) {
+            return B_TAB0 + i;
+        }
+    }
+    for (int b = B_HOLD; b <= B_CAL; b++) {
+        if (b == B_HOLD && s_tab == TAB_RULER) {
+            continue;
+        }
+        btn_rect(b, &bx, &by, &bw, &bh);
+        if (in_rect(x, y, bx - 2, by - 2, bw + 4, bh + 4)) {
+            return b;
+        }
+    }
+    if (in_rect(x, y, SND_RX - 4, SND_RY - 4, RU(64), RU(60))) {
+        return B_SOUND;
+    }
+    if (s_tab != TAB_RULER && in_rect(x, y, RU(96), RU(50), RU(274), RU(326))) {
+        return B_READOUT;
+    }
+    return B_NONE;
+}
 #else
 // landscape: a column at the right (the speaker, the 3 tabs, HOLD and CAL side by side);
 // portrait: two rows at the bottom (HOLD and CAL, then the tabs)
-#if BOARD_ROUND
-#define COL_X  222  // (the Watcher zoom: the column in the circle, 8 px higher)
-#define COL_W  80
-#define COL_DY 6
-#define SND_X  COL_X
-#else
 #define COL_X  226
 #define COL_W  92
 #define COL_DY 0
 #define SND_X  (COL_X + COL_W - 46)
-#endif
 static void tab_rect(int i, int *x, int *y, int *w, int *h)
 {
     if (portrait_now()) {
@@ -663,7 +732,7 @@ static int hit(int x, int y)
             return B_READOUT;
         }
     } else {
-        if (in_rect(x, y, SND_X, 0, 46, BOARD_ROUND ? 40 : 44)) {
+        if (in_rect(x, y, SND_X, 0, 46, 44)) {
             return B_SOUND;
         }
         if (s_tab != TAB_RULER && in_rect(x, y, 0, 0, COL_X - 6, 240)) {
@@ -1091,6 +1160,12 @@ static void body_landscape(void)
         uint16_t n = (uint16_t)((r << 11) | (g << 5) | b);
         gfx_fill_rect(s_brush[i].a, s_brush[i].b, s_brush[i].len, 1, (uint16_t)((n >> 8) | (n << 8)));
     }
+#if BOARD_ROUND
+    // the round plate: a dark milled rim
+    gfx_ring(LAND_W / 2, LAND_H / 2, LAND_W / 2, LAND_W / 2 - RU(8), rgb(96, 78, 30));
+    gfx_ring(LAND_W / 2, LAND_H / 2, LAND_W / 2 - RU(8), LAND_W / 2 - RU(11), rgb(255, 236, 150));
+    return;
+#endif
     // end caps (grey rubber)
     for (int k = 0; k < 2; k++) {
         int x = k ? LAND_W - 8 : 0;
@@ -1183,6 +1258,8 @@ static void draw_buttons(void)
     int sx = portrait_now() ? 132 : 604, sy = portrait_now() ? 16 : 12;
 #elif BOARD_UI_TABLET
     int sx = portrait_now() ? 300 : 572, sy = portrait_now() ? 14 : 10;
+#elif BOARD_ROUND
+    int sx = SND_RX, sy = SND_RY;
 #else
     int sx = portrait_now() ? 200 : SND_X + 8, sy = portrait_now() ? 12 : 10 - COL_DY / 2;
 #endif
@@ -1265,8 +1342,8 @@ static void bullseye(int cx, int cy, int r, float bx, float by, bool level)
                         level ? rgb((uint8_t)(120 * s), (uint8_t)(255 * s), (uint8_t)(90 * s))
                               : rgb((uint8_t)(200 * s), (uint8_t)(235 * s), (uint8_t)(40 * s)));
     }
-#if BOARD_UI_TABLET
-    // (the Tab5: a dish of r 126; the ring, the bubble and the light in proportion)
+#if BOARD_UI_TABLET || BOARD_ROUND
+    // (the Tab5: a dish of r 126; the round panel: r 112; the ring, the bubble and the light in proportion)
     gfx_ring(cx, cy, 28, 25, rgb(20, 20, 20));
     gfx_ring(cx, cy, r * 2 / 3, r * 2 / 3 - 2, rgb(40, 50, 30));
     gfx_fill_rect(cx - r + 6, cy, 2 * r - 12, 2, rgb(40, 50, 30));
@@ -1322,8 +1399,8 @@ static void small_tri(int x, int y, bool right, uint16_t c)
 }
 
 // the reading of one axis, its unit and the side to raise
-#if BOARD_UI_TABLET
-// the Tab5: the same parts, bigger (the number 8 times, the texts 2 times)
+#if BOARD_UI_TABLET || BOARD_ROUND
+// the Tab5 and the round panel: the same parts, bigger (the number 8 times, the texts 2 times)
 static void readout(int x, int y, int w, float deg, bool level, bool big)
 {
     int h = big ? 150 : 110;
@@ -1397,7 +1474,7 @@ static void mm_ticks(int x0, int x1, int y, bool down, bool numbers)
         if (x < x0) {
             continue;
         }
-#if BOARD_UI_TABLET
+#if BOARD_UI_TABLET || BOARD_ROUND
         int len = i % 10 == 0 ? 32 : (i % 5 == 0 ? 22 : 13);
         gfx_fill_rect(x, down ? y : y - len, i % 10 == 0 ? 2 : 1, len, s_ink);
         if (numbers && i % 10 == 0 && i > 0) {
@@ -1428,7 +1505,7 @@ static void inch_ticks(int x0, int x1, int y)
         if (x < x0) {
             continue;
         }
-#if BOARD_UI_TABLET
+#if BOARD_UI_TABLET || BOARD_ROUND
         int len = i % 16 == 0 ? 34 : (i % 8 == 0 ? 26 : (i % 4 == 0 ? 19 : (i % 2 == 0 ? 13 : 8)));
         gfx_fill_rect(x, y - len, i % 16 == 0 ? 2 : 1, len, s_ink);
         if (i % 16 == 0 && i > 0) {
@@ -1453,13 +1530,18 @@ static void draw_message(void)
     if (s_now >= s_msg_until) {
         return;
     }
-#if BOARD_UI_TABLET
-    int ms = gfx_text_width(s_msg, 2) + 24 <= gfx_w - 8 ? 2 : 1;  // (a long text in portrait: the scale 1)
+#if BOARD_UI_TABLET || BOARD_ROUND
+    int lim = BOARD_ROUND ? gfx_w * 82 / 100 : gfx_w - 8;   // (the round panel: in the wide middle band)
+    int ms = gfx_text_width(s_msg, 2) + 24 <= lim ? 2 : 1;  // (a long text in portrait: the scale 1)
     int w = gfx_text_width(s_msg, ms) + 24;
-    if (w > gfx_w - 8) {
-        w = gfx_w - 8;
+    if (w > lim) {
+        w = lim;
     }
+#if BOARD_ROUND
+    int x = (gfx_w - w) / 2, y = s_tab == TAB_RULER ? RU(312) : RU(178);
+#else
     int x = (gfx_w - w) / 2, y = portrait_now() ? 204 : (s_tab == TAB_RULER ? 262 : 166);
+#endif
     gfx_fill_rect(x, y, w, 30, rgb(30, 30, 36));
     gfx_frame_rect(x, y, w, 30, 2, s_amber);
     gfx_text_center_in(x, w, y + 15 - 7 * ms / 2, s_msg, ms, rgb(255, 255, 255));
@@ -1715,6 +1797,93 @@ static void draw_ruler(void)
     }
 }
 
+#elif BOARD_ROUND
+// THE ROUND PANEL: the vial across the middle, the reading under it
+static void draw_edge(void)
+{
+    body_landscape();
+    bool lv = level_glow();
+    emboss(LAND_W / 2 - gfx_text_width("PRO-LEVEL", 2) / 2, RU(64), "PRO-LEVEL", 2);
+    if (lv) {
+        gfx_fill_rect(RU(50), RU(98), RU(366), RU(108), s_green);
+    }
+    recess(RU(56), RU(104), RU(354), RU(96));
+    vial(RU(233), RU(152), RU(326), RU(58), s_bub[0], s_bub_v[0], lv);
+    readout(RU(96), RU(214), RU(274), shown()[0], lv, true);
+}
+
+// the bullseye fills the middle of the circle; the X and Y readings under it
+static void draw_flat(void)
+{
+    body_landscape();
+    bool lv = level_glow();
+    const float *a = shown();
+    int cx = LAND_W / 2, cy = RU(194), r = RU(112);
+    if (lv) {
+        gfx_fill_circle(cx, cy, r + RU(12), s_green);
+    }
+    bullseye(cx, cy, r, s_bub[0], s_bub[1], lv);
+    char buf[16];
+    for (int k = 0; k < 2; k++) {
+        int x0 = k ? LAND_W / 2 + RU(6) : RU(70), w = LAND_W / 2 - RU(76), y = RU(324);
+        panel(x0, y, w, RU(42));
+        char num[12];
+        unit_text(a[k], s_unit, num, sizeof(num));
+        snprintf(buf, sizeof(buf), "%s %s%s", k ? "Y" : "X", a[k] <= -0.05f ? "-" : "", num);
+        uint16_t c = lv ? s_green : s_lcd;
+        int tw = gfx_text_width(buf, 3), tx = x0 + (w - tw - (s_unit == U_DEG ? 9 : 0)) / 2;
+        gfx_text(tx, y + RU(10), buf, 3, c);
+        if (s_unit == U_DEG) {
+            degree_sign(tx + tw + 2, y + RU(10), 2, c);
+        }
+    }
+    bool steady = s_stab_t > 0.6f;
+    const char *st = s_hold ? "HOLD" : (lv ? "LEVEL" : (steady ? "STEADY" : "WAIT"));
+    int tw = gfx_text_width(st, 2);
+    gfx_fill_circle(LAND_W / 2 - tw / 2 - 10, RU(74), 5, steady ? s_green : s_amber);
+    gfx_text(LAND_W / 2 - tw / 2 + 2, RU(74) - 7, st, 2, s_hold ? s_red : (lv ? s_green : s_ink_soft));
+}
+
+static void draw_plumb(void)
+{
+    draw_edge();  // (no portrait frame on the round panel)
+}
+
+// the millimetres and the inches along the middle row (the zero at the left edge of the board)
+static void draw_ruler(void)
+{
+    body_landscape();
+    int ym = RU(212), yi = RU(312);
+    mm_ticks(0, LAND_W - 1, ym, true, true);
+    inch_ticks(0, LAND_W - 1, yi);
+    gfx_text(RU(60), RU(256), "CM", 2, s_ink_soft);
+    gfx_text(RU(60), RU(274), "IN", 2, s_ink_soft);
+    float x = s_ruler_cal ? s_mark_x : s_ruler_x;
+    float mm = x / s_ppm;
+    int px = RU(70), pw = RU(240);
+    panel(px, RU(74), pw, RU(104));
+    char buf[32];
+    if (s_ruler_cal) {
+        gfx_text_center_in(px, pw, RU(84), "MARK AT " CAL_MM_TEXT " MM", 2, s_amber);
+        snprintf(buf, sizeof(buf), "%.2f PX/MM", x / CAL_MM);
+        gfx_text_center_in(px, pw, RU(112), buf, 3, s_lcd);
+        gfx_text_center_in(px, pw, RU(150), "TAP DONE", 2, s_lcd_dim);
+    } else {
+        snprintf(buf, sizeof(buf), "%.1f", mm);
+        int tw = gfx_text_width(buf, 6);
+        gfx_text(px + (pw - tw - RU(30)) / 2, RU(84), buf, 6, s_lcd);
+        gfx_text(px + (pw + tw - RU(30)) / 2 + 6, RU(108), "MM", 2, s_lcd_dim);
+        snprintf(buf, sizeof(buf), "%.2f CM %.3f IN", mm / 10.0f, mm / 25.4f);
+        gfx_text_center_in(px, pw, RU(146), buf, 2, s_lcd_dim);
+    }
+    int lx = (int)lroundf(x);
+    gfx_fill_rect(lx - 1, 0, 3, LAND_H, s_red);
+    for (int i = 0; i < 8; i++) {
+        gfx_fill_rect(lx - 8 + i, ym + RU(40) + i, 16 - 2 * i, 1, s_red);
+        gfx_fill_rect(lx - 8 + i, yi - RU(40) - i, 16 - 2 * i, 1, s_red);
+    }
+}
+
 #else
 static void draw_edge(void)
 {
@@ -1938,6 +2107,57 @@ static void draw_angle(void)
     gfx_text_center_in(16, 420, 114, s_hold ? "HOLD" : "TAP ZERO ON SURFACE 1", 2, s_hold ? s_red : s_lcd_dim);
 }
 
+#elif BOARD_ROUND
+// THE ROUND PANEL: the protractor across the middle, the angle in the top cap, the help under it
+static void draw_angle(void)
+{
+    body_landscape();
+    float a = s_rel;
+    float th = fabsf(a);
+    int cx = LAND_W / 2, cy = RU(318), R = RU(160);
+    for (int h = 0; h <= R + 4; h++) {
+        int hw = (int)sqrtf((float)((R + 4) * (R + 4) - h * h));
+        gfx_fill_rect(cx - hw, cy - h, 2 * hw, 1, rgb(110, 82, 14));
+    }
+    for (int h = 0; h <= R; h++) {
+        int hw = (int)sqrtf((float)(R * R - h * h));
+        gfx_fill_rect(cx - hw, cy - h, 2 * hw, 1, rgb(250, 246, 228));
+    }
+    sector(cx, cy, R - 1, th, rgb(170, 220, 255));
+    for (int d = 0; d <= 180; d += 5) {
+        float c = fcos(d * DEG2RAD), s = fsin(d * DEG2RAD);
+        int len = d % 30 == 0 ? 20 : (d % 10 == 0 ? 13 : 7);
+        seg(cx + c * R, cy - s * R, cx + c * (R - len), cy - s * (R - len), d % 30 == 0 ? 3 : 1, s_ink);
+        if (d % 30 == 0) {
+            char t[16];
+            snprintf(t, sizeof(t), "%d", d);
+            int tw = gfx_text_width(t, 2);
+            int ly = (int)(cy - s * (R - 38)) - 7;
+            if (d == 0 || d == 180) {
+                ly -= 16;
+            }
+            gfx_text((int)(cx + c * (R - 38)) - tw / 2, ly, t, 2, s_ink);
+        }
+    }
+    float c = fcos(th * DEG2RAD), s = fsin(th * DEG2RAD);
+    seg((float)cx, (float)cy, cx + R - 6, (float)cy, 3, rgb(40, 90, 200));
+    seg((float)cx, (float)cy, cx + c * (R - 6), cy - s * (R - 6), 4, s_red);
+    gfx_fill_circle(cx, cy, 10, rgb(60, 60, 66));
+    gfx_fill_circle(cx, cy, 4, rgb(200, 200, 210));
+    // the reading in the top cap
+    int px = RU(100), pw = RU(266);
+    panel(px, RU(40), pw, RU(110));
+    gfx_text_center_in(px, pw, RU(48), s_zero_set ? "FROM YOUR ZERO" : "FROM LEVEL EDGE", 2, s_lcd_dim);
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%s%.1f", a < -0.05f ? "-" : "", th);
+    int tw = gfx_text_width(buf, 7);
+    gfx_text(LAND_W / 2 - tw / 2 - 8, RU(76), buf, 7, s_lcd);
+    degree_sign(LAND_W / 2 + tw / 2 - 4, RU(76), 6, s_lcd);
+    snprintf(buf, sizeof(buf), "180 - A = %.1f", 180.0f - th);
+    gfx_text_center_in(0, LAND_W, RU(330), buf, 2, s_ink_soft);
+    gfx_text_center_in(0, LAND_W, RU(354), s_hold ? "HOLD" : "TAP ZERO ON SURFACE 1", 2, s_hold ? s_red : s_ink_soft);
+}
+
 #else
 static void draw_angle(void)
 {
@@ -2004,6 +2224,8 @@ static void level_render(int64_t now)
 #elif BOARD_UI_TABLET
         gfx_text_center_in(0, portrait_now() ? PORT_W : COL_X - 8, 160,
                            imu_ok() ? "READING THE SENSOR" : "NO MOTION SENSOR", 2, s_ink);
+#elif BOARD_ROUND
+        gfx_text_center(RU(200), imu_ok() ? "READING THE SENSOR" : "NO MOTION SENSOR", 2, s_ink);
 #else
         gfx_text_center_in(0, portrait_now() ? PORT_W : 220, 100, imu_ok() ? "READING THE SENSOR" : "NO MOTION SENSOR",
                            1, s_ink);
@@ -2091,4 +2313,5 @@ const app_t app_level = {
         .render = level_render,
         .draw_icon = level_icon,
         .awake = level_awake,
+        .round = APP_ROUND_HI,
 };

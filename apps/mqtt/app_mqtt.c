@@ -1040,7 +1040,7 @@ static bool background(void)
 const app_t app_mqtt = {
         .name = "MQTT",
         .landscape = true,
-        .round_fit = true,
+        .round = APP_ROUND_HI,  // (the round boards: the native round frame, the middle box of mq_draw.inc)
         .run = true,
         .enter = enter,
         .leave = leave,

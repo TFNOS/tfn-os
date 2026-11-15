@@ -46,6 +46,24 @@
 #define SCORE_Y    10
 #define COMBO_Y    70
 #define COMBO_S    3  // the scale of the PERFECT text
+#elif BOARD_ROUND
+// THE ROUND PANELS (APP_ROUND_HI): the game draws a square view of RV_S x RV_S (stack_rv.inc) at the sizes of the
+// CoreS3, and the view is scaled out into the whole circle. The block slides through the wide middle rows of the
+// circle; the tower stands on the ground in the bottom cap; the score is in the top cap.
+#define K_RND      1
+#define RV_S       311
+#define SCR_W      RV_S
+#define SCR_H      RV_S
+#define SLAB_H     16
+#define BASE_W     130
+#define BASE_Y     268
+#define TOP_Y      140
+#define PERFECT_PX 4.0f
+#define SPEED0     105.0f
+#define SPEED_N    7.0f
+#define SPEED_MAX  350.0f
+#define SCORE_Y    34
+#define COMBO_Y    82
 #else
 // The CoreS3 (landscape): the block goes 320 px, so it is faster (a pass takes about the
 // same time), and the base and the perfect window are a little wider.
@@ -65,6 +83,12 @@
 #ifndef COMBO_S
 #define COMBO_S 2
 #endif
+#ifndef K_RND
+#define K_RND 0
+#endif
+#include "esp_heap_caps.h"
+#include "stack_rv.inc"
+#define TY        (K_RND ? 44 : 0)  // (the round frame: the text rows of the CoreS3 lower, in the circle)
 #define MAX_SLABS 600
 #define N_DEBRIS  8
 
@@ -258,7 +282,21 @@ static void stack_enter(int64_t now)
     s_last = now;
 }
 
+static void stack_input_v(const input_event_t *ev);
 static void stack_input(const input_event_t *ev)
+{
+#if K_RND
+    input_event_t e = *ev;  // (the round panels: the point in the view)
+    int ex = e.x, ey = e.y;
+    rv_pt(&ex, &ey);
+    e.x = (int16_t)ex;
+    e.y = (int16_t)ey;
+    stack_input_v(&e);
+#else
+    stack_input_v(ev);
+#endif
+}
+static void stack_input_v(const input_event_t *ev)
 {
     switch (ev->kind) {
     case IN_DOWN:
@@ -323,7 +361,21 @@ static void draw_slab(float x, int y, float w, int idx)
     gfx_fill_rect(ix + iw - 2, y, 2, SLAB_H, slab_color(idx, -40));
 }
 
+static void stack_draw(int64_t now);
+// the frame (the round panels: the game draws the square view, then it is scaled out into the circle)
 static void stack_render(int64_t now)
+{
+#if K_RND
+    if (!rv_begin()) {
+        return;
+    }
+    stack_draw(now);
+    rv_end();
+#else
+    stack_draw(now);
+#endif
+}
+static void stack_draw(int64_t now)
 {
     // background: its colour moves with the height of the tower
     int h = s_hue0 + s_n * 7 + 180;
@@ -402,24 +454,24 @@ static void stack_render(int64_t now)
     }
 #elif !BOARD_BAR_SCREEN
     if (s_state == ST_TITLE) {
-        gfx_text_center(36, "STACK", 5, s_c_text);
-        gfx_text_center(88, "TOUCH TO DROP THE BLOCK", 2, s_c_text);
+        gfx_text_center(36 + TY, "STACK", 5, s_c_text);
+        gfx_text_center(88 + TY, "TOUCH TO DROP THE BLOCK", 2, s_c_text);
         snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-        gfx_text_center(116, buf, 2, s_c_accent);
+        gfx_text_center(116 + TY, buf, 2, s_c_accent);
         if (((now / 450) & 1) == 0) {
-            gfx_text_center(150, "TAP TO START", 2, s_c_text);
+            gfx_text_center(150 + TY, "TAP TO START", 2, s_c_text);
         }
     } else if (s_state == ST_OVER) {
-        gfx_darken_rect(0, 48, SCR_W, 136, 1);
-        gfx_text_center(60, "GAME OVER", 4, rgb(255, 110, 110));
+        gfx_darken_rect(0, 48 + TY, SCR_W, 136, 1);
+        gfx_text_center(60 + TY, "GAME OVER", 4, rgb(255, 110, 110));
         if (s_new_best) {
-            gfx_text_center(106, "NEW BEST!", 2, s_c_accent);
+            gfx_text_center(106 + TY, "NEW BEST!", 2, s_c_accent);
         } else {
             snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-            gfx_text_center(106, buf, 2, s_c_text);
+            gfx_text_center(106 + TY, buf, 2, s_c_text);
         }
         if (now - s_over_at > 900 && ((now / 450) & 1) == 0) {
-            gfx_text_center(146, "TAP TO PLAY", 2, s_c_text);
+            gfx_text_center(146 + TY, "TAP TO PLAY", 2, s_c_text);
         }
     }
 #else
@@ -607,12 +659,23 @@ static void stack_icon(int x, int y, int s)
     tfd_noclip();
 }
 
+#if K_RND
+static void stack_leave(void)
+{
+    rv_free();
+}
+#endif
+
 const app_t app_stack = {
         .name = "STACK",
         .landscape = !BOARD_BAR_SCREEN,  // the CoreS3: landscape, the way it stands
         .needs = 0,
         .init = stack_init,
         .enter = stack_enter,
+#if K_RND
+        .leave = stack_leave,
+        .round = APP_ROUND_HI,  // (a round panel: the view in the whole circle, stack_rv.inc)
+#endif
         .input = stack_input,
         .update = stack_update,
         .render = stack_render,

@@ -645,6 +645,11 @@ int board_battery(bool *charging, int *mv)
     return axp2101_battery(s_axp, charging, mv);
 }
 
+int board_ext_power(void)
+{
+    return axp2101_vbus(s_axp);
+}
+
 // ---------------------------------------------------------------- resistance meter
 // Port B: G9 (a high output) feeds the reference resistor; G8 = ADC1 channel 7 reads the joint.
 

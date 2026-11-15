@@ -22,8 +22,16 @@
 #define EXT_RAM_BSS_ATTR
 #endif
 
+#include "set_round.h"
+// THE ROUND FRAME (gfx_round()): the title on the top cap, the rows in the middle box (the name, two lines, the pills
+// under them at the right), BACK on the bottom cap.
+#if BOARD_ROUND
+#define PP_RND gfx_round()
+#else
+#define PP_RND false
+#endif
 #define BACK_W 56
-#define PILL_H 36
+#define PILL_H (PP_RND ? RS(42) : 36)
 #define NROWS  (2 + TFN_PUB_BUILTIN + TFN_PUB_MAX)
 
 enum {
@@ -58,11 +66,31 @@ static bool wide(void)
 }
 static int row_h(void)
 {
+#if BOARD_ROUND
+    if (PP_RND) {
+        return RS(124);
+    }
+#endif
     return wide() ? 52 : 96;  // (the 320 x 240 frame: the pills under the three lines of text)
 }
 static int head_h(void)
 {
+#if BOARD_ROUND
+    if (PP_RND) {
+        return RB_Y;
+    }
+#endif
     return 30;
+}
+// the height of the list on the screen
+static int list_h(void)
+{
+#if BOARD_ROUND
+    if (PP_RND) {
+        return RB_B - RB_Y;
+    }
+#endif
+    return gfx_h - head_h();
 }
 
 // the wait now: the only read of tfn_pub_waiting() in this page. Another wait (a new number: the web can start one
@@ -107,7 +135,7 @@ void tfn_pub_page_open(void)
     s_wait_seq = s_shown_seq = 0;
     input_consent_reset(&s_cons);
     rows_make();
-    ks_init(&s_ks, (float)(gfx_h - head_h()), 0);
+    ks_init(&s_ks, (float)list_h(), 0);
     s_press = -1;
     s_drag = s_back = false;
     s_note[0] = 0;
@@ -116,7 +144,7 @@ void tfn_pub_page_open(void)
 // the pills of a row: k = 0 .. 1; x, w of the pill; returns the count
 static int pills(int r, int k, int *x, int *w)
 {
-    const int x1 = gfx_w - 8, pw = wide() ? 110 : 84;
+    const int x1 = PP_RND ? RB_X + RB_W : gfx_w - 8, pw = PP_RND ? RS(116) : wide() ? 110 : 84;
     int n = s_rows[r].kind == RK_WAIT ? 2 : s_rows[r].kind == RK_BUILTIN ? 0 : 1;
     if (k >= n) {
         return n;
@@ -127,6 +155,9 @@ static int pills(int r, int k, int *x, int *w)
 }
 static int pill_y(int top)
 {
+    if (PP_RND) {
+        return top + RS(72);
+    }
     return wide() ? top + (row_h() - PILL_H) / 2 : top + 52;
 }
 
@@ -183,7 +214,7 @@ static void act(int r, int k, int cons)
 // the pill under (x, y): r * 4 + k, or -1
 static int hit(int x, int y)
 {
-    if (y < head_h()) {
+    if (y < head_h() || (PP_RND && y >= head_h() + list_h())) {
         return -1;
     }
     const int sc = ks_ipos(&s_ks);
@@ -205,7 +236,7 @@ static int hit(int x, int y)
 void tfn_pub_page_update(int64_t now)
 {
     rows_make();  // (a key can come or go from the web while the page shows)
-    ks_set_max(&s_ks, (float)(s_nrows * row_h() - (gfx_h - head_h()) + 6));
+    ks_set_max(&s_ks, (float)(s_nrows * row_h() - list_h() + 6));
     ks_update(&s_ks, now);
 }
 
@@ -219,7 +250,11 @@ bool tfn_pub_page_input(const input_event_t *ev, int64_t now)
         s_x0 = ev->x;
         s_y0 = ev->y;
         s_drag = false;
+#if BOARD_ROUND
+        s_back = PP_RND ? rr_back_at(ev->x, ev->y) : ev->x < BACK_W;
+#else
         s_back = ev->x < BACK_W;
+#endif
         if (!s_back && ks_down(&s_ks, (float)ev->y, ev->t_ms)) {
             s_press = -1;
         } else {
@@ -242,7 +277,11 @@ bool tfn_pub_page_input(const input_event_t *ev, int64_t now)
         }
         break;
     case IN_TAP:
+#if BOARD_ROUND
+        if (s_back && (PP_RND ? rr_back_at(ev->x, ev->y) : ev->x < BACK_W)) {
+#else
         if (s_back && ev->x < BACK_W) {
+#endif
             sfx_ui(SFX_BACK);
             return true;
         }
@@ -317,9 +356,74 @@ static void pill_draw(int px, int py, int pw, const char *t, bool down, bool on)
                        on ? THEME_NOTE_PAGE_PILL_TEXT_ON : THEME_NOTE_PAGE_PILL_TEXT);
 }
 
+#if BOARD_ROUND
+// cut s to the width w in the font f
+static void fit_k(const kfont_t *f, char *s, int w)
+{
+    for (size_t n = strlen(s); n && ui_text_w(f, s) > w; n--) {
+        s[n - 1] = 0;
+    }
+}
+
+// the round frame: the rows between the caps, then the caps
+static void render_round(int64_t now)
+{
+    gfx_fill(THEME_NOTE_PAGE_BG);
+    const int sc = ks_ipos(&s_ks), rh = row_h(), y0 = head_h(), y1 = y0 + list_h();
+    for (int r = 0; r < s_nrows; r++) {
+        const int top = y0 + r * rh - sc;
+        if (top + rh < y0 || top > y1) {
+            continue;
+        }
+        if (s_rows[r].kind == RK_WAIT && s_wait_on) {
+            input_consent_shown(&s_cons, now);  // (the row of the key that waits is on the screen)
+            s_shown_seq = s_wait_seq;
+        }
+        char name[32], l1[96], l2[96];
+        const char *pt[2];
+        row_text(r, name, sizeof name, l1, l2, sizeof l1, pt);
+        ui_rrect(RB_X - RS(6), top + 2, RB_W + RS(12), rh - 6, RS(12), THEME_NOTE_PAGE_LINE);
+        const int tx = RB_X + RS(4), tw = RB_W - RS(10);
+        fit_k(&KF_LABEL, l1, tw);
+        fit_k(&KF_LABEL, l2, tw);
+        ui_text(rr_fit(&KF_TEXT, name, tw), tx, top + RS(28), name, THEME_NOTE_PAGE_TEXT);
+        ui_text(&KF_LABEL, tx, top + RS(48), l1, THEME_NOTE_PAGE_PILL_TEXT);
+        ui_text(&KF_LABEL, tx, top + RS(66), l2, THEME_NOTE_PAGE_PILL_TEXT);
+        const bool armed = s_cons.shown_ms && now >= s_cons.shown_ms + INPUT_ARM_MS;
+        for (int k = 0; k < 2; k++) {
+            int px, pw;
+            if (k >= pills(r, k, &px, &pw)) {
+                break;
+            }
+            const bool on = s_rows[r].kind == RK_WAIT && k == 0 && armed, down = s_press == r * 4 + k;
+            rr_btn(px, pill_y(top), pw, PILL_H, pt[k],
+                   down ? THEME_NOTE_PAGE_PILL_DOWN
+                   : on ? THEME_NOTE_PAGE_PILL_ON
+                        : THEME_NOTE_PAGE_PILL,
+                   on ? THEME_NOTE_PAGE_PILL_TEXT_ON : THEME_NOTE_PAGE_PILL_TEXT);
+        }
+    }
+    int at, sz, al;
+    if (ks_bar(&s_ks, list_h() - 8, &at, &sz, &al) && al > 64) {
+        ui_rrect(RB_X + RB_W + RS(10), y0 + 4 + at, 4, sz, 2, THEME_NOTE_PAGE_SCROLL);
+    }
+    gfx_fill_rect(0, 0, gfx_w, y0, THEME_NOTE_PAGE_BG);
+    gfx_fill_rect(0, y1, gfx_w, gfx_h - y1, THEME_NOTE_PAGE_BG);
+    rr_head("TRUSTED PUBLISHERS", "", THEME_NOTE_PAGE_TITLE, THEME_NOTE_PAGE_TEXT);
+    rr_back("< BACK", false, THEME_NOTE_PAGE_BACK, THEME_NOTE_PAGE_BACK, THEME_NOTE_PAGE_BACK_TEXT,
+            THEME_NOTE_PAGE_BACK_TEXT);
+}
+#endif
+
 void tfn_pub_page_render(int64_t now)
 {
     rows_make();  // (the rows and the copy of the wait of this frame agree)
+#if BOARD_ROUND
+    if (PP_RND) {
+        render_round(now);
+        return;
+    }
+#endif
     gfx_fill(THEME_NOTE_PAGE_BG);
     const int sc = ks_ipos(&s_ks), rh = row_h();
     for (int r = 0; r < s_nrows; r++) {
@@ -357,7 +461,7 @@ void tfn_pub_page_render(int64_t now)
         }
     }
     int at, sz, al;
-    if (ks_bar(&s_ks, gfx_h - head_h() - 8, &at, &sz, &al) && al > 64) {
+    if (ks_bar(&s_ks, list_h() - 8, &at, &sz, &al) && al > 64) {
         gfx_fill_rect(gfx_w - 4, head_h() + 4 + at, 2, sz, THEME_NOTE_PAGE_SCROLL);
     }
     // the head and BACK over the list

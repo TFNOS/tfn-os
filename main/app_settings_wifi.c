@@ -60,8 +60,18 @@ static void wconn_draw(void)
     gfx_text_center_in(WCONN_X, WCONN_W, WCONN_Y + WCONN_H / 2 - 7, t, 2, hot ? THEME_SETUP_TEXT_HOT : set_c_text);
 }
 
+#if BOARD_ROUND
+static int wifi_at_round(int x, int y);
+static int saved_at_round(int x, int y);
+#endif
+
 static int wifi_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (SET_RND) {
+        return wifi_at_round(x, y);
+    }
+#endif
     if (y < WTOP_H) {
         if (x < WBACK_W + 4) {
             return 10;
@@ -182,6 +192,11 @@ void set_ask_render(void)
 
 int set_sv_top, set_sv_press = -1;  // the first row shown; the pressed zone (-1 none)
 
+#if BOARD_ROUND
+#include "set_round.h"
+#include "app_settings_round.inc"
+#endif
+
 static void saved_open(void)
 {
     if (GUARD_BUILD && !device_guard_local_admin()) {
@@ -197,6 +212,11 @@ static void saved_open(void)
 // the zone at a point: 10 back, 13 up, 14 down, 100 + 3 * row + (0 the name, 1 AUTO, 2 FORGET); -1 none
 static int saved_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (SET_RND) {
+        return saved_at_round(x, y);
+    }
+#endif
     if (y < WTOP_H) {
         return x < WBACK_W + 4 ? 10 : -1;
     }
@@ -253,6 +273,12 @@ void set_saved_input(const input_event_t *ev)
 
 void set_saved_render(void)
 {
+#if BOARD_ROUND
+    if (SET_RND) {
+        saved_render_round();
+        return;
+    }
+#endif
     gfx_fill(THEME_SETUP_BG);
     gfx_fill_rect(0, 2, WBACK_W, WTOP_H - 4, set_sv_press == 10 ? set_c_accent : set_c_box);
     gfx_text_center_in(0, WBACK_W, WTOP_H / 2 - 7, "< BACK", 2, set_sv_press == 10 ? THEME_SETUP_TEXT_HOT : set_c_text);
@@ -481,6 +507,12 @@ void set_wifi_render(int64_t now)
 #else
 void set_wifi_render(int64_t now)
 {
+#if BOARD_ROUND
+    if (SET_RND) {
+        wifi_render_round();
+        return;
+    }
+#endif
     gfx_fill(THEME_SETUP_BG);
     gfx_fill_rect(0, 2, WBACK_W, WTOP_H - 4, s_wifi_press == 10 ? set_c_accent : set_c_box);
     gfx_text_center_in(0, WBACK_W, WTOP_H / 2 - 7, "< BACK", 2, s_wifi_press == 10 ? THEME_SETUP_TEXT_HOT : set_c_text);
@@ -570,7 +602,12 @@ void set_wifi_render(int64_t now)
 void set_qr_input(const input_event_t *ev)
 {
     int c = CTRL_NONE;
-    if (ev->x < BACK_W + 4) {
+#if BOARD_ROUND
+    if (SET_RND) {
+        c = qr_ctrl_round(ev->x, ev->y);
+    } else
+#endif
+            if (ev->x < BACK_W + 4) {
         c = CTRL_BACK;
     } else if (!wifi_web_ip() && ui_hit(ev->x, ev->y, QR_START_X, QR_START_Y, QR_START_W, QR_START_H, 0)) {
         c = CTRL_QR_START;
@@ -648,6 +685,12 @@ void set_back_strip(bool hot)
 
 void set_qr_render(int64_t now)
 {
+#if BOARD_ROUND
+    if (SET_RND) {
+        qr_render_round();
+        return;
+    }
+#endif
     gfx_fill(THEME_SETUP_BG);
     set_back_strip(set_qr_press == CTRL_BACK);
     char join[80], url[64], ip[24];

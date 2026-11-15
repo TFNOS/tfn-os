@@ -1,6 +1,6 @@
 // The private header of the menu (the app MENU): the files app_menu.c, menu_look.c, menu_tree.c, menu_round.c,
-// menu_spot.c, menu_home*.c (through menu_home_priv.h) and menu_tab5*.c (through menu_tab5_priv.h) include it (only
-// they). Until P3 R8 the menu was one unit (app_menu.c and its .inc parts).
+// menu_spot.c, menu_grid.c, menu_home*.c (through menu_home_priv.h) and menu_tab5*.c (through menu_tab5_priv.h)
+// include it (only they). Until P3 R8 the menu was one unit (app_menu.c and its .inc parts).
 #pragma once
 
 #include <ctype.h>
@@ -341,4 +341,15 @@ void men_tb_input(const input_event_t *ev);
 void men_tb_update(int64_t now, float dt);
 void men_tb_redraw_all(void);
 void men_tb_render(int64_t now);
+#endif
+// (menu_grid.c: the grid menu of a small portrait panel, BOARD_UI_GRID)
+#if BOARD_UI_GRID
+void men_gr_level_changed(int from);
+void men_gr_reveal(int i);
+void men_gr_enter(int64_t now);
+void men_gr_input(const input_event_t *ev);
+void men_gr_update(int64_t now, float dt);
+void men_gr_render(int64_t now);
+void men_gr_rooms_free(void);
+void men_gr_redraw_all(void);
 #endif

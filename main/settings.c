@@ -64,6 +64,22 @@ static void spill_write_all(void)
     fwrite(s_spill, sizeof(spill_t), (size_t)s_nspill, f);
     fclose(f);
 }
+static bool early_key(const char *k);
+static bool early_to_nvs(const char *key, uint32_t val);
+// The EARLY keys of an old spill store go to the NVS at the load (the value that store_get used: the first copy).
+static void early_out(void)
+{
+    for (int i = 0; i < s_nspill;) {
+        if (early_key(s_spill[i].key)) {
+            char key[16];
+            memcpy(key, s_spill[i].key, sizeof key);
+            if (early_to_nvs(key, s_spill[i].val)) {
+                continue;  // (all copies of the key went: the same i is the next record)
+            }
+        }
+        i++;
+    }
+}
 static void spill_load(void)
 {
     if (s_spill_loaded || !storage_ok()) {
@@ -92,6 +108,7 @@ static void spill_load(void)
         spill_write_all();  // (spill_put writes record i at place i of the file: the file must hold the same records)
     }
     ESP_LOGI(SPILL_TAG, "the spill store has %d keys", s_nspill);
+    early_out();
 }
 static int spill_find(const char *key)
 {
@@ -244,6 +261,35 @@ void settings_lang_all_set(int lang)
     spill_unlock();
 }
 
+// An EARLY key (the start reads it before /data mounts) that is in the spill store: the start reads only the NVS, so a
+// value in the spill store is lost at each restart. Write the value to the NVS; then all spill copies of the key go.
+// (Caller holds the spill lock.) False: the NVS has no room, the spill store keeps the value.
+static bool early_to_nvs(const char *key, uint32_t val)
+{
+    nvs_handle_t h;
+    esp_err_t e = ESP_FAIL;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) == ESP_OK) {
+        e = nvs_set_u32(h, key, val);
+        if (e == ESP_OK) {
+            e = nvs_commit(h);
+        }
+        nvs_close(h);
+    }
+    if (e != ESP_OK) {
+        return false;
+    }
+    int k = 0;
+    for (int i = 0; i < s_nspill; i++) {
+        if (strcmp(s_spill[i].key, key)) {
+            s_spill[k++] = s_spill[i];
+        }
+    }
+    s_nspill = k;
+    spill_write_all();
+    ESP_LOGI(SPILL_TAG, "%s: the value goes to the NVS (the start reads it there)", key);
+    return true;
+}
+
 void store_set(const char *key, uint32_t val)
 {
     if (!key || strlen(key) > 15) {
@@ -252,6 +298,10 @@ void store_set(const char *key, uint32_t val)
     spill_lock();
     spill_load();
     int si = s_spill ? spill_find(key) : -1;
+    if (si >= 0 && early_key(key) && early_to_nvs(key, val)) {
+        spill_unlock();
+        return;
+    }
     if (si >= 0) {  // (a key of the spill store stays there)
         if (s_spill[si].val != val) {
             s_spill[si].val = val;

@@ -12,6 +12,7 @@
     "last 33 bytes (the checksum and the SHA-256) set to 0 (Boot-Hash of the flash tool). An empty list = no known value.",
     "flash: the write plan of tfn flash (the addresses in the flash of the board).",
     "release: true = a kind of the public release (.github/workflows/release.yml KINDS, site/js/boards.js \"web: true\").",
+    "manager_release: true = a kind that only the release of the manager builds (not a kind of the public release); the release build tool ORDER = the release kinds and these kinds.",
     "release_cfg: the values of a public release build after force_cfg (sdk/tools/release_cfg.py force).",
     "A null value = not found in the files of the repo; its note tells why."
   ],
@@ -151,6 +152,7 @@
       "name": "M5Stack Tab5",
       "chip": "esp32p4",
       "release": false,
+      "manager_release": true,
       "kconfig_target": "CONFIG_TFN_TARGET_TAB5",
       "sdkconfig_defaults": ["sdkconfig.defaults", "sdkconfig.defaults.tab5"],
       "dev_sdkconfig": "sdkconfig.tab5",

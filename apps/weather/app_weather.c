@@ -58,8 +58,13 @@ static int s_W = 172, s_H = 640, s_lw = 640, s_lh = 172, s_pw = 212, s_dx0 = 470
 #define H s_H
 static int s_he;     // the language: 0 English, 1 Hebrew
 static bool s_land;  // the board on its side: the desk view (640 x 172, or 320 x 240)
+static bool s_rnd;   // the round frame (APP_ROUND_HI): always the page, its parts inside the circle
 static void frame_sizes(void)
 {
+    s_rnd = gfx_round();
+    if (s_rnd) {
+        s_land = false;
+    }
     if (!s_land) {
         s_W = gfx_w;
         s_H = gfx_h;
@@ -524,14 +529,14 @@ static void leave(void)
 
 // ---------------------------------------------------------------- the layout of a page (content y; the screen y is
 // the content y minus the scroll)
-#define HERO_H 300
-#define CARD_X 8
-#define CARD_W (W - 16)
+#define HERO_H (s_rnd ? H * 360 / 466 : 300)  // (the round frame: the hero fills the circle)
+#define CARD_X (s_rnd ? W * 48 / 466 : 8)
+#define CARD_W (W - 2 * CARD_X)
 #define HR_H   30                                  // a row of the next hours
 #define EV_H   18                                  // a row of a sunrise or a sunset between the hours
 #define DY_H   44                                  // a row of a day
 #define TILE   (W >= 220 ? (CARD_W - 8) / 2 : 76)  // (a wider page: two wider tiles)
-#define HDR_H  50                                  // the small head when the page scrolled down
+#define HDR_H  (s_rnd ? H * 96 / 466 : 50)         // the small head when the page scrolled down
 typedef struct {
     int rain_y, rain_h, hours_y, hours_h, days_y, days_h, tiles_y, tiles_h, foot_y, total;
 } lay_t;
@@ -571,9 +576,10 @@ static float page_max_scroll(void)
 }
 
 // ---------------------------------------------------------------- the lists: the rows
-#define LIST_Y 56
-#define PL_H   72  // a row of the places
-#define AD_H   54  // a row of the add screen
+#define LIST_Y (s_rnd ? H * 104 / 466 : 56)
+#define LI     (s_rnd ? W * 50 / 466 : 0)  // the inset of the rows of a list (the round frame: inside the circle)
+#define PL_H   72                          // a row of the places
+#define AD_H   54                          // a row of the add screen
 static int list_rows(void)
 {
     if (s_sc == SC_PLACES) {
@@ -600,6 +606,9 @@ static int list_top(void)
 }
 static int list_bottom(void)
 {
+    if (s_rnd) {
+        return s_sc == SC_PLACES ? H - H * 112 / 466 : H - H * 40 / 466;
+    }
     return s_sc == SC_PLACES ? H - 70 : H;
 }
 static float list_max(void)
@@ -653,6 +662,9 @@ static void search_done(bool ok)
 // ---------------------------------------------------------------- input
 static bool back_hit(int x, int y)
 {
+    if (s_rnd) {  // (the back key at the top of the circle)
+        return y < LIST_Y - 30 && x > W / 2 - 70 && x < W / 2 + 70;
+    }
     return y < LIST_Y - 4 && (s_he ? x > W - 52 : x < 52);
 }
 static void list_tap(int x, int y)
@@ -667,7 +679,8 @@ static void list_tap(int x, int y)
         list_to_top();
         return;
     }
-    if (s_sc == SC_PLACES && y >= H - 62 && y < H - 6) {  // + ADD A PLACE
+    const bool add_y = s_rnd ? y >= list_bottom() && y < H - H * 40 / 466 : y >= H - 62 && y < H - 6;
+    if (s_sc == SC_PLACES && add_y) {  // + ADD A PLACE
         sfx_play(SFX_CLICK);
         s_sc = SC_ADD;
         s_add_tab = 0;
@@ -777,6 +790,9 @@ static bool list_btn_hit(int x, int y)
 {
     if (s_land) {
         return x < 48 && y < 48;
+    }
+    if (s_rnd) {  // (the key of the places in the top of the circle, at the start side)
+        return y < H * 80 / 466 && (s_he ? x > W / 2 && x < W / 2 + 100 : x < W / 2 && x > W / 2 - 100);
     }
     return y < 54 && (s_he ? x > W - 50 : x < 50);
 }
@@ -1015,7 +1031,7 @@ static bool awake(void)
 const app_t app_weather = {
         .name = "WEATHER",
         .landscape = false,
-        .round_fit = true,  // (the Watcher: the whole 240 x 320 frame in the circle)
+        .round = APP_ROUND_HI,  // (the round boards: the page in the circle, s_rnd)
         .enter = enter,
         .leave = leave,
         .input = input,

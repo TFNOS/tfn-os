@@ -522,7 +522,7 @@ int board_touch_reports(touch_rep_t *out, int max)
     portEXIT_CRITICAL(&s_trep_lock);
     return k;
 }
-int board_touch_points(int *x, int *y, int max)
+static int touch_points(int *x, int *y, int max)
 {
     // The read command gives the report length (byte 7). A report of 2 + 6 x 5 bytes can hold 5 points (32); the
     // 14-byte report holds 2 (s_rlen: the console "touchread"; 14 if the panel does not take the long read).
@@ -765,15 +765,48 @@ int board_battery(bool *charging, int *mv)
     return bat_percent(s_bat_mv);
 }
 
+// DISPLAY OFF in the DEEP IDLE (power.c: on the battery under 80 %): the chip stops to drive the glass. The touch part
+// then reports a false finger at a fixed place (tested on a V2: about half of the reads), so the touch reads give no
+// point until the display is on again. NO SLEEP IN (0x10): the touch part AND the display part then stop until a
+// power cut (a reset and sleep out do not bring them back).
+static volatile bool s_disp_off;
+void board_display_off(void)
+{
+    if (!s_scr_sleep || s_disp_off) {
+        return;
+    }
+    xSemaphoreTake(s_flush_idle, portMAX_DELAY);  // (no frame in flight)
+    lcd_cmd(0x28, NULL, 0);
+    xSemaphoreGive(s_flush_idle);
+    s_disp_off = true;
+    ESP_LOGI(TAG, "display off (the touch is not read until the wake)");
+}
+
 void board_screen_sleep(bool sleep)
 {
     // Only the amplifier. The LCD must not sleep: the touch panel is in the same chip
-    // (AXS15231B), and a sleeping chip reads no touch, so a touch cannot wake the screen.
+    // (AXS15231B), and a sleeping chip reads no touch, so a touch cannot wake the screen. (The DEEP IDLE can send
+    // display off: board_display_off; the wake here sends display on before the backlight comes on.)
     if (sleep == s_scr_sleep) {
         return;
     }
     tca_set(EXIO_SPK_EN, sleep && !s_spk_hold ? 0 : s_spk_on);
+    if (!sleep && s_disp_off) {
+        xSemaphoreTake(s_flush_idle, portMAX_DELAY);  // (no frame in flight)
+        lcd_cmd(0x29, NULL, 0);
+        xSemaphoreGive(s_flush_idle);
+        s_disp_off = false;
+        ESP_LOGI(TAG, "display on");
+    }
     s_scr_sleep = sleep;
+}
+
+int board_touch_points(int *x, int *y, int max)
+{
+    if (s_disp_off) {
+        return 0;  // (the display is off: the touch part reports a false finger)
+    }
+    return touch_points(x, y, max);
 }
 
 // no touch INT line on the 3.49 (the touch is read each 50 ms with the screen off)

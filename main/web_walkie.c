@@ -290,8 +290,8 @@ static esp_err_t api_boards(httpd_req_t *req)
     json_str(prof, sizeof prof, menu_profile());
     n += snprintf(b + n, BOARDS_JSON - n, ",\"prof\":\"%s\",\"profh\":%lu,\"menuv\":3,\"home\":%s", prof,
                   (unsigned long)menu_profile_hash(), menu_home_own() ? "true" : "false");  // (the menu profile)
-    n += snprintf(b + n, BOARDS_JSON - n, ",\"pwoff\":%d",
-                  power_off_choice());  // (POWER OFF: the choice 0..5, power.h)
+    n += snprintf(b + n, BOARDS_JSON - n, ",\"pwoff\":%d,\"pwdeep\":%d,\"rr\":%d", power_off_choice(),
+                  power_deep_choice(), (int)esp_reset_reason());  // (POWER OFF 0..5; DEEP IDLE 0..3; the last reset)
     // While a game of 2 BOARDS runs, the manager does not read the board and takes no picture (link.h).
     n += snprintf(b + n, BOARDS_JSON - n, ",\"linked\":%s", link_in_use() ? "true" : "false");
     n += snprintf(b + n, BOARDS_JSON - n, "},\"lan\":[");
@@ -472,6 +472,39 @@ static void poweroff_cb(void *arg)
     power_off_ask();
 }
 
+// bright=<10..255> and vol=<0..AUDIO_VOL_MAX> of /api/ctl: the BRIGHTNESS and the VOLUME from the manager. It does the
+// same as the sliders of the system panel (sysui_panel.c): the new value is live at once, a change of the volume ends
+// MUTE, and settings_save() keeps the values. A dim or dark screen (the screen saver) stays as it is: the wake gives the
+// new brightness. A board in "quiet" (the speaker off) stays silent.
+static void ctl_levels(const char *q)
+{
+    char v[8];
+    bool chg = false;
+    if (httpd_query_key_value(q, "bright", v, sizeof v) == ESP_OK) {
+        int n = atoi(v);
+        n = n < 10 ? 10 : n > 255 ? 255 : n;
+        g_settings.brightness = (uint8_t)n;
+        if (!strcmp(app_screen_state(), "on")) {
+            board_backlight((uint8_t)n);
+        }
+        chg = true;
+    }
+    if (httpd_query_key_value(q, "vol", v, sizeof v) == ESP_OK) {
+        int n = atoi(v);
+        n = n < 0 ? 0 : n > AUDIO_VOL_MAX ? AUDIO_VOL_MAX : n;
+        g_settings.volume = (uint8_t)n;
+        if (g_settings.mute) {
+            g_settings.mute = false;
+            audio_set_mute(false);
+        }
+        audio_set_volume(n);
+        chg = true;
+    }
+    if (chg) {
+        settings_save();
+    }
+}
+
 static esp_err_t api_ctl(httpd_req_t *req)
 {
     char q[96], v[32];
@@ -513,6 +546,7 @@ static esp_err_t api_ctl(httpd_req_t *req)
                 settings_apply();
             }
         }
+        ctl_levels(q);
         if (httpd_query_key_value(q, "screen", v, sizeof v) == ESP_OK) {
             if (v[0] == '1') {
                 app_screen_wake();
@@ -553,8 +587,11 @@ static esp_err_t api_ctl(httpd_req_t *req)
     char app[16];
     const app_t *a = app_current();
     json_str(app, sizeof app, a ? a->name : "");
-    int n = snprintf(b, CB, "{\"app\":\"%s\",\"screen\":\"%s\",\"fps\":%.1f,\"apps\":[", app, app_screen_state(),
-                     (double)app_fps());
+    // ("bright", "vol", "mute": the manager shows its BRIGHTNESS and VOLUME controls only when they are here)
+    int n = snprintf(b, CB,
+                     "{\"app\":\"%s\",\"screen\":\"%s\",\"fps\":%.1f,\"bright\":%d,\"vol\":%d,\"mute\":%s,\"apps\":[",
+                     app, app_screen_state(), (double)app_fps(), g_settings.brightness, g_settings.volume,
+                     g_settings.mute ? "true" : "false");
     const char **names = heap_caps_malloc(NM * sizeof(char *), MALLOC_CAP_SPIRAM);
     uint8_t *cats = heap_caps_malloc(NM, MALLOC_CAP_SPIRAM);
     if (!names || !cats) {
@@ -584,7 +621,8 @@ static esp_err_t api_ctl(httpd_req_t *req)
     return ESP_OK;
 }
 
-// the power report (power.c) and its two settings: ?off=<the choice 0..5> (POWER OFF), ?ls=0/1 (the light sleep)
+// the power report (power.c) and its settings: ?off=<the choice 0..5> (POWER OFF), ?ls=0/1 (the light sleep),
+// ?deep=<the choice 0..3> (DEEP IDLE)
 static esp_err_t api_power(httpd_req_t *req)
 {
     char q[48], v[8];
@@ -595,9 +633,17 @@ static esp_err_t api_power(httpd_req_t *req)
         if (httpd_query_key_value(q, "ls", v, sizeof v) == ESP_OK) {
             power_set_light_sleep(v[0] == '1');
         }
+        if (httpd_query_key_value(q, "deep", v, sizeof v) == ESP_OK) {
+            power_set_deep_choice(atoi(v));
+        }
+        if (httpd_query_key_value(q, "x", v, sizeof v) == ESP_OK) {
+            char m[8] = "";
+            httpd_query_key_value(q, "xm", m, sizeof m);
+            power_set_x(atoi(v), atoi(m));
+        }
     }
     enum {
-        PB = 768
+        PB = 1024
     };
     char *b = heap_caps_malloc(PB, MALLOC_CAP_SPIRAM);
     if (!b) {

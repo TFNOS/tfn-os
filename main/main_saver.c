@@ -2,6 +2,7 @@
 // motion and the radio link that keep the screen on, the API of the screen (app.h).
 #include "main_priv.h"
 #include "tfn_web.h"
+#include "standby.h"
 
 static const char *TAG = "main";
 
@@ -50,8 +51,14 @@ bool mai_app_background(void)
     return (mai_app && mai_app->background && mai_app->background()) || web_audio_active();
 }
 static bool s_net;  // a transfer runs (mai_net_update): with the screen off, no light sleep
+// The IMU filter changes at each screen off and on (imu_slow: no gyro with the screen off), and the gravity direction
+// moves by up to about 0.13 g on a still board (the 1.75C woke itself 0.3 s after each screen off). For IMU_SETTLE_MS
+// after a change the motion check takes a new reference and finds no move (a shake still counts).
+#define IMU_SETTLE_MS 2000
+static int64_t s_imu_mode_at = -IMU_SETTLE_MS;
 void mai_deep_saver(bool on)
 {
+    s_imu_mode_at = tfn_now_ms();
     mai_bg_on = on && mai_app_background();
     mai_cam_on = webcam_active();
     board_speaker_hold(mai_bg_on);
@@ -98,6 +105,7 @@ void mai_wake(int64_t t, const char *why)
         power_wake(why);
         board_backlight(g_settings.brightness);
         ESP_LOGI(TAG, "screen on: %s", why);
+        standby_wake(t);  // (the menu: STANDBY shows first)
     }
 }
 
@@ -117,8 +125,9 @@ void mai_check_motion(int64_t t)
         gn = rn = 1.0f;  // (no reading yet: the plain difference)
     }
     float dx = g[0] / gn - mai_ref_g[0] / rn, dy = g[1] / gn - mai_ref_g[1] / rn, dz = g[2] / gn - mai_ref_g[2] / rn;
-    bool moved = dx * dx + dy * dy + dz * dz > MOVE_G * MOVE_G;
-    if (moved) {
+    const bool settle = t - s_imu_mode_at < IMU_SETTLE_MS;  // (the filter moves after a mode change: no move)
+    bool moved = !settle && dx * dx + dy * dy + dz * dz > MOVE_G * MOVE_G;
+    if (moved || settle) {
         mai_ref_g[0] = g[0];
         mai_ref_g[1] = g[1];
         mai_ref_g[2] = g[2];

@@ -73,6 +73,7 @@ static const char *TAG = "board";
 
 #define TCA_ADDR 0x20
 #define TP_ADDR  0x38
+#define CST_ADDR 0x15  // the touch chip of newer boards (the CST816 type)
 
 #define PKEY_SHORT 0x08
 #define PKEY_ALL   0x0F
@@ -86,6 +87,8 @@ static const char *TAG = "board";
 #define TP_MON_TIME  0x87  // the idle time before the monitor mode, s (the chip: 10; 255 = the longest)
 #define TP_PMODE     0xA5  // the power mode: 0 = active
 #define TP_EVENT_UP  1
+#define CST_CHIP_ID  0xA7  // the CST816 chip ID
+#define CST_NO_SLEEP 0xFE  // the CST816 DisAutoSleep: 1 = no auto sleep (in its sleep it gives no I2C answer)
 
 // the panel and the picture on it
 #define PANEL_W       368
@@ -318,8 +321,15 @@ static void lcd_cmd(uint8_t cmd, const uint8_t *data, size_t len)
     ESP_ERROR_CHECK(esp_lcd_panel_io_tx_param(s_io, (int)((QSPI_OP_CMD << 24) | ((uint32_t)cmd << 8)), data, len));
 }
 
+static bool s_cst;   // the touch chip is the CST816 type = the V2 board with a CO5300 screen (tp_find)
+#define V2_X_GAP 16  // the V2 (CO5300): the first visible column of the panel is column 16 of the chip
+
 static void lcd_window(int x0, int x1, int y0, int y1)
 {
+    if (s_cst) {
+        x0 += V2_X_GAP;
+        x1 += V2_X_GAP;
+    }
     lcd_cmd(0x2A, (uint8_t[]){(uint8_t)(x0 >> 8), (uint8_t)x0, (uint8_t)(x1 >> 8), (uint8_t)x1}, 4);
     lcd_cmd(0x2B, (uint8_t[]){(uint8_t)(y0 >> 8), (uint8_t)y0, (uint8_t)(y1 >> 8), (uint8_t)y1}, 4);
 }
@@ -634,15 +644,29 @@ static void lcd_init(void)
     }
     tables_init();
 
-    // the list of the Waveshare demo (esp_lcd_sh8601), with RGB565
-    lcd_cmd(0x11, NULL, 0);  // sleep out
-    vTaskDelay(pdMS_TO_TICKS(120));
-    lcd_cmd(0x44, (uint8_t[]){0x01, 0xD1}, 2);  // tear scan line
-    lcd_cmd(0x35, (uint8_t[]){0x00}, 1);        // tear effect on
-    lcd_cmd(0x53, (uint8_t[]){0x20}, 1);        // brightness control on
-    lcd_cmd(0x3A, (uint8_t[]){0x55}, 1);        // RGB565
-    lcd_cmd(0x36, (uint8_t[]){0x00}, 1);        // MADCTL: RGB order
-    lcd_cmd(0x51, (uint8_t[]){0x00}, 1);        // dark until the first frame
+    if (s_cst) {
+        // THE V2 BOARD (a CO5300 screen): the list of the Waveshare V2 demo (display_colorbar), dark at the start
+        lcd_cmd(0xFE, (uint8_t[]){0x00}, 1);  // the user command page
+        lcd_cmd(0xC4, (uint8_t[]){0x80}, 1);  // the QSPI mode
+        lcd_cmd(0x3A, (uint8_t[]){0x55}, 1);  // RGB565
+        lcd_cmd(0x35, (uint8_t[]){0x00}, 1);  // tear effect on
+        lcd_cmd(0x53, (uint8_t[]){0x20}, 1);  // brightness control on
+        lcd_cmd(0x51, (uint8_t[]){0x00}, 1);  // dark until the first frame
+        lcd_cmd(0x63, (uint8_t[]){0xFF}, 1);  // the high brightness limit
+        lcd_cmd(0x11, NULL, 0);               // sleep out
+        vTaskDelay(pdMS_TO_TICKS(120));
+        ESP_LOGI(TAG, "the V2 board: a CO5300 screen");
+    } else {
+        // the first board (an SH8601 screen): the list of the Waveshare demo (esp_lcd_sh8601), with RGB565
+        lcd_cmd(0x11, NULL, 0);  // sleep out
+        vTaskDelay(pdMS_TO_TICKS(120));
+        lcd_cmd(0x44, (uint8_t[]){0x01, 0xD1}, 2);  // tear scan line
+        lcd_cmd(0x35, (uint8_t[]){0x00}, 1);        // tear effect on
+        lcd_cmd(0x53, (uint8_t[]){0x20}, 1);        // brightness control on
+        lcd_cmd(0x3A, (uint8_t[]){0x55}, 1);        // RGB565
+        lcd_cmd(0x36, (uint8_t[]){0x00}, 1);        // MADCTL: RGB order
+        lcd_cmd(0x51, (uint8_t[]){0x00}, 1);        // dark until the first frame
+    }
     lcd_clear();
     lcd_cmd(0x29, NULL, 0);  // display on
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -798,10 +822,34 @@ static void tp_diag_count(esp_err_t err, int points)
         }
     }
 }
+// THE TOUCH CHIP: the first boards have an FT3168 at 0x38; newer boards (AMOLED2) have a CST816 type at 0x15 with the
+// same report layout (the count at 0x02, then XH XL YH YL; one point). The first call after the start finds the chip
+// that answers (the reset of the touch is done then).
+static void tp_find(void)
+{
+    static bool s_found;
+    if (s_found) {
+        return;
+    }
+    s_found = true;
+    if (i2c_master_probe(s_bus, TP_ADDR, 50) == ESP_OK || i2c_master_probe(s_bus, CST_ADDR, 50) != ESP_OK) {
+        ESP_LOGI(TAG, "touch: FT3168 at 0x%02X", TP_ADDR);
+        return;
+    }
+    i2c_master_bus_rm_device(s_tp);
+    s_tp = add_dev(s_bus, CST_ADDR);
+    s_cst = true;
+    uint8_t id = 0;
+    reg_read(s_tp, CST_CHIP_ID, &id, 1);
+    reg_write(s_tp, CST_NO_SLEEP, 1);
+    ESP_LOGI(TAG, "touch: CST816 type at 0x%02X, chip ID 0x%02X", CST_ADDR, id);
+}
+
 int board_touch_points(int *x, int *y, int max)
 {
     uint8_t buf[1 + 6 * 2];
     static uint32_t s_errors;
+    tp_find();
     esp_err_t err = reg_read(s_tp, TP_TD_STATUS, buf, sizeof(buf));
     if (s_tpd.until) {
         tp_diag_count(err, err == ESP_OK ? (buf[0] & 0x0F) : 0);
@@ -817,7 +865,13 @@ int board_touch_points(int *x, int *y, int max)
     // again each 10 s (with 255 alone it still went silent once after about 4 minutes with no touch).
     static bool s_active;
     static int64_t s_active_at;
-    if (err == ESP_OK) {
+    if (err == ESP_OK && s_cst) {
+        const int64_t now = esp_timer_get_time();
+        if (now - s_active_at > 10000000) {
+            s_active_at = now;
+            reg_write(s_tp, CST_NO_SLEEP, 1);  // (the CST816: no auto sleep; again each 10 s)
+        }
+    } else if (err == ESP_OK) {
         const int64_t now = esp_timer_get_time();
         if (!s_active || now - s_active_at > 10000000) {
             uint8_t v = 0xFF;
@@ -856,6 +910,9 @@ int board_touch_points(int *x, int *y, int max)
     if (points > 2) {
         points = 0;
     }
+    if (s_cst && points > 1) {
+        points = 1;  // (the CST816 reports one point)
+    }
     int n = 0;
     for (int i = 0; i < points && n < max; i++) {
         const uint8_t *p = buf + 1 + 6 * i;
@@ -880,6 +937,11 @@ int board_touch_points(int *x, int *y, int max)
 int board_battery(bool *charging, int *mv)
 {
     return axp2101_battery(s_axp, charging, mv);
+}
+
+int board_ext_power(void)
+{
+    return axp2101_vbus(s_axp);
 }
 
 // the FT3168 INT line (low while it has a touch report)
@@ -931,6 +993,7 @@ void board_init(void)
     i2c_init();
     axp_init();
     tca_resets();
+    tp_find();  // (the touch chip tells the board version: the screen start depends on it)
     lcd_init();
     ESP_LOGI(TAG, "AMOLED 1.8: screen 368 x 448 (the picture 336 x 448 from 240 x 320), %d MHz",
              CONFIG_TFN_LCD_PCLK_MHZ);

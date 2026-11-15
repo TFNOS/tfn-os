@@ -5,11 +5,13 @@
 // Screensaver: no activity for the time in SETUP -> dim, 15 s later -> off.
 // Activity = touch, PWR key, a change of the board position, a shake, music.
 
+#include "power.h"
 #include "main_priv.h"
 #include "tfn/theme.h"
 #include "tfn_id.h"
 #include "tfn_pool.h"
 #include "radio_play.h"
+#include "standby.h"
 
 static const char *TAG = "main";
 
@@ -386,9 +388,10 @@ void app_main(void)
             ALL_APPS[i]->init();
         }
     }
-    notify_init();  // the notices of /data/notify.bin (notify.h)
-    tfn_init();     // TFN OS: the installed apps
-    watch_init();   // the background checks of the app files (watch.h) (their init() runs when each one loads)
+    notify_init();   // the notices of /data/notify.bin (notify.h)
+    standby_init();  // STANDBY: the settings and the last weather (standby.h)
+    tfn_init();      // TFN OS: the installed apps
+    watch_init();    // the background checks of the app files (watch.h) (their init() runs when each one loads)
     ESP_LOGI(TAG, "board V%d, volume %d, brightness %d, internal RAM free %u", (int)board_version(), g_settings.volume,
              g_settings.brightness, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     console_init();
@@ -471,7 +474,7 @@ static bool frame_saver(int64_t t)
             }
             vTaskDelay(pdMS_TO_TICKS(10));
         } else {
-            vTaskDelay(pdMS_TO_TICKS(100));  // (fewer wakes of the CPU: the keys and the motion each 0.1 s)
+            vTaskDelay(pdMS_TO_TICKS(power_x() & PWX_LOOP ? 250 : 100));  // (fewer wakes: the keys, the motion)
         }
         return true;
     }
@@ -491,6 +494,7 @@ static bool frame_panel(int64_t t)
     int pev = sysui_panel_tick(t, mai_pull_allow());
 #endif
     if (pev == PANEL_START) {
+        standby_hide();  // (the panel comes over the menu, not over STANDBY)
         panel_start(t);
     } else if (pev == PANEL_END) {
         mai_key_presses = 0;  // (the BOOT key in the panel is not the app's)
@@ -509,9 +513,10 @@ static bool frame_panel(int64_t t)
     // (the notification center as the panel: an app with app_t.run or in a match runs on: HOURGLASS kept its time
     // stopped, and a match ended on the other board after 3 s)
 #if BOARD_UI_TABLET
-    const bool frozen = (sysui_panel_on() || notify_center_on() || hb_card()) && !mai_app_runs();  // (and the card)
+    const bool frozen =
+            (sysui_panel_on() || notify_center_on() || hb_card() || standby_on()) && !mai_app_runs();  // (and the card)
 #else
-    const bool frozen = (sysui_panel_on() || notify_center_on()) && !mai_app_runs();
+    const bool frozen = (sysui_panel_on() || notify_center_on() || standby_on()) && !mai_app_runs();
 #endif
     if (frozen && !s_frozen_at) {
         s_frozen_at = t;
@@ -532,6 +537,10 @@ static void frame_keys(int64_t t)
     int key, mods;
     while (input_key_pop(&key, &mods)) {
         mai_active_at = mai_hand_at = t;
+        if (standby_on()) {
+            standby_hide();  // (a key: the menu)
+            continue;
+        }
         if (sysui_panel_on() || notify_center_on()) {
             if (key == INK_ESC) {
                 if (notify_center_on()) {
@@ -585,6 +594,9 @@ static void frame_touches(int64_t t)
         if (!sysui_panel_on() && s_own != OWN_PANEL && notify_input(&ev)) {
             continue;  // the banner, the center
         }
+        if (!sysui_panel_on() && s_own != OWN_PANEL && standby_input(&ev)) {
+            continue;  // STANDBY (standby.h)
+        }
         if (ev.kind == IN_DOWN) {
             s_own = sysui_panel_on() ? OWN_PANEL : OWN_APP;
             s_own_down = true;
@@ -625,9 +637,10 @@ static void frame_layers(int64_t t, int64_t at, bool frozen)
 #if BOARD_HI_FRAME
     // the HI frame (gfx.h) only when no system layer draws over the app (they keep copies of the frame)
 #if BOARD_UI_TABLET
-    gfx_hi_frame(!sysui_panel_on() && !notify_center_on() && !notify_banner_on() && !sysui_active() && !hb_busy());
+    gfx_hi_frame(!sysui_panel_on() && !notify_center_on() && !notify_banner_on() && !sysui_active() && !hb_busy() &&
+                 !standby_on());
 #else
-    gfx_hi_frame(!sysui_panel_on() && !notify_center_on() && !notify_banner_on() && !sysui_active());
+    gfx_hi_frame(!sysui_panel_on() && !notify_center_on() && !notify_banner_on() && !sysui_active() && !standby_on());
 #endif
 #endif
     if (sysui_panel_on()) {
@@ -642,6 +655,9 @@ static void frame_layers(int64_t t, int64_t at, bool frozen)
         sysui_panel_draw(!frozen);
     } else if (notify_center_on()) {
         notify_draw(t);  // the notification center (the whole frame)
+    } else if (standby_on() && !sysui_active()) {
+        standby_draw(t);  // STANDBY: the whole frame (standby.h)
+        notify_draw(t);   // the banner of a new notice
     } else if (!sysui_active()) {
 #if BOARD_UI_TABLET
         const bool card = hb_card();  // (the home bar has the finger: the app stops under its card)
@@ -722,6 +738,11 @@ static void main_frame(void)
         layout_tick(t);
         bt_pad_tick(t);  // (the BLE stack stops after the app that started it: its RAM comes back)
         oref_tick(t);    // HOME FRONT ALERTS: the settings, an alert, the siren (also with the screen off)
+        standby_tick(t,
+                     mai_saver == SAVER_ON    ? 2
+                     : mai_saver == SAVER_DIM ? 1
+                                              : 0,
+                     mai_hand_at);  // STANDBY (standby.h)
         if (frame_saver(t)) {
             return;
         }
@@ -732,6 +753,11 @@ static void main_frame(void)
             const app_t *a = s_next_app;
             s_next_app = NULL;
             switch_app(a, t);
+        }
+        if (!g_shot_req && standby_skip(t)) {  // (a picture of the screen waits for a new frame)
+            frame_end(t);                      // (STANDBY: no new frame is due; the LCD keeps the last one)
+            vTaskDelay(pdMS_TO_TICKS(20));
+            return;
         }
 
 #if CONFIG_TFN_SELFTEST

@@ -396,7 +396,7 @@ static bool awake(void)
 const app_t app_i2c = {
         .name = "I2C SCANNER",
         .landscape = true,
-        .round_fit = true,
+        .round = APP_ROUND_HI,  // (the round boards: the native round frame, the middle box of i2c_draw.inc)
         .enter = enter,
         .leave = leave,
         .input = input,

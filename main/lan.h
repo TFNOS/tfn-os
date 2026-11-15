@@ -15,6 +15,8 @@
 #define LAN_PORT    47474
 #define LAN_PEERS   16    // (with 10 boards and the manager, 8 places are not enough)
 #define LAN_GONE_MS 7000  // a board with no beacon for this long is not on the list
+// a board in DEEP IDLE (its beacon says it): the longest check gap (60 s) and a slow connect
+#define LAN_DEEP_GONE_MS 80000
 
 typedef struct {
     uint8_t mac[6];
@@ -35,6 +37,8 @@ void lan_set_rx(void (*cb)(const uint8_t mac[6], const uint8_t *pkt, int len));
 // WALKIE calls (walkie_call.c): a call packet to one board (its LAN address, else its tunnel address; false = not
 // known now), and the receive function (the lan task calls it).
 bool lan_send_call(const uint8_t to[6], uint8_t op);
+// the last beacon of this board had the DEEP IDLE flag (its radio sleeps between the checks)
+bool lan_peer_deep(const uint8_t mac[6]);
 // An invite to the friends on the list (LAN and VPN) that have not got this app open: their board shows a notice that
 // opens the app with the argument "friends" (link.c: a 2 BOARDS lobby starts the link). At most one for each friend
 // and app in 90 s.

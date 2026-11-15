@@ -108,6 +108,18 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 - **Source:** the list of public root certificates of Mozilla, as curl publishes it (https://curl.se/ca/cacert.pem).
 - **Licence:** the list is under the Mozilla Public License 2.0; the certificates are public data of their authorities.
 
+## The root certificates of STANDBY
+
+- **File:** `main/standby_roots.inc` (ISRG Root X1 and X2, GTS Root R1 and R4 in PEM: a copy of the roots of WEATHER).
+- **Source:** the list of public root certificates of Mozilla, as curl publishes it (https://curl.se/ca/cacert.pem).
+- **Licence:** the list is under the Mozilla Public License 2.0; the certificates are public data of their authorities.
+
+## The Torah readings table of hebcal
+
+- **File:** `libs/hebcal/hc_parsha.inc` (the weekly readings for each type of Hebrew year).
+- **Source:** made with [pyluach](https://github.com/simlist/pyluach) by MS List.
+- **Licence:** pyluach is under the MIT License; the table is calendar data.
+
 ## miniz (host tests only)
 
 - **Files:** `tests/host/common/miniz.c` and `tests/host/common/miniz.h`.
@@ -175,6 +187,10 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 - **Files:** the glyph bitmaps in `libs/interfont/ck_fonts.inc` and `apps/mqtt/mq_fonts.inc` (Inter).
 - **Source:** [Inter](https://github.com/rsms/inter), Copyright 2020 The Inter Project Authors.
 - **Licence:** the [SIL Open Font License 1.1](docs/licenses/Inter-OFL.txt). The glyph data is under the same licence.
+
+## TRIVIA: the pictures, the logo and the effects
+
+## RIM RUNNER: the effects
 
 ## The web site (tfnos.xyz)
 

@@ -165,6 +165,19 @@ const char *fil_act_label(int a)
 // the box of button i of the panel
 void fil_act_box(int i, int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    {
+        // (the round panels: two columns in the middle box, from the top of the box)
+        int rows = (fil_nact + 1) / 2, g = FR(8), bh = (LIST_B - PAN_H - 8 - (rows - 1) * g) / (rows ? rows : 1);
+        bh = bh > FR(80) ? FR(80) : bh;
+        int bw = (MB_W - g) / 2, top = PAN_H + 6 + (LIST_B - PAN_H - 8 - rows * bh - (rows - 1) * g) / 2;
+        *x = MB_X + (i % 2) * (bw + g);
+        *y = top + (i / 2) * (bh + g);
+        *w = bw;
+        *h = bh;
+        return;
+    }
+#endif
     int rows = (fil_nact + PAN_COLS - 1) / PAN_COLS;
     int area = SH - PAN_H - 4, gap = 6;
     int bh = (area - (rows - 1) * gap) / rows;
@@ -186,6 +199,11 @@ void fil_act_box(int i, int *x, int *y, int *w, int *h)
 
 int fil_act_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (y >= BAR_Y - 6 && abs(x - SW / 2) < FR(90)) {
+        return CT_CLOSE;  // (CLOSE: the bottom cap)
+    }
+#endif
     if (y < PAN_H && x >= SW - CLOSE_W) {
         return CT_CLOSE;
     }
@@ -220,6 +238,15 @@ static void ask_open(int kind, const char *a0, const char *a1, int hold_ms, bool
 
 int fil_ask_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (fil_qclose && y >= BAR_Y - 6 && abs(x - SW / 2) < FR(90)) {
+        return 2;
+    }
+    if (y < ASK_Y - 6 || y >= ASK_Y + ASK_H + 6) {
+        return -1;
+    }
+    return x < SW / 2 ? (fil_qa[0] ? 0 : -1) : (fil_qa[1] ? 1 : -1);
+#endif
     if (fil_qclose && y < ASK_Y - 4 && x >= SW - CLOSE_W && y < 48) {
         return 2;
     }

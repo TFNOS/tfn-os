@@ -44,12 +44,12 @@ uint16_t set_c_text, set_c_dim, set_c_box, set_c_box_on, set_c_accent, set_c_car
 // top of a row on the screen now (i: the place in the list, 0 = the top row)
 int set_row_y(int i)
 {
-    return i * ROW_H - (int)lroundf(set_scroll) + 2;
+    return SET_LIST_Y + i * ROW_H - (int)lroundf(set_scroll) + 2;
 }
 
 static int row_at(int y)
 {
-    int i = (int)floorf((y + set_scroll - 2) / ROW_H);
+    int i = (int)floorf((y - SET_LIST_Y + set_scroll - 2) / ROW_H);
     return (i >= 0 && i < set_nrows) ? i : -1;
 }
 
@@ -99,6 +99,8 @@ static int ctrl_right(int r)
         return CTRL_FRIENDS;
     case R_NOTIFY:
         return CTRL_NOTIFY;
+    case R_STANDBY:
+        return CTRL_STANDBY;
     case R_PUB:
         return CTRL_PUB;
     case R_POOL:
@@ -116,9 +118,23 @@ static int ctrl_right(int r)
 
 static int ctrl_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (SET_RND) {
+        // (the round list: BACK on the bottom cap; no row on the caps)
+        if (y >= SET_LIST_B) {
+            return y >= SET_BACK_Y - 6 && abs(x - SCR_W / 2) < SR(90) ? CTRL_BACK : CTRL_NONE;
+        }
+        if (y < SET_LIST_Y) {
+            return CTRL_NONE;
+        }
+    } else if (x < BACK_W + 4) {
+        return CTRL_BACK;
+    }
+#else
     if (x < BACK_W + 4) {
         return CTRL_BACK;
     }
+#endif
     int i = row_at(y);
     if (i < 0) {
         return CTRL_NONE;
@@ -149,6 +165,14 @@ static int ctrl_at(int x, int y)
         }
         if (ui_hit(x, y, SLP_NEXT_X, y0, SLP_NEXT_W, h, 0)) {
             return CTRL_PWOFF_NEXT;
+        }
+        break;
+    case R_DEEP:
+        if (ui_hit(x, y, SLP_PREV_X, y0, SLP_NEXT_X - SLP_PREV_X, h, 0)) {
+            return CTRL_DEEP_PREV;
+        }
+        if (ui_hit(x, y, SLP_NEXT_X, y0, SLP_NEXT_W, h, 0)) {
+            return CTRL_DEEP_NEXT;
         }
         break;
     case R_HOTSPOT:
@@ -348,6 +372,10 @@ static bool do_ctrl_page(int c)
         notify_page_open();
         set_page = PAGE_NOTIFY;
         break;
+    case CTRL_STANDBY:
+        standby_page_open();
+        set_page = PAGE_STANDBY;
+        break;
     case CTRL_PUB:
         tfn_pub_page_open();
         set_page = PAGE_PUB;
@@ -438,6 +466,14 @@ static void do_ctrl(int c)
         break;
     case CTRL_PWOFF_NEXT:
         power_set_off_choice((power_off_choice() + 1) % POWER_OFF_CHOICES);
+        sfx_ui(SFX_CLICK);
+        break;
+    case CTRL_DEEP_PREV:
+        power_set_deep_choice((power_deep_choice() + POWER_DEEP_CHOICES - 1) % POWER_DEEP_CHOICES);
+        sfx_ui(SFX_CLICK);
+        break;
+    case CTRL_DEEP_NEXT:
+        power_set_deep_choice((power_deep_choice() + 1) % POWER_DEEP_CHOICES);
         sfx_ui(SFX_CLICK);
         break;
     case CTRL_WIFI:
@@ -611,7 +647,7 @@ static void set_enter(int64_t now)
     s_changed_volume = false;
     s_touch = s_drag = s_bar_drag = false;
     set_scroll = 0;
-    ks_init(&s_ks, SCR_H, 0);  // (set_update sets the length of the list)
+    ks_init(&s_ks, SET_LIST_B - SET_LIST_Y, 0);  // (set_update sets the length of the list)
     s_ksd = false;
     s_prev = now;
     s_about_at = -1000000;
@@ -766,6 +802,11 @@ static void set_input(const input_event_t *ev)
             set_page = PAGE_MAIN;
         }
         return;
+    case PAGE_STANDBY:
+        if (standby_page_input(ev, ev->t_ms)) {
+            set_page = PAGE_MAIN;
+        }
+        return;
     case PAGE_PUB:
         if (tfn_pub_page_input(ev, ev->t_ms)) {
             set_page = PAGE_MAIN;
@@ -811,6 +852,9 @@ static void set_update(int64_t now)
     }
     if (set_page == PAGE_NOTIFY) {
         notify_page_update(now);
+    }
+    if (set_page == PAGE_STANDBY) {
+        standby_page_update(now);
     }
     if (set_page == PAGE_PUB) {
         tfn_pub_page_update(now);
@@ -861,6 +905,9 @@ static void set_render(int64_t now)
         break;
     case PAGE_NOTIFY:
         notify_page_render(now);
+        break;
+    case PAGE_STANDBY:
+        standby_page_render(now);
         break;
     case PAGE_PUB:
         tfn_pub_page_render(now);
@@ -914,7 +961,8 @@ static void set_icon(int x, int y, int s)
 const app_t app_settings = {
         .name = "SETUP",
         .landscape = true,
-        .round_fit = true,
+        .round_fit = !BOARD_ROUND,  // (a round panel: all pages have a round layout)
+        .round = BOARD_ROUND ? APP_ROUND_HI : 0,
         .wheel = true,
         .needs = 0,  // a layout for the bar screen and one for 320 x 240
         .init = set_init,

@@ -31,6 +31,8 @@
 #include "tfn/board.h"
 #include "tfn/gfx.h"
 #include "tfn/input.h"
+#include "tfn/kfont.h"
+#include "tfn/uikit.h"
 
 static const char *TAG = "lab";
 
@@ -120,6 +122,13 @@ static void lab_reset(void)
 #endif
 static void reset_box(int *x, int *y, int *w, int *h)
 {
+    if (gfx_round()) {  // (the round frame: RESET at the right of the bottom cap, FREEZE at its left)
+        *w = gfx_w * 104 / 466;
+        *h = 48;
+        *x = gfx_w / 2 + 6;
+        *y = gfx_h * 384 / 466;
+        return;
+    }
     *w = BOARD_BAR_SCREEN ? 76 : TL_TAB5 ? 92 : 46;
     *h = BOARD_BAR_SCREEN ? 22 : TL_TAB5 ? 36 : 20;
     *x = gfx_w - *w;
@@ -133,10 +142,17 @@ static void freeze_box(int *x, int *y, int *w, int *h)
     *x -= *w + 6;
 }
 
+static bool in_box4(int x, int y, int bx, int by, int bw, int bh)
+{
+    return x >= bx - 4 && x < bx + bw + 4 && y >= by - 4 && y < by + bh + 4;
+}
 static bool in_reset(int x, int y)
 {
     int bx, by, bw, bh;
     reset_box(&bx, &by, &bw, &bh);
+    if (gfx_round()) {
+        return in_box4(x, y, bx, by, bw, bh);
+    }
     return x >= bx - 4 && y < by + bh + 4;
 }
 
@@ -145,6 +161,9 @@ static bool in_boxes(int x, int y)
 {
     int bx, by, bw, bh;
     freeze_box(&bx, &by, &bw, &bh);
+    if (gfx_round()) {
+        return in_box4(x, y, bx, by, bw, bh) || in_reset(x, y);
+    }
     return x >= bx - 4 && y < by + bh + 4;
 }
 
@@ -230,7 +249,9 @@ static void lab_input(const input_event_t *ev)
     }
     int fx, fy, fw, fh;
     freeze_box(&fx, &fy, &fw, &fh);
-    if (ev->x >= fx - 4 && ev->x < fx + fw + 3 && ev->y < fy + fh + 4) {
+    const bool on_f = gfx_round() ? in_box4(ev->x, ev->y, fx, fy, fw, fh)
+                                  : ev->x >= fx - 4 && ev->x < fx + fw + 3 && ev->y < fy + fh + 4;
+    if (on_f) {
         s_frozen = !s_frozen;
         if (s_frozen) {
             freeze_save();
@@ -401,9 +422,118 @@ static void lab_update(int64_t now)
     }
 }
 
+// the round frame (APP_ROUND_HI): the counts in the top cap, the thumbs in the whole wide middle, the last touches and
+// the timeline under them (as wide as the circle there), FREEZE and RESET in the bottom cap; the smooth fonts
+static void lab_render_round(void)
+{
+    const uint16_t BG = rgb(10, 14, 30), DIM = rgb(110, 120, 150), INK = rgb(235, 240, 255), GRN = rgb(80, 230, 120),
+                   ORA = rgb(255, 160, 60), RED = rgb(255, 60, 60), GRY = rgb(110, 110, 120);
+    const int W = gfx_w, H = gfx_h, cx = W / 2;
+    gfx_fill(BG);
+    char b[120];
+    snprintf(b, sizeof b, "RIGHT %d  TAP %d  LONG %d", s_press, s_taps, s_long);
+    ui_text_c(&KF_NAME, cx, H * 62 / 466, b, INK);
+    snprintf(b, sizeof b, "LEFT LOST %d  BROKEN %d", s_left_lost, s_broken);
+    ui_text_c(&KF_NAME, cx, H * 86 / 466, b, s_left_lost || s_broken ? ORA : INK);
+    int two = s_two_b + s_two_one + s_two_e;
+    if (s_frozen) {
+        snprintf(b, sizeof b, s_saved_k > 0 ? "FROZEN: /data/touchlab/f%d.txt" : "FROZEN (NOT SAVED)", s_saved_k);
+    } else if (two) {
+        snprintf(b, sizeof b, "2 THUMBS: BOTH %d%%  ONE %d%%  NONE %d%%", s_two_b * 100 / two, s_two_one * 100 / two,
+                 s_two_e * 100 / two);
+    } else {
+        snprintf(b, sizeof b, "HOLD LEFT, TAP RIGHT  -  %d/S", s_rate);
+    }
+    ui_text_c(&KF_TEXT, cx, H * 112 / 466, b, s_frozen ? rgb(120, 200, 255) : DIM);
+    // the area of the thumbs: the line between the halves, the names of the halves
+    const int ya = H * 124 / 466, yb = H * 300 / 466;
+    for (int y = ya; y < yb; y += 6) {
+        gfx_fill_rect(cx, y, 1, 3, DIM);
+    }
+    ui_text_c(&KF_TEXT, cx - W * 120 / 466, H * 150 / 466, "LEFT THUMB", DIM);
+    ui_text_c(&KF_TEXT, cx + W * 120 / 466, H * 150 / 466, "RIGHT THUMB", DIM);
+    if (s_lon) {
+        int dx = s_lx - s_cx;
+        gfx_fill_rect(s_cx - 3, s_cy, 7, 1, DIM);
+        gfx_fill_rect(s_cx, s_cy - 3, 1, 7, DIM);
+        gfx_ring(s_lx, s_ly, 17, 13, GRN);
+        const char *st = dx > 22 ? "RUN >" : dx > 8 ? "STEP >" : dx < -22 ? "< RUN" : dx < -8 ? "< STEP" : "STAND";
+        ui_text_c(&KF_TEXT, s_lx, s_ly + 36, st, GRN);
+    }
+    if (s_ron) {
+        gfx_ring(s_rx, s_ry, 17, 13, ORA);
+        snprintf(b, sizeof b, "%d MS", (int)(s_now - s_rt0));
+        ui_text_c(&KF_TEXT, s_rx, s_ry + 36, b, ORA);
+    }
+    if (s_last_t && s_now - s_last_t < 150) {
+        for (int i = 0; i < s_last.n; i++) {
+            int x = s_last.p[i].x, y = s_last.p[i].y, lx, ly;
+            bool broken = x < 0 || x >= LCD_W || y < 0 || y >= LCD_H;
+            gfx_touch_to_logical(x < 0        ? 0
+                                 : x >= LCD_W ? LCD_W - 1
+                                              : x,
+                                 y < 0        ? 0
+                                 : y >= LCD_H ? LCD_H - 1
+                                              : y,
+                                 &lx, &ly);
+            gfx_fill_circle(lx, ly, 4, broken ? RED : INK);
+            snprintf(b, sizeof b, "ID%d E%d", s_last.p[i].id, s_last.p[i].ev);
+            ui_text_c(&KF_LABEL, lx + 34, ly + 4, b, broken ? RED : INK);
+        }
+    }
+    // the last right touch (the newest) over the timeline
+    if (s_hist_n) {
+        const touch_t *t = &s_hist[s_hist_n - 1];
+        snprintf(b, sizeof b, "LAST %d MS  B%d ONE%d NO%d BAD%d", t->ms, t->b, t->one, t->e, t->x);
+        ui_text_c(&KF_TEXT, cx, H * 318 / 466, b, t->ms < (int)(TAP_S * 1000) ? INK : ORA);
+    } else {
+        ui_text_c(&KF_TEXT, cx, H * 318 / 466, "GREEN L  ORANGE R  GREY NONE  RED BAD", DIM);
+    }
+    // the timeline: as wide as the circle at its bottom row
+    const int ty = H * 328 / 466, th = H * 44 / 466, half = th / 2, dyb = ty + th - H / 2, R = W / 2 - 10;
+    int hw = 0;
+    while ((hw + 1) * (hw + 1) + dyb * dyb <= R * R) {
+        hw++;
+    }
+    int cw = 2 * hw / TL_N;
+    if (cw < 1) {
+        cw = 1;
+    }
+    const int tw = cw * TL_N, x0 = cx - tw / 2;
+    gfx_fill_rect(x0 - 1, ty - 1, tw + 2, th + 2, rgb(24, 28, 50));
+    for (int i = 0; i < s_tl_n; i++) {
+        int k = s_tl[(s_tl_w - s_tl_n + i + TL_N) % TL_N];
+        int x = x0 + (TL_N - s_tl_n + i) * cw;
+        if (k == K_BROKEN) {
+            gfx_fill_rect(x, ty, cw, th, RED);
+        } else if (k == K_NONE) {
+            gfx_fill_rect(x, ty + half - 1, cw, 2, GRY);
+        } else {
+            if (k == K_L || k == K_B) {
+                gfx_fill_rect(x, ty, cw, half - 1, GRN);
+            }
+            if (k == K_R || k == K_B) {
+                gfx_fill_rect(x, ty + half + 1, cw, th - half - 1, ORA);
+            }
+        }
+    }
+    // FREEZE and RESET
+    int bx, by, bw, bh;
+    reset_box(&bx, &by, &bw, &bh);
+    ui_rrect(bx, by, bw, bh, 12, s_frozen ? rgb(30, 34, 54) : rgb(46, 52, 84));
+    ui_text_c(&KF_NAME, bx + bw / 2, by + bh / 2 + 7, "RESET", s_frozen ? DIM : INK);
+    freeze_box(&bx, &by, &bw, &bh);
+    ui_rrect(bx, by, bw, bh, 12, s_frozen ? rgb(40, 90, 150) : rgb(46, 52, 84));
+    ui_text_c(&KF_NAME, bx + bw / 2, by + bh / 2 + 7, s_frozen ? "FROZEN" : "FREEZE", INK);
+}
+
 static void lab_render(int64_t now)
 {
     (void)now;
+    if (gfx_round()) {
+        lab_render_round();
+        return;
+    }
     const uint16_t BG = rgb(10, 14, 30), DIM = rgb(70, 80, 110), INK = rgb(235, 240, 255), GRN = rgb(80, 230, 120),
                    ORA = rgb(255, 160, 60), RED = rgb(255, 60, 60), GRY = rgb(110, 110, 120);
     bool bar = BOARD_BAR_SCREEN;
@@ -601,5 +731,5 @@ const app_t app_touchlab = {
         .render = lab_render,
         .draw_icon = lab_icon,
         .awake = lab_awake,
-        .round_fit = true,
+        .round = APP_ROUND_HI,  // (the round boards: lab_render_round)
 };

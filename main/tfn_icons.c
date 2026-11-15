@@ -15,7 +15,7 @@ bool tfa_icon_bad[TFN_MAX];
 // drawn in the last ICON_KEEP_MS stays; only the icons that are not on the screen go.)
 
 uint32_t tfa_icon_used[TFN_MAX];  // (the ms time of the last draw)
-#if TFA_ICON_BIG
+#if TFA_ICON_TASK
 volatile bool tfa_icon_busy[TFN_MAX];  // the prefetch task reads this icon now (the menu draws a plain tile)
 volatile uint32_t tfa_icon_gen;        // + 1 at each rescan (a read of the task for an old list goes)
 #endif
@@ -221,11 +221,123 @@ void tfn_icon_plain(const char *name, int x, int y, int s)
     mf_text_c(f, x + s / 2, y + s / 2 + f->asc / 2, t, rgb(255, 255, 255), 255, 1);
 }
 
+#if TFA_ICON_ASK
+// THE ASK READER (the grid menu): the menu asks for the icon files that are not in memory; a low task reads them one at
+// a time (outside the lock, as the prefetch task of the Tab5), so that a frame of the menu never waits for the card.
+// The task ends after 3 s with no work (its 4 KB of internal RAM go back to the app that opens); the next ask starts it
+// again.
+#define ASK_Q 16
+static bool s_ask_on, s_missed, s_ask_task;
+static QueueHandle_t s_ask_q;
+typedef struct {
+    int k;
+    uint32_t gen;
+} ask_t;
+static void icon_ask_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        ask_t a;
+        if (xQueueReceive(s_ask_q, &a, pdMS_TO_TICKS(3000)) != pdTRUE) {
+            LOCK();
+            const bool end = uxQueueMessagesWaiting(s_ask_q) == 0;
+            if (end) {
+                s_ask_task = false;
+            }
+            UNLOCK();
+            if (end) {
+                vTaskDelete(NULL);
+            }
+            continue;
+        }
+        char path[64];
+        LOCK();
+        const bool want = a.gen == tfa_icon_gen && a.k < tfa_n && !tfa_icon[a.k] && !tfa_icon_bad[a.k];
+        if (want) {
+            snprintf(path, sizeof path, "%s/icon.bin", tfa_e[a.k].dir);
+        } else {
+            tfa_icon_busy[a.k] = false;
+        }
+        UNLOCK();
+        if (!want) {
+            continue;
+        }
+        uint8_t *b = NULL;
+        size_t len = 0;
+        const bool ok = tfa_read_all(path, &b, &len, 2 << 20) && tfn_icon_ok(b, len);
+        LOCK();
+        if (a.gen == tfa_icon_gen && !tfa_icon[a.k]) {
+            if (ok) {
+                tfa_icon[a.k] = b;
+                tfa_icon_len[a.k] = len;
+                tfa_icon_bytes += len;
+                tfa_icon_used[a.k] = (uint32_t)(esp_timer_get_time() / 1000);
+                b = NULL;
+            } else {
+                tfa_icon_bad[a.k] = true;
+            }
+        }
+        tfa_icon_busy[a.k] = false;
+        UNLOCK();
+        free(b);
+    }
+}
+void tfn_icon_ask(bool on)
+{
+    s_ask_on = on;
+}
+bool tfn_icon_missed(void)
+{
+    // (the trim of the files that the task read: here, in the task of the menu, so that no file goes while an icon
+    // draws from it)
+    LOCK();
+    icon_files_trim(-1);
+    UNLOCK();
+    const bool m = s_missed;
+    s_missed = false;
+    return m;
+}
+// true: the read of the icon k goes to the task (the caller draws a plain tile)
+static bool icon_ask(int k)
+{
+    if (!s_ask_on) {
+        return false;
+    }
+    s_missed = true;
+    if (tfa_icon_busy[k]) {
+        return true;
+    }
+    LOCK();
+    if (!s_ask_q) {
+        s_ask_q = xQueueCreate(ASK_Q, sizeof(ask_t));
+    }
+    if (s_ask_q && !s_ask_task) {
+        // (the stack in internal RAM: some icons are in the flash (/data), and a flash read turns the cache off)
+        s_ask_task = xTaskCreatePinnedToCore(icon_ask_task, "iconask", 4096, NULL, 1, NULL, 0) == pdPASS;
+    }
+    // (a full queue: the icon asks again in a later frame)
+    const ask_t a = {k, tfa_icon_gen};
+    tfa_icon_busy[k] = s_ask_task && xQueueSend(s_ask_q, &a, 0) == pdTRUE;
+    const bool ok = s_ask_q != NULL;
+    UNLOCK();
+    if (!ok) {
+        s_ask_on = false;
+    }
+    return ok;
+}
+#endif
+
 static void icon_draw(int k, int x, int y, int s)
 {
     if (k >= tfa_n || s <= 0) {
         return;
     }
+#if TFA_ICON_ASK
+    if (!tfa_icon[k] && !tfa_icon_bad[k] && icon_ask(k)) {
+        tfn_icon_plain(tfa_e[k].name, x, y, s);
+        return;
+    }
+#endif
 #if TFA_ICON_BIG
     if (!tfa_icon[k] && tfa_icon_busy[k]) {  // (the prefetch task reads it now: no wait)
         tfn_icon_plain(tfa_e[k].name, x, y, s);

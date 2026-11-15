@@ -861,6 +861,30 @@ int board_battery(bool *charging, int *mv)
     return s_pct;
 }
 
+// The external power from the battery current (INA226 shunt voltage, 0x01: signed, 2.5 uV a step). The board takes
+// about 0.3..1 A from the battery when no charger is there; with a charger and a full battery the current is near 0.
+// A small current = external power. A big current in the charge direction cannot be told from a discharge without a
+// board test of the sign: then -1 (power.c uses the voltage trend; a charge makes the voltage rise).
+#define SHUNT_EXT_UV 250
+static int s_shunt_uv = INT32_MIN;
+int board_bat_shunt_uv(void)
+{
+    uint8_t b[2];
+    if (s_ina && reg_read(s_ina, 0x01, b, 2) == ESP_OK) {
+        s_shunt_uv = (int16_t)((b[0] << 8) | b[1]) * 5 / 2;
+    }
+    return s_shunt_uv;
+}
+
+int board_ext_power(void)
+{
+    const int uv = board_bat_shunt_uv();
+    if (uv == INT32_MIN) {
+        return -1;
+    }
+    return (uv < 0 ? -uv : uv) < SHUNT_EXT_UV ? 1 : -1;
+}
+
 bool board_usb_power_out(bool on)
 {
     io_set(s_io2, &s_io2_out, IO2_USB5V, on);

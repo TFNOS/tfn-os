@@ -622,7 +622,11 @@ static void fil_update(int64_t now)
     }
     fil_jj_poll();
     if (fil_page == P_PIC && fil_pstate == 0 && fil_drawn == P_PIC && !fil_pic_id) {
+#if BOARD_ROUND
+        fil_pic_id = fil_jj_start(fil_ppath, FR(330), FR(330));  // (the square inside the circle)
+#else
         fil_pic_id = fil_jj_start(fil_ppath, SW, SH);
+#endif
     }
 #if T5P
     ks_update(&fil_kside, now);
@@ -823,7 +827,8 @@ static void fil_icon(int x, int y, int s)
 const app_t app_files = {
         .name = "FILES",
         .landscape = true,
-        .round_fit = true,  // (the Watcher: the 320 x 240 frame at 1:1 in the circle)
+        .round_fit = !BOARD_ROUND,  // (a round panel: the own layout, APP_ROUND_HI)
+        .round = BOARD_ROUND ? APP_ROUND_HI : 0,
         .wheel = true,
         .needs = 0,  // a layout for the bar screen and one for 320 x 240
         .init = fil_init,

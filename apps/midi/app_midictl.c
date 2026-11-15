@@ -33,6 +33,7 @@
 #include "tfn/board.h"
 #include "tfn/ble_midi.h"
 #include "tfn/usb_midi.h"
+#include "mc_rv.inc"
 
 // ---------------------------------------------------------------- layout
 
@@ -111,6 +112,47 @@ static const int16_t ACT_X[] = {514, 514}, ACT_Y[] = {58, 114}, ACT_W = 122,
 static const int16_t TB_X[] = {0, 60, 140, 226, 312}, TB_W[] = {56, 76, 82, 82, 76};
 static const int16_t TAB_X[] = {400, 520}, TAB_W = 116;
 #define TITLE_X 62
+#elif BOARD_ROUND
+// THE ROUND LAYOUT (APP_ROUND_HI): the 320 x 240 layout of the CoreS3 in the round view (mc_rv.inc: the frame at the
+// row 40 of a square of 320 on the panel). Each row stays in its chord: the bar (BACK, PRESET, TAP, TILT) in the chord
+// of the rows 0 .. 44 (x 54 .. 266), the status in the top cap, EDIT and MODE on the bottom arc, the sliders and the
+// XY pad in the wide middle. The editor: its title in the top cap, its rows in the chord (build).
+#define MC_WIDE 0
+#define MC_TAB5 0
+#define MC_RND  1
+#define SW      320
+#define SH      240
+#define TOP_H   44
+#define MAIN_Y  46
+#define MAIN_B  196
+#define SL_X0   24
+#define SL_W    48
+#define SL_STEP 50
+#define XY_X    226
+#define XY_W    70
+#define ST_X    60  // the status and the monitor: two lines in the top cap
+#define ST_Y    (-24)
+#define ST_W    200
+#define ST_H    40
+#define MODE_X  162  // ADVANCED: the MODE button (the bottom arc)
+#define MODE_Y  200
+#define MODE_W  90
+#define MODE_H  36
+static const int16_t SB_X[] = {56, 96, 168, 110}, SB_W[] = {38, 70, 96, 100};  // (SLIDER: the bottom arc)
+#define BIG_Y   48
+#define BIG_B   144
+#define ROLE_Y  147
+#define ROLE_H  48
+#define TILE_X0 24
+#define TILE_W  66
+#define TILE_SX 69
+#define TILE_H  46
+#define TILE_SY 48
+static const int16_t ACT_X[] = {40, 162}, ACT_Y[] = {148, 148}, ACT_W = 118, ACT_H = 44;
+static const int16_t TB_X[] = {56, 96, 160, 206, 68}, TB_W[] = {38, 62, 44, 56, 90};  // (EDIT: the bottom arc)
+#define EDIT_Y  200
+static const int16_t TAB_X[] = {100, 182}, TAB_W = 80;
+#define TITLE_X 62
 #else
 // (the thumb: the top bar 44 px, BACK 56 px, the TILT halves 42 px = 4.6 mm on the AMOLED)
 #define MC_WIDE 0
@@ -149,11 +191,22 @@ static const int16_t TB_X[] = {0, 58, 116, 174, 260}, TB_W[] = {56, 56, 56, 84, 
 static const int16_t TAB_X[] = {152, 236}, TAB_W = 82;
 #define TITLE_X 62
 #endif
-#define SL_T  (MAIN_Y + 8)  // the track of a slider: value 1 at SL_T, 0 at SL_B
-#define SL_B  (MAIN_B - 8)
-#define XY_M  8  // the margin of the XY pad (the values 0 and 1)
-#define BIG_X 4  // the big slider of SIMPLE
-#define BIG_W (SW - 8)
+#define SL_T (MAIN_Y + 8)  // the track of a slider: value 1 at SL_T, 0 at SL_B
+#define SL_B (MAIN_B - 8)
+#define XY_M 8  // the margin of the XY pad (the values 0 and 1)
+#ifndef MC_RND
+#define MC_RND 0
+#endif
+#if MC_RND
+#define BIG_X 22  // the big slider of SIMPLE (the round view: in the chord)
+#define BIG_W 276
+#define CHW   9  // the width of a character of the scale 1 in the frame (the round view: 2 px on the panel)
+#else
+#define BIG_X  4  // the big slider of SIMPLE
+#define BIG_W  (SW - 8)
+#define CHW    6
+#define EDIT_Y 0
+#endif
 #define BIG_M 14  // the margin of the big slider (the values 0 and 1)
 enum {
     SB_BACK,
@@ -820,6 +873,9 @@ static void track_fingers(void)
     }
     for (int i = 0; i < n; i++) {
         gfx_touch_to_logical(px[i], py[i], &lx[i], &ly[i]);
+#if MC_RND
+        rvm_pt(&lx[i], &ly[i]);
+#endif
     }
     bool used[INPUT_MAX_POINTS] = {false}, kept[INPUT_MAX_POINTS] = {false};
     for (;;) {
@@ -1160,6 +1216,22 @@ static int build(el_t *e)
 #endif
 }
 
+#if MC_RND
+// the round view: the rows of the editor (y 46 .. 240) go to the rows 46 .. 220, and each row into its chord
+static int build_round(el_t *e)
+{
+    int n = build(e);
+    for (int i = 0; i < n; i++) {
+        int y0 = MAIN_Y + (e[i].y - MAIN_Y) * 174 / 194, y1 = MAIN_Y + (e[i].y + e[i].h - MAIN_Y) * 174 / 194;
+        int half = rvm_ch2(y0, y1 - y0) - 3;
+        int x0 = 160 - half + e[i].x * half / 160, x1 = 160 - half + (e[i].x + e[i].w) * half / 160;
+        e[i] = (el_t){(int16_t)x0, (int16_t)y0, (int16_t)(x1 - x0), (int16_t)(y1 - y0), e[i].id};
+    }
+    return n;
+}
+#define build build_round
+#endif
+
 // ---------------------------------------------------------------- input
 
 // t = the time of the press (the beat), now = the lift (the tap acts at the lift: the TAP button is near the pull zone)
@@ -1481,10 +1553,13 @@ static void input_edit(int x, int y, bool tap, bool lng)
 static void simple_bar(int x)
 {
     int b = -1;
-    for (int i = 0; i < SB_N; i++) {
+    for (int i = 0; i < (MC_RND ? SB_SPRING : SB_N); i++) {
         if (x >= SB_X[i] && x < SB_X[i] + SB_W[i]) {
             b = i;
         }
+    }
+    if (MC_RND && x < 0) {
+        b = SB_SPRING;  // (the round view: SLIDER is on the bottom arc)
     }
     switch (b) {
     case SB_BACK:
@@ -1523,6 +1598,12 @@ static void input_simple(int x, int y, bool tap)
         simple_bar(x);
         return;
     }
+#if MC_RND
+    if (in_rect(x, y, SB_X[SB_SPRING], EDIT_Y, SB_W[SB_SPRING], MODE_H)) {
+        simple_bar(-1);
+        return;
+    }
+#endif
     if (y >= ROLE_Y && y < ROLE_Y + ROLE_H) {
         int r = (x - BIG_X) * N_ROLES / BIG_W;
         if (r >= 0 && r < N_ROLES && r != s_role) {
@@ -1539,7 +1620,7 @@ static void input_simple(int x, int y, bool tap)
 static void input_bar(const input_event_t *ev, int x, bool tap)
 {
     int b = -1;
-    for (int i = 0; i < TB_N; i++) {
+    for (int i = 0; i < (MC_RND ? TB_EDIT : TB_N); i++) {
         if (x >= TB_X[i] && x < TB_X[i] + TB_W[i]) {
             b = i;
         }
@@ -1605,6 +1686,15 @@ static void input_grid(const input_event_t *ev, int x, int y)
 static void mc_input(const input_event_t *ev)
 {
     int x = ev->x, y = ev->y;
+#if MC_RND
+    rvm_pt(&x, &y);
+    if (ev->kind == IN_TAP && !s_simple && s_page != PG_EDIT &&
+        in_rect(x, y, TB_X[TB_EDIT], EDIT_Y, TB_W[TB_EDIT], TOP_H - 8)) {
+        s_page = s_page == PG_PLAY ? PG_GRID : PG_PLAY;  // (EDIT is on the bottom arc)
+        sfx_play(SFX_CLICK);
+        return;
+    }
+#endif
     bool tap = ev->kind == IN_TAP, lng = ev->kind == IN_LONG;
     if (ev->kind == IN_DOWN) {
         s_down_t = ev->t_ms;
@@ -1804,6 +1894,19 @@ static void draw_status(void)
 {
     char a[48], b[64];
     uint16_t col;
+#if MC_RND
+    // the round view: two lines in the middle of the top cap, each as long as its chord
+    status_line(a, sizeof(a), &col);
+    monitor_line(b, sizeof(b));
+    int ma = (2 * rvm_ch(ST_Y) - 24) / CHW, mb = (2 * rvm_ch(ST_Y + 13) - 12) / CHW;
+    a[ma < (int)sizeof(a) - 1 ? ma : (int)sizeof(a) - 1] = 0;
+    b[mb < (int)sizeof(b) - 1 ? mb : (int)sizeof(b) - 1] = 0;
+    int aw = gfx_text_width(a, 1);
+    gfx_fill_circle(160 - aw / 2 - 8, ST_Y + 3, 3, col);
+    gfx_text_center_in(0, SW, ST_Y, a, 1, col);
+    gfx_text_center_in(0, SW, ST_Y + 13, b, 1, DIM);
+    return;
+#endif
     gfx_fill_rect(ST_X, MC_WIDE ? 0 : MAIN_B, ST_W, ST_H, rgb(16, 18, 28));
     status_line(a, sizeof(a), &col);
     monitor_line(b, sizeof(b));
@@ -1863,8 +1966,13 @@ static void draw_topbar(int64_t now)
             gfx_fill_rect(tx + 3, h - 6 + k * 3, bw, 2, lane_col(L_TX + k, 255));
         }
     }
+#if MC_RND
+    button(TB_X[TB_EDIT], EDIT_Y, TB_W[TB_EDIT], MODE_H, s_page == PG_PLAY ? "EDIT" : "PLAY", NULL,
+           s_page == PG_PLAY ? PANEL : ACCENT, WHITE);
+#else
     button(TB_X[TB_EDIT], 1, TB_W[TB_EDIT], h, s_page == PG_PLAY ? "EDIT" : "PLAY", NULL,
            s_page == PG_PLAY ? PANEL : ACCENT, WHITE);
+#endif
     button(MODE_X, MODE_Y, MODE_W, MODE_H, "MODE", "ADVANCED", PANEL, WHITE);
     // the 1-px gaps between the buttons are in the BG fill
 }
@@ -1956,7 +2064,7 @@ static void draw_xy(void)
             snprintf(a, sizeof(a), "%s %s %s", LANE_NAMES[l], TARGETS[C->tgt].name, v);
         }
         const int ts = MC_TAB5 ? 2 : 1, lh = MC_TAB5 ? 18 : 11;  // (the Tab5: scale 2 text)
-        int mw = (w - 8) / (6 * ts);
+        int mw = (w - 8) / (CHW * ts);
         if ((int)strlen(a) > mw) {
             a[mw] = 0;
         }
@@ -1985,7 +2093,7 @@ static void draw_grid(void)
         }
         motion_text(l, m, sizeof(m));
         snprintf(c, sizeof(c), "CH %d%s", C->ch + 1, C->inv ? " INV" : "");
-        int mw = (TILE_W - 12) / 6;
+        int mw = (TILE_W - 12) / CHW;
         if ((int)strlen(m) > mw) {
             m[mw] = 0;
         }
@@ -2178,7 +2286,9 @@ static void draw_editor(int64_t now)
     const lcfg_t *C = &s_cfg[l];
     int h = TOP_H - 2;
     button(TB_X[0], 1, TB_W[0], h, "<", NULL, PANEL, WHITE);
+#if !MC_RND
     gfx_fill_rect(TITLE_X - 2, 0, 4, TOP_H, lane_col(l, 230));
+#endif
     char a[32], b[32];
     snprintf(a, sizeof(a), "%s", LANE_NAMES[l]);
     if (C->tgt == T_CC) {
@@ -2192,6 +2302,10 @@ static void draw_editor(int64_t now)
 #elif BOARD_BAR_SCREEN
     gfx_text(TITLE_X + 6, 5, a, 1, lane_col(l, 255));
     gfx_text(TITLE_X + 6, 18, b, 2, WHITE);
+#elif MC_RND
+    // (the round view: the name and the target in the top cap)
+    gfx_text_center_in(0, SW, ST_Y, a, 1, lane_col(l, 255));
+    gfx_text_center_in(0, SW, ST_Y + 13, b, 1, WHITE);
 #else
     gfx_text(TITLE_X + 6, 10, a, 1, lane_col(l, 255));
     gfx_text(TITLE_X + 6, 24, b, 1, WHITE);
@@ -2216,7 +2330,8 @@ static void draw_simple(void)
     button(SB_X[SB_MODE], 1, SB_W[SB_MODE], h, "MODE", "SIMPLE", PANEL, WHITE);
     button(SB_X[SB_OUT], 1, SB_W[SB_OUT], h, "OUTPUT", s_usb ? "USB" : "BLUETOOTH",
            s_usb ? rgb(40, 50, 30) : rgb(20, 36, 70), s_usb ? rgb(190, 240, 120) : rgb(140, 190, 255));
-    button(SB_X[SB_SPRING], 1, SB_W[SB_SPRING], h, "SLIDER", s_center ? "TO CENTER" : "FREE", PANEL, WHITE);
+    button(SB_X[SB_SPRING], MC_RND ? EDIT_Y : 1, SB_W[SB_SPRING], MC_RND ? MODE_H : h, "SLIDER",
+           s_center ? "TO CENTER" : "FREE", PANEL, WHITE);
     // the big slider: the value from the left, or from the middle (TO CENTER and PITCH)
     const lane_t *L = &s_lane[0];
     int x = BIG_X, y = BIG_Y, w = BIG_W, hh = BIG_B - BIG_Y;
@@ -2333,6 +2448,17 @@ static bool mc_awake(void)
     return out_linked();
 }
 
+#if MC_RND
+// (the menu icon draws on the real frame: no round view)
+#undef gfx_fill_rect
+#undef gfx_frame_rect
+#undef gfx_fill_circle
+#undef gfx_text_width
+#undef gfx_text
+#undef gfx_text_center_in
+#undef gfx_text_center
+#undef gfx_clip_bottom
+#endif
 #include "tficon/tficon.h"
 // the menu icon: four faders of a controller move up and down; the light of each one follows its level
 static void mc_icon(int x, int y, int s)
@@ -2360,6 +2486,9 @@ static void mc_icon(int x, int y, int s)
 }
 
 const app_t app_midictl = {
+#if MC_RND
+        .round = APP_ROUND_HI,  // (a round panel: the round view, mc_rv.inc)
+#endif
         .name = "MIDI",
         .landscape = true,
         .enter = mc_enter,

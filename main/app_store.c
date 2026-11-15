@@ -414,7 +414,27 @@ typedef struct {
     int name_x, name_y, info_y, chip_y, sel_name_y;
     bool bar;
     bool tall;  // the Tab5 (640 x 360): bigger icons, text and buttons
+#if BOARD_ROUND
+    bool round;  // a round panel (APP_ROUND_HI): the tab on the top cap, the buttons on the bottom cap
+#endif
 } lay_t;
+#if BOARD_ROUND
+#define L_RND(l) ((l).round)
+#else
+#define L_RND(l) false  // (no round panel: the layout has no round field)
+#endif
+
+#if BOARD_ROUND
+// The round panels: the values are for 466 x 466; SR() scales them to the frame (412 on the Watcher).
+#define SR(v) ((v) * gfx_w / 466)
+
+// The half width of the circle at the height y (0 out of the circle).
+static int chord_half(int y)
+{
+    int r = gfx_w / 2, dy = y - gfx_h / 2;
+    return dy * dy >= r * r ? 0 : (int)sqrtf((float)(r * r - dy * dy));
+}
+#endif
 
 static lay_t lay(void)
 {
@@ -452,6 +472,21 @@ static lay_t lay(void)
     L.b1 = (box_t){40, 292, 270, 56};
     L.b2 = (box_t){330, 292, 270, 56};
     L.sel_name_y = 0;
+#elif BOARD_ROUND
+    // the tab and the space on the top cap, the row of icons across the middle, the name under it, the two buttons on
+    // the bottom cap (their low corners inside the circle)
+    L_RND(L) = true;
+    L.row_cx = gfx_w / 2;
+    L.row_cy = SR(196);
+    L.big = SR(116);
+    L.small = SR(74);
+    L.gap = SR(124);
+    L.tab = (box_t){SR(103), SR(22), SR(260), SR(70)};
+    L.name_x = gfx_w / 2;
+    L.name_y = SR(298);
+    L.info_y = SR(324);
+    L.b1 = (box_t){SR(88), SR(342), SR(140), SR(58)};
+    L.b2 = (box_t){SR(238), SR(342), SR(140), SR(58)};
 #else
     L.row_cx = 160;
     L.row_cy = 92;
@@ -852,7 +887,11 @@ static void input(const input_event_t *ev)
         s_x0 = s_lx = ev->x;
         s_y0 = ev->y;
         // a touch on the row goes to the carousel (a touch that stops a glide gives no tap); the page has no row
+#if BOARD_ROUND
+        s_inrow = !s_page[0] && (ev->y > L.tab.y + L.tab.h && ev->y < L.row_cy + 58);  // (under the top cap)
+#else
         s_inrow = !s_page[0] && (L.bar ? ev->x < L.panel.x - 4 : (ev->y > 36 && ev->y < L.row_cy + 58));
+#endif
         if (s_inrow) {
             ks_down(&s_ks, (float)ev->x, ev->t_ms);
         }
@@ -1171,6 +1210,20 @@ static int page_flow(const lay_t *L, fline_t *o, int max)
         for (int b = 112; b <= 163 && n < max; b += 17) {
             o[n++] = (fline_t){140, (int16_t)(L->b1.x - 12), (int16_t)b};
         }
+#if BOARD_ROUND
+    } else if (L_RND(*L)) {
+        // (the round panels: four lines at the right of the icon, then lines across the circle, over the buttons;
+        // each line ends at the circle)
+        int lh = KF_TEXT.line, b = SR(132);
+        for (int i = 0; i < 4 && n < max; i++, b += lh) {
+            int h = chord_half(b - KF_TEXT.asc);
+            o[n++] = (fline_t){(int16_t)SR(150), (int16_t)(gfx_w / 2 + h - SR(16)), (int16_t)b};
+        }
+        for (b = SR(132) + 4 * lh + SR(10); b <= L->b1.y - SR(12) && n < max; b += lh) {
+            int h = chord_half(b > gfx_h / 2 ? b + 4 : b - KF_TEXT.asc);
+            o[n++] = (fline_t){(int16_t)(gfx_w / 2 - h + SR(16)), (int16_t)(gfx_w / 2 + h - SR(16)), (int16_t)b};
+        }
+#endif
     } else if (L->tall) {
         // (the Tab5: five lines at the right of the big icon, then five lines of the full width)
         for (int b = 70; b <= 158 && n < max; b += 22) {
@@ -1416,13 +1469,91 @@ static void draw_toast(const lay_t *L, int maxw)
         w = maxw;
     }
     int x = gfx_w - 6 - w, y = L->bar ? 6 : 4;
+#if BOARD_ROUND
+    if (L_RND(*L)) {
+        x = (gfx_w - w) / 2;  // (the round panels: in the middle, under the tab)
+        y = L->tab.y + L->tab.h - 6;
+    }
+#endif
     ui_rrect(x, y, w, 26, 13, THEME_STORE_TOAST_BG);
     ui_text_c(&KF_LABEL, x + w / 2, y + 18, s_toast, THEME_STORE_TOAST_TEXT);
 }
 
+static void draw_actions(const lay_t *L, const vitem_t *v, const tfn_cat_t *c, const tfn_entry_t *e);
+
+#if BOARD_ROUND
+// the round app page: the description, then the permission classes (IT CAN ...), in the flow
+static void page_text(const lay_t *L, const tfn_cat_t *c, const tfn_entry_t *e)
+{
+    char line[112];
+    fline_t fl[12];
+    span_t sp[12];
+    int nfl = page_flow(L, fl, 12), k = 0;
+    const char *d = tfn_store_desc(c, s_he), *rest = "";
+    const kfont_t *df = &KF_TEXT;  // (a bigger text)
+    if (d[0]) {
+        bool rtl = has_heb(d);
+        k = wrap_flow(df, d, fl, nfl, 0, sp, &rest);
+        for (int i = 0; i < k; i++) {
+            flow_line(df, &fl[i], sp[i], rtl, rest[0] && i == k - 1, THEME_STORE_DESC);
+        }
+    } else {
+        flow_line(df, &fl[0], (span_t){"NO DESCRIPTION IN THE STORE YET", 31}, false, false, THEME_STORE_TEXT_FAINT);
+        k = 1;
+    }
+    uint32_t pm = c ? c->perms : e ? e->perms : 0;
+    char p[80] = "";
+    if (pm) {
+        tfn_perms_text(pm, p, sizeof p);
+    }
+    if (p[0] && k < nfl) {
+        snprintf(line, sizeof line, "IT CAN %s", p);
+        int k0 = k;
+        k = wrap_flow(df, line, fl, nfl, k, sp, &rest);
+        for (int i = k0; i < k; i++) {
+            flow_line(df, &fl[i], sp[i], false, rest[0] && i == k - 1, THEME_STORE_WARN);
+        }
+    }
+}
+
+// The app page on a round panel: the back mark and the name on the top cap, the facts under them, the icon at the
+// left of the first lines, the text across the circle, the buttons on the bottom cap.
+static void render_page_round(int64_t now, const lay_t *L, const vitem_t *v)
+{
+    const tfn_cat_t *c = v->cat >= 0 ? &s_cat[v->cat].c : NULL;
+    const tfn_entry_t *e = v->inst >= 0 ? tfn_entry(v->inst) : NULL;
+    const char *nm = name_of(v);
+    char line[112];
+    static const kfont_t *const NF[] = {&KF_BIG, &KF_NAME, &KF_TEXT};
+    const kfont_t *nf = ui_text_fit(NF, 3, nm, SR(250));
+    int cx = gfx_w / 2, nb = SR(66), nw = ui_text_w(nf, nm);
+    ui_text_c(nf, cx, nb, nm, THEME_STORE_TEXT);
+    back_mark(cx - nw / 2 - SR(30), nb - nf->asc / 2, 18, THEME_STORE_ACCENT);
+    if (s_toast_at && now - s_toast_at < 4000) {
+        draw_toast(L, SR(320));
+    } else {
+        facts_of(c, e, line, sizeof line);
+        const kfont_t *ff = ui_text_w(&KF_TEXT, line) <= 2 * chord_half(SR(78)) - SR(30) ? &KF_TEXT : &KF_LABEL;
+        ui_text_c(ff, cx, SR(96), line, THEME_STORE_TEXT_DIM);
+    }
+    int is = SR(84), ix = SR(52), iy = SR(114);
+    ui_circle(ix + is / 2, iy + is / 2, is * 6 / 10, THEME_STORE_GLOW, 70);
+    ui_rbox(ix - 4, iy - 4, is + 8, is + 8, is / 6 + 4, THEME_STORE_SEL, THEME_STORE_SEL_EDGE, 2);
+    draw_icon_of(v, ix, iy, is);
+    page_text(L, c, e);
+    draw_actions(L, v, c, e);
+}
+#endif
+
 // the page of the selected app (the head comment)
 static void render_page(int64_t now, const lay_t *L, const vitem_t *v)
 {
+#if BOARD_ROUND
+    if (L_RND(*L)) {
+        render_page_round(now, L, v);
+        return;
+    }
+#endif
     const tfn_cat_t *c = v->cat >= 0 ? &s_cat[v->cat].c : NULL;
     const tfn_entry_t *e = v->inst >= 0 ? tfn_entry(v->inst) : NULL;
     const char *nm = name_of(v);
@@ -1488,6 +1619,157 @@ static void render_page(int64_t now, const lay_t *L, const vitem_t *v)
     draw_actions(L, v, c, e);
 }
 
+#if BOARD_ROUND
+// the row of a tab on a round panel (the head comment of lay(): the part BOARD_ROUND)
+static void render_round(int64_t now, lay_t L)
+{
+    char line[96], a1[24], a2[24];
+    // the tab: its name, the dots of the tabs (the round panels: in the middle of the top cap, the dots under it)
+    int tw;
+    if (L_RND(L)) {
+        mf_text_c(&MF_N24, gfx_w / 2, L.tab.y + 40 * L.tab.h / 70, TAB_NAME[s_tab], THEME_STORE_ACCENT, 255, 1);
+        for (int i = 0; i < NT; i++) {
+            ui_circle(gfx_w / 2 + (i - NT / 2) * 14, L.tab.y + 56 * L.tab.h / 70, i == s_tab ? 4 : 3,
+                      i == s_tab ? THEME_STORE_ACCENT : THEME_STORE_DOT, 255);
+        }
+        tw = 0;
+    } else {
+        mf_text(&MF_N24, L.bar ? 14 : 10, L.bar ? 30 : 28, TAB_NAME[s_tab], THEME_STORE_ACCENT, 255, 1);
+        tw = mf_width(&MF_N24, TAB_NAME[s_tab], 1) + (L.bar ? 24 : 18);
+        for (int i = 0; i < NT; i++) {
+            ui_circle(tw + i * 12, L.bar ? 21 : 19, i == s_tab ? 4 : 3,
+                      i == s_tab ? THEME_STORE_ACCENT : THEME_STORE_DOT, 255);
+        }
+    }
+    // the space (top right); a short line after an install or a removal takes its place for 4 s
+    bool toast_on = s_toast_at && now - s_toast_at < 4000;
+    fmt_size(a1, sizeof a1, s_bfree);
+    if (s_card) {
+        fmt_size(a2, sizeof a2, (uint64_t)s_cfree_kb * 1024);
+    }
+    snprintf(line, sizeof line, s_card ? "BOARD %s  CARD %s" : "BOARD %s  NO CARD", a1, a2);
+    if (ui_text_w(&KF_LABEL, line) > gfx_w - 16 - tw - NT * 12) {  // (the 320 x 240 frame: the dots of the tabs)
+        snprintf(line, sizeof line, s_card ? "FREE %s / %s" : "FREE %s", a1, a2);
+    }
+    if (L_RND(L)) {
+        if (!toast_on) {
+            ui_text_c(&KF_TEXT, gfx_w / 2, L.tab.y + L.tab.h + 16, line, THEME_STORE_SPACE);
+        } else {
+            draw_toast(&L, gfx_w * 7 / 10);
+        }
+    } else if (!toast_on) {
+        ui_text(&KF_LABEL, gfx_w - 10 - ui_text_w(&KF_LABEL, line), L.bar ? 26 : 24, line, THEME_STORE_SPACE);
+    } else {
+        draw_toast(&L, gfx_w - tw - NT * 12 - 16);
+    }
+    // the state of the store
+    if (s_cstate != 1) {
+        const char *t1 = s_cstate == 0 ? "LOADING THE STORE..." : "THE STORE IS NOT REACHABLE";
+        int cx = gfx_w / 2, cy = gfx_h / 2;
+        ui_text_c(&KF_BIG, cx, cy - 4, t1, THEME_STORE_STATE);
+        if (s_cstate == -1) {
+            ui_text_c(&KF_LABEL, cx, cy + 18, s_cerr[0] ? s_cerr : "CONNECT TO YOUR WIFI OR THE VPN",
+                      THEME_STORE_STATE_DIM);
+            box_t b = L.b1;
+            if (!L.bar && !L.tall && !L_RND(L)) {
+                b = (box_t){gfx_w / 2 - 80, 186, 160, 46};  // (the Tab5, the round panels: at L.b1, where the tap goes)
+            }
+            button(&b, "TRY AGAIN", true, true);
+        } else {
+            for (int i = 0; i < 8; i++) {
+                float a = now / 160.0f + i * 0.785f;
+                ui_circle(cx + (int)(18 * cosf(a)), cy + 34 + (int)(18 * sinf(a)), 3, THEME_STORE_ACCENT, 40 + i * 26);
+            }
+        }
+        return;
+    }
+    if (!s_nview) {
+        const char *t = s_tab == T_UPD    ? "ALL APPS ARE NEW"
+                        : s_tab == T_INST ? "NO INSTALLED APPS YET"
+                        : s_tab == T_FOR  ? "NOTHING NEW FOR YOU"
+                                          : "NO APPS HERE";
+        ui_text_c(&KF_BIG, gfx_w / 2, gfx_h / 2 + 6, t, THEME_STORE_EMPTY);
+        ui_text_c(&KF_LABEL, gfx_w / 2, gfx_h / 2 + 30, "SWIPE UP OR DOWN FOR THE OTHER TABS", THEME_STORE_TEXT_FAINT);
+    } else {
+        // the row of icons: the far ones first, the selected one big with a light behind it
+        int sel = s_sel[s_tab];
+        int order[8], n = 0;
+        for (int i = 0; i < s_nview && n < 8; i++) {
+            if (fabsf(i - s_pos) < 3.2f) {
+                order[n++] = i;
+            }
+        }
+        for (int a = 1; a < n; a++) {
+            int v = order[a], j = a - 1;
+            while (j >= 0 && fabsf(order[j] - s_pos) < fabsf(v - s_pos)) {
+                order[j + 1] = order[j];
+                j--;
+            }
+            order[j + 1] = v;
+        }
+        ui_circle(L.row_cx, L.row_cy, L.big * 7 / 10, THEME_STORE_GLOW, 70);
+        for (int k = 0; k < n; k++) {
+            int i = order[k];
+            float d = i - s_pos, ad = fabsf(d);
+            int s = (int)(L.big - (L.big - L.small) * (ad < 1 ? ad : 1));
+            int cx = L.row_cx + (int)(d * L.gap);
+            int x = cx - s / 2, y = L.row_cy - s / 2;
+            if (L.bar && x + s > L.panel.x - 6) {
+                continue;
+            }
+            if (ad < 0.5f) {
+                ui_rbox(x - 4, y - 4, s + 8, s + 8, s / 6 + 4, THEME_STORE_SEL, THEME_STORE_SEL_EDGE, 2);
+            }
+            draw_icon_of(&s_view[i], x, y, s);
+            if (ad > 0.6f) {
+                gfx_darken_rect(x, y, s, s, 1);
+            }
+            const tfn_entry_t *e = s_view[i].inst >= 0 ? tfn_entry(s_view[i].inst) : NULL;
+            if (e) {
+                ui_circle(x + s - 6, y + s - 6, 6,
+                          e->place == TFN_CARD ? THEME_STORE_PLACE_CARD : THEME_STORE_PLACE_BOARD, 255);
+            }
+        }
+        // the details of the selected item
+        const vitem_t *v = &s_view[sel < s_nview ? sel : 0];
+        const tfn_cat_t *c = v->cat >= 0 ? &s_cat[v->cat].c : NULL;
+        const tfn_entry_t *e = v->inst >= 0 ? tfn_entry(v->inst) : NULL;
+        if (L.bar) {
+            ui_rbox(L.panel.x, L.panel.y, L.panel.w, L.panel.h, 14, THEME_STORE_PANEL_BG, THEME_STORE_PANEL_EDGE, 1);
+        }
+        const char *nm = name_of(v);
+        static const kfont_t *const NF[] = {&KF_BIG, &KF_NAME, &KF_TEXT}, *const NFT[] = {&KF_TITLE, &KF_BIG, &KF_NAME};
+        const kfont_t *nf =
+                ui_text_fit(L.tall ? NFT : NF, 3, nm, L.bar ? L.panel.w - 46 : gfx_w - 64);  // (room for the mark i)
+        if (L.bar) {
+            ui_text(nf, L.name_x, L.name_y, nm, THEME_STORE_TEXT);
+        } else {
+            ui_text_c(nf, L.name_x, L.name_y, nm, THEME_STORE_TEXT);
+        }
+        facts_of(c, e, line, sizeof line);
+        if (L.bar) {
+            ui_text(&KF_LABEL, L.name_x, L.info_y, line, THEME_STORE_TEXT_DIM);
+        } else if (L_RND(L)) {
+            ui_text_c(ui_text_w(&KF_TEXT, line) <= gfx_w - 60 ? &KF_TEXT : &KF_LABEL, L.name_x, L.info_y, line,
+                      THEME_STORE_TEXT_DIM);
+        } else {
+            ui_text_c(L.tall ? &KF_NAME : &KF_LABEL, L.name_x, L.info_y, line, THEME_STORE_TEXT_DIM);
+        }
+        // the mark of the app page (a tap on the name or on the icon opens it)
+        int mx = L.bar ? L.panel.x + L.panel.w - 18 : gfx_w - 18, my = L.bar ? L.panel.y + 17 : L.name_y - 6;
+        if (L_RND(L)) {
+            mx = L.name_x + ui_text_w(nf, nm) / 2 + 22;  // (the round panels: at the end of the name)
+        }
+        ui_circle(mx, my, 10, THEME_STORE_MARK, 255);
+        ui_text_c(&KF_NAME, mx, my + 6, "i", THEME_STORE_MARK_TEXT);
+        draw_actions(&L, v, c, e);
+        if (L.bar) {
+            ui_text_c(&KF_LABEL, L.row_cx, L.sel_name_y, nm, THEME_STORE_SEL_NAME);
+        }
+    }
+}
+#endif
+
 static void render(int64_t now)
 {
     lay_t L = lay();
@@ -1497,6 +1779,12 @@ static void render(int64_t now)
         render_page(now, &L, &s_view[s_sel[s_tab]]);
         return;
     }
+#if BOARD_ROUND
+    if (L_RND(L)) {
+        render_round(now, L);
+        return;
+    }
+#endif
     // the tab: its name, the dots of the tabs
     mf_text(&MF_N24, L.bar ? 14 : 10, L.bar ? 30 : 28, TAB_NAME[s_tab], THEME_STORE_ACCENT, 255, 1);
     int tw = mf_width(&MF_N24, TAB_NAME[s_tab], 1) + (L.bar ? 24 : 18);
@@ -1667,5 +1955,6 @@ const app_t app_store = {
         .update = update,
         .render = render,
         .draw_icon = icon,
-        .round_fit = true,
+        .round_fit = !BOARD_ROUND,  // (a round panel: the own layout, APP_ROUND_HI)
+        .round = BOARD_ROUND ? APP_ROUND_HI : 0,
 };

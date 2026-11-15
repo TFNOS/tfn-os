@@ -1,5 +1,5 @@
 // The simulator: the board (board.h) of build.py --frame: the Waveshare ESP32-S3-Touch-LCD-3.49, the 320 x 240 frame
-// of the CoreS3, the round SenseCAP Watcher, the round AMOLED-1.75C or the Tab5. The capabilities of the board come from
+// of the CoreS3, the round SenseCAP Watcher, the round AMOLED-1.75C, the AMOLED-1.8 or the Tab5. The capabilities of the board come from
 // boards/<kind>/board_caps.h. The sim keeps THE PANEL (the physical picture, portrait) and puts each frame of the
 // firmware on it as the driver of the board does (main/board_*.c):
 // - the 3.49 and the CoreS3: the panel is the frame (LCD_W x LCD_H), turned from the logical frame as
@@ -28,6 +28,9 @@ static const char *TAG = "board";
 #if BOARD_ROUND
 #define PANEL_W BOARD_ROUND_HI
 #define PANEL_H BOARD_ROUND_HI
+#elif BOARD_NATIVE_W > 0
+#define PANEL_W BOARD_NATIVE_W
+#define PANEL_H BOARD_NATIVE_H
 #elif BOARD_HI_FRAME
 #define PANEL_W (LCD_W * 2)
 #define PANEL_H (LCD_H * 2)
@@ -35,6 +38,10 @@ static const char *TAG = "board";
 #define PANEL_W LCD_W
 #define PANEL_H LCD_H
 #endif
+// the AMOLED-1.8 (a native panel that is not round): the frame of the apps x 7/5 at the middle (board_amoled.c)
+#define SIM_AM18   (BOARD_NATIVE_W > 0 && !BOARD_ROUND)
+#define AM18_PIC_X ((BOARD_NATIVE_W - LCD_W * BOARD_NATIVE_H / LCD_H) / 2)
+#define AM18_PIC_W (LCD_W * BOARD_NATIVE_H / LCD_H)
 // the AMOLED-1.75C look: the CoreS3 frame at 280 x 372 in the middle of the circle, the ambient border round it
 #define SIM_AMBIENT (BOARD_ROUND && !BOARD_ROUND_ZOOM)
 
@@ -350,6 +357,14 @@ static void compose(const uint16_t *fb, int orient)
     } else {
         put_ambient();
     }
+#elif SIM_AM18
+    // board_amoled.c: the native frame goes 1:1; the frame of the apps is scaled by 7/5, with black bands at the sides
+    if (orient & ORIENT_NATIVE) {
+        put_copy(sw, sh, 0, 0, 1);
+    } else {
+        memset(s_panel, 0, sizeof s_panel);
+        put_scaled(sw, sh, AM18_PIC_X, 0, AM18_PIC_W, PANEL_H);
+    }
 #else
     put_copy(sw, sh, 0, 0, PANEL_W / sw);
 #endif
@@ -429,6 +444,13 @@ static bool touch_point(int tx, int ty, int *x, int *y, bool held)
     case ORIENT_LAND_A:         *x = py; *y = W - 1 - px; break;
     default:                    *x = H - 1 - py; *y = px; break;
     }
+    return true;
+#elif SIM_AM18
+    // board_amoled.c: the physical points of the frame of the apps (the bands at the sides: its edge)
+    (void)held;
+    const int px = (tx - AM18_PIC_X) * LCD_W / AM18_PIC_W, py = ty * LCD_H / PANEL_H;
+    *x = px < 0 ? 0 : px >= LCD_W ? LCD_W - 1 : px;
+    *y = py < 0 ? 0 : py >= LCD_H ? LCD_H - 1 : py;
     return true;
 #else
     // the physical points of the frame (a board with the HI frame: the panel is the frame x 2, board_tab5.c)

@@ -206,10 +206,18 @@ static void watch_off(int w, const char *why)
     watch_unload(w);
 }
 
+static volatile int64_t s_wnext;      // ms: the next round (0 = at once)
+static volatile bool s_wrun, s_wany;  // a round runs now; a watcher is on
+
+bool watch_busy(void)
+{
+    return s_wrun || (s_wany && watch_every() && esp_timer_get_time() / 1000 >= s_wnext);
+}
+
 static void watch_task(void *arg)
 {
     (void)arg;
-    int64_t next = 0, wait_from = 0;
+    int64_t wait_from = 0;
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(5000));
         const int64_t now = esp_timer_get_time() / 1000;
@@ -224,11 +232,12 @@ static void watch_task(void *arg)
         for (int w = 0; w < WMAX; w++) {
             any |= tfa_w[w].on;
         }
-        if (!any || (!force && (!every || now < next))) {
+        s_wany = any;
+        if (!any || (!force && (!every || now < s_wnext))) {
             continue;
         }
         if (!wifi_ip()[0]) {  // (no network: a try each minute)
-            next = now + 60000;
+            s_wnext = now + 60000;
             continue;
         }
         // a 2-board link, or a game on the screen: the round waits (up to 15 minutes)
@@ -241,6 +250,7 @@ static void watch_task(void *arg)
         wait_from = 0;
         s_wforce = false;
         xSemaphoreTake(s_wlock, portMAX_DELAY);
+        s_wrun = true;
         int ran = 0;
         for (int w = 0; w < WMAX; w++) {
             wslot_t *W = &tfa_w[w];
@@ -269,12 +279,13 @@ static void watch_task(void *arg)
                 W->faults = 0;
             }
         }
+        s_wrun = false;
         xSemaphoreGive(s_wlock);
         if (ran) {
             ESP_LOGI(TAG, "a background round: %d checks (the stack of the task: %u bytes never used)", ran,
                      (unsigned)uxTaskGetStackHighWaterMark(NULL));
         }
-        next = now + (int64_t)(every ? every : 5) * 60000;
+        s_wnext = now + (int64_t)(every ? every : 5) * 60000;
     }
 }
 

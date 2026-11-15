@@ -1,6 +1,7 @@
 // The keys of the board: the BOOT key (CHAT, the key of an app, the screen key), the PWR key (back to the menu,
 // the power off; the wheel of the Watcher), and the rule that lets a pull from the top open the settings panel.
 #include "main_priv.h"
+#include "standby.h"
 
 static const char *TAG = "main";
 
@@ -183,6 +184,9 @@ void mai_pwr_key_poll(int64_t t)
             notify_center_close();  // (the PWR key closes the notification center)
         } else if (sysui_ask_back()) {
             sfx_ui(SFX_BACK);  // a closable question (the hold question of the menu) goes
+        } else if (standby_on()) {
+            sfx_ui(SFX_BACK);
+            standby_hide();  // STANDBY: the menu
         } else if (mai_app != &app_menu) {
             sfx_ui(SFX_BACK);
             app_open(&app_menu);

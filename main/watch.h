@@ -16,3 +16,5 @@ const char *tfn_watch_app_now(void);
 int tfn_watch_json(char *out, int max);
 // (tests: the console "watch now") a round now with all the watchers
 void tfn_watch_now(void);
+// (power.c DEEP IDLE) a round is due or runs now: the radio stays on for it
+bool watch_busy(void);

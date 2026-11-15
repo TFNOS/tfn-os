@@ -30,8 +30,16 @@
 #define EXT_RAM_BSS_ATTR
 #endif
 
+#include "set_round.h"
+// THE ROUND FRAME (gfx_round()): the title (and the time of a JOIN) on the top cap, the rows or the lines of the JOIN
+// in the middle box, BACK on the bottom cap.
+#if BOARD_ROUND
+#define PL_RND gfx_round()
+#else
+#define PL_RND false
+#endif
 #define BACK_W 56
-#define PILL_H 36
+#define PILL_H (PL_RND ? RS(42) : 36)
 #define NROWS  (2 + TFN_POOL_MEMBERS_MAX)
 
 enum {
@@ -305,7 +313,22 @@ static bool wide(void)
 }
 static int head_h(void)
 {
+#if BOARD_ROUND
+    if (PL_RND) {
+        return RB_Y;
+    }
+#endif
     return 30;
+}
+// the height of the list on the screen
+static int list_h(void)
+{
+#if BOARD_ROUND
+    if (PL_RND) {
+        return RB_B - RB_Y;
+    }
+#endif
+    return gfx_h - head_h();
 }
 static bool join_view(const pview_t *v)
 {
@@ -322,6 +345,11 @@ static int row_pills(int r, const pview_t *v)
 }
 static int row_h(int r, const pview_t *v)
 {
+#if BOARD_ROUND
+    if (PL_RND) {
+        return row_pills(r, v) ? RS(124) : RS(92);
+    }
+#endif
     return !wide() && row_pills(r, v) ? 96 : 52;  // (the 320 x 240 frame: a pill under the three lines of text)
 }
 
@@ -347,6 +375,14 @@ static void rows_make(const pview_t *v)
 
 static void list_pill(int top, int r, int *x, int *y, int *w)
 {
+#if BOARD_ROUND
+    if (PL_RND) {
+        *w = RS(116);
+        *x = RB_X + RB_W - *w;
+        *y = top + RS(72);
+        return;
+    }
+#endif
     *w = wide() ? 110 : 84;
     *x = gfx_w - 8 - *w;
     *y = wide() ? top + (s_top[r + 1] - s_top[r] - PILL_H) / 2 : top + 52;
@@ -376,6 +412,15 @@ static int join_pills(const pview_t *v, const char **t)
 // x, y, w of the JOIN pill k of n: one pill at the right; two pills = the left and the right end of the page
 static void join_pill(int k, int n, int *x, int *y, int *w)
 {
+#if BOARD_ROUND
+    if (PL_RND) {
+        // (the round frame: under the lines; two pills side by side, one in the middle)
+        *w = RS(150);
+        *y = RB_B - PILL_H - RS(6);
+        *x = n == 1 ? gfx_w / 2 - *w / 2 : k == 0 ? gfx_w / 2 - RS(8) - *w : gfx_w / 2 + RS(8);
+        return;
+    }
+#endif
     *w = wide() ? 150 : 110;
     *y = gfx_h - PILL_H - 8;
     *x = n == 2 && k == 0 ? BACK_W + 10 : gfx_w - 10 - *w;
@@ -384,7 +429,7 @@ static void join_pill(int k, int n, int *x, int *y, int *w)
 // the pill under (x, y): r * 4 + k (the list), 100 + k (the JOIN screen), or -1
 static int hit(int x, int y, const pview_t *v)
 {
-    if (y < head_h()) {
+    if (y < head_h() || (PL_RND && y >= head_h() + list_h())) {
         return -1;
     }
     int px, py, pw;
@@ -476,7 +521,7 @@ void pool_page_open(void)
     pview_t v;
     pv_get(&v);
     rows_make(&v);
-    ks_init(&s_ks, (float)(gfx_h - head_h()), 0);
+    ks_init(&s_ks, (float)list_h(), 0);
     s_press = -1;
     s_back = false;
     s_note[0] = 0;
@@ -506,7 +551,7 @@ void pool_page_update(int64_t now)
         s_note[0] = 0;
         s_js_seen = v.js;
     }
-    ks_set_max(&s_ks, join_view(&v) ? 0 : (float)(s_top[s_nrows] - (gfx_h - head_h()) + 6));
+    ks_set_max(&s_ks, join_view(&v) ? 0 : (float)(s_top[s_nrows] - list_h() + 6));
     ks_update(&s_ks, now);
 }
 
@@ -518,7 +563,11 @@ bool pool_page_input(const input_event_t *ev, int64_t now)
     const int cons = input_consent_event(&s_cons, ev);
     switch (ev->kind) {
     case IN_DOWN:
+#if BOARD_ROUND
+        s_back = PL_RND ? rr_back_at(ev->x, ev->y) : ev->x < BACK_W;
+#else
         s_back = ev->x < BACK_W;
+#endif
         if (!s_back && !join_view(&v) && ks_down(&s_ks, (float)ev->y, ev->t_ms)) {
             s_press = -1;
         } else {
@@ -540,7 +589,11 @@ bool pool_page_input(const input_event_t *ev, int64_t now)
         }
         break;
     case IN_TAP:
+#if BOARD_ROUND
+        if (s_back && (PL_RND ? rr_back_at(ev->x, ev->y) : ev->x < BACK_W)) {
+#else
         if (s_back && ev->x < BACK_W) {
+#endif
             sfx_ui(SFX_BACK);
             if (join_view(&v)) {
                 pv_join_stop();  // (BACK of the JOIN screen = CANCEL: the list again)
@@ -682,7 +735,7 @@ static void list_render(const pview_t *v)
         }
     }
     int at, sz, al;
-    if (ks_bar(&s_ks, gfx_h - head_h() - 8, &at, &sz, &al) && al > 64) {
+    if (ks_bar(&s_ks, list_h() - 8, &at, &sz, &al) && al > 64) {
         gfx_fill_rect(gfx_w - 4, head_h() + 4 + at, 2, sz, THEME_NOTE_PAGE_SCROLL);
     }
 }
@@ -699,7 +752,7 @@ typedef struct {
 // gets smaller. The digits (size 5 and more) only get smaller. JL_MAX lines at most.
 static int jl_add(jline_t *l, int n, int sc, uint16_t c, const char *t)
 {
-    const int w = gfx_w - BACK_W - 40;
+    const int w = PL_RND ? RS(280) : gfx_w - BACK_W - 40;  // (the round frame: lines for the smooth font)
     if (n >= JL_MAX) {
         return n;
     }
@@ -821,10 +874,126 @@ static void join_render(const pview_t *v, int64_t now)
     }
 }
 
+#if BOARD_ROUND
+// the smooth font of a size of the dot font (the round frame)
+static const kfont_t *jl_font(int sc)
+{
+    return sc >= 4 ? &KF_TITLE : sc == 3 ? &KF_BIG : sc == 2 ? &KF_TEXT : &KF_LABEL;
+}
+
+// cut s to the width w in the font f
+static void fit_k(const kfont_t *f, char *s, int w)
+{
+    for (size_t n = strlen(s); n && ui_text_w(f, s) > w; n--) {
+        s[n - 1] = 0;
+    }
+}
+
+// the round frame: the rows between the caps (the name, two lines, the pill under them at the right)
+static void list_round(const pview_t *v)
+{
+    const int sc = ks_ipos(&s_ks), y0 = head_h(), y1 = y0 + list_h();
+    for (int r = 0; r < s_nrows; r++) {
+        const int top = y0 + s_top[r] - sc, rh = s_top[r + 1] - s_top[r];
+        if (top + rh < y0 || top > y1) {
+            continue;
+        }
+        char name[48], l1[64], l2[64];
+        const char *pt;
+        const uint16_t nc = row_text(r, v, name, sizeof name, l1, l2, sizeof l1, &pt);
+        const int tx = RB_X + RS(4), tw = RB_W - RS(10);
+        fit_k(&KF_LABEL, l1, tw);
+        fit_k(&KF_LABEL, l2, tw);
+        ui_rrect(RB_X - RS(6), top + 2, RB_W + RS(12), rh - 6, RS(12), THEME_NOTE_PAGE_LINE);
+        ui_text(rr_fit(&KF_TEXT, name, tw), tx, top + RS(28), name, nc);
+        ui_text(&KF_LABEL, tx, top + RS(48), l1, THEME_NOTE_PAGE_PILL_TEXT);
+        ui_text(&KF_LABEL, tx, top + RS(66), l2, THEME_NOTE_PAGE_PILL_TEXT);
+        if (row_pills(r, v)) {
+            int px, py, pw;
+            list_pill(top, r, &px, &py, &pw);
+            rr_btn(px, py, pw, PILL_H, pt, s_press == r * 4 ? THEME_NOTE_PAGE_PILL_DOWN : THEME_NOTE_PAGE_PILL,
+                   THEME_NOTE_PAGE_PILL_TEXT);
+        }
+    }
+    int at, sz, al;
+    if (ks_bar(&s_ks, list_h() - 8, &at, &sz, &al) && al > 64) {
+        ui_rrect(RB_X + RB_W + RS(10), y0 + 4 + at, 4, sz, 2, THEME_NOTE_PAGE_SCROLL);
+    }
+}
+
+// the round frame: the lines of the JOIN in the middle of the circle, the pills under them
+static void join_round(const pview_t *v, int64_t now)
+{
+    jline_t l[JL_MAX];
+    if (v->js == TFN_POOL_JOIN_ASK && !pv_sas()) {
+        snprintf(s_sas, sizeof s_sas, "------");
+        s_mgr[0] = 0;
+    }
+    if (v->js == TFN_POOL_JOIN_ASK) {
+        if (strcmp(s_sas, s_sas_seen)) {
+            input_consent_reset(&s_cons);  // (other digits: the question starts again)
+            snprintf(s_sas_seen, sizeof s_sas_seen, "%s", s_sas);
+        }
+        input_consent_shown(&s_cons, now);
+    }
+    const int n = join_lines(v, l);
+    int h = 0;
+    for (int i = 0; i < n; i++) {
+        h += jl_font(l[i].sc)->line + RS(4);
+    }
+    const char *t[2];
+    const int np = join_pills(v, t);
+    int px, py, pw;
+    join_pill(0, np, &px, &py, &pw);
+    int y = head_h() + (py - head_h() - h) / 2;
+    for (int i = 0; i < n; i++) {
+        const kfont_t *f = jl_font(l[i].sc);
+        y += f->line;
+        rr_line(f, y - (f->line - f->asc) / 2, l[i].t, l[i].c);
+        y += RS(4);
+    }
+    const bool armed = s_cons.shown_ms && now >= s_cons.shown_ms + INPUT_ARM_MS;
+    for (int k = 0; k < np; k++) {
+        join_pill(k, np, &px, &py, &pw);
+        const bool on = v->js == TFN_POOL_JOIN_ASK ? k == 1 && armed : k == np - 1;
+        rr_btn(px, py, pw, PILL_H, t[k],
+               s_press == 100 + k ? THEME_NOTE_PAGE_PILL_DOWN
+               : on               ? THEME_NOTE_PAGE_PILL_ON
+                                  : THEME_NOTE_PAGE_PILL,
+               on ? THEME_NOTE_PAGE_PILL_TEXT_ON : THEME_NOTE_PAGE_PILL_TEXT);
+    }
+}
+
+static void render_round(const pview_t *v, int64_t now)
+{
+    gfx_fill(THEME_NOTE_PAGE_BG);
+    if (join_view(v)) {
+        join_round(v, now);
+    } else {
+        list_round(v);
+    }
+    gfx_fill_rect(0, 0, gfx_w, head_h(), THEME_NOTE_PAGE_BG);
+    gfx_fill_rect(0, RB_B, gfx_w, gfx_h - RB_B, THEME_NOTE_PAGE_BG);
+    char tl[16] = "";
+    if (v->js == TFN_POOL_JOIN_WAIT || v->js == TFN_POOL_JOIN_REVEAL || v->js == TFN_POOL_JOIN_ASK) {
+        snprintf(tl, sizeof tl, "%d:%02d", v->left_s / 60, v->left_s % 60);
+    }
+    rr_head(join_view(v) ? "JOIN A POOL" : "POOL", tl, THEME_NOTE_PAGE_TITLE, THEME_NOTE_PAGE_PILL_TEXT);
+    rr_back(join_view(v) ? "CANCEL" : "< BACK", false, THEME_NOTE_PAGE_BACK, THEME_NOTE_PAGE_BACK,
+            THEME_NOTE_PAGE_BACK_TEXT, THEME_NOTE_PAGE_BACK_TEXT);
+}
+#endif
+
 void pool_page_render(int64_t now)
 {
     pview_t v;
     pv_get(&v);
+#if BOARD_ROUND
+    if (PL_RND) {
+        render_round(&v, now);
+        return;
+    }
+#endif
     gfx_fill(THEME_NOTE_PAGE_BG);
     if (join_view(&v)) {
         join_render(&v, now);

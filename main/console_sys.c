@@ -1,5 +1,7 @@
 // The console commands of the system: the apps, the files, the store keys, the screen, the power, the sound, the memory, the clock, the tests of the screen (the table: console.c).
 #include "console_priv.h"
+#include "board.h"
+#include "standby.h"
 #include "tfn_sstore.h"
 
 static const char *TAG = "console";
@@ -288,6 +290,13 @@ void con_wake(char *cmd)
     ESP_LOGI(TAG, "wake");
 }
 
+// "dispoff": a test: the display off of the DEEP IDLE now (the screen must be off; a key or "wake" ends it)
+void con_dispoff(char *cmd)
+{
+    board_display_off();
+    ESP_LOGI(TAG, "dispoff");
+}
+
 // "panel"
 void con_panel(char *cmd)
 {
@@ -410,6 +419,12 @@ void con_snd(char *cmd)
 void con_clock(char *cmd)
 {
     clock_log();  // the clock of the board and its chip (alarm.c)
+}
+
+// "standby": the state of STANDBY; "standby show|hide|fetch", "standby face|on|night <n>" (standby.h)
+void con_standby(char *cmd)
+{
+    standby_console(NULL);  // (the arguments: the rest of the line, strtok)
 }
 
 #if CONFIG_TFN_EXTRA_OREF

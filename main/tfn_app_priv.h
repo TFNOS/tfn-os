@@ -91,8 +91,12 @@
 // a big PSRAM (the Tab5: 32 MB): the icon files and the decoded frames stay at an app load while the PSRAM has room,
 // and the prefetch task reads all icons at the start
 #define TFA_ICON_BIG (BOARD_PSRAM_MB >= 32)
-#define OWN_FILES    16
-#define OWN_TASKS    8
+// the grid menu (BOARD_UI_GRID): a low task reads the icon files that the menu asks for (tfn_icon_ask)
+#define TFA_ICON_ASK (BOARD_UI_GRID && !TFA_ICON_BIG)
+// a task reads icon files: the flags of an icon that it reads now, the count of the rescans
+#define TFA_ICON_TASK (TFA_ICON_BIG || TFA_ICON_ASK)
+#define OWN_FILES     16
+#define OWN_TASKS     8
 typedef struct {
     void **mem;  // an open-address set of the blocks (PSRAM; NULL = an empty place, 1 = a removed one)
     int cap, used, live;
@@ -168,9 +172,11 @@ extern uint8_t *tfa_icon[TFN_MAX];
 extern size_t tfa_icon_len[TFN_MAX];
 extern bool tfa_icon_bad[TFN_MAX];
 extern uint32_t tfa_icon_used[TFN_MAX];
-#if TFA_ICON_BIG
+#if TFA_ICON_TASK
 extern volatile bool tfa_icon_busy[TFN_MAX];
 extern volatile uint32_t tfa_icon_gen;
+#endif
+#if TFA_ICON_BIG
 void tfa_icon_prefetch_task(void *arg);
 #endif
 extern size_t tfa_icon_bytes;

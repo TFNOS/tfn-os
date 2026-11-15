@@ -3,6 +3,7 @@
 The tool writes the two made files of this lib:
   ck_fonts.inc     the faces of CLOCK (CK_*): CLOCK and CHESS CLOCK use them
   stocks_font.inc  the faces of STOCKS (SF_*): STOCKS and AI LIMITS use them
+  sb_fonts.inc     the faces of STANDBY (SB_*): the standby screen of the firmware (main/standby_draw.c)
 
 Usage:
   python libs/interfont/tools/export_inter.py <Inter.ttf> [--out DIR]
@@ -46,6 +47,14 @@ SF_FONTS = [
     ('SF_T19', 19, 'SemiBold', 18, ASCII),  # the change, the buttons
     ('SF_T16', 16, 'Medium', 16, ASCII),  # the name of the company
     ('SF_T13', 13, 'Medium', 14, ASCII),  # the labels, the line at the bottom
+]
+
+# STANDBY: (C name, size, weight, the characters). The byte 0xB0 is the degree sign (as in Latin-1).
+SB_VALUE = '0123456789:-+% \xb0'
+SB_FONTS = [
+    ('SB_T', 96, 'SemiBold', '0123456789:-'),  # the big time of each face
+    ('SB_V', 44, 'SemiBold', SB_VALUE),  # the values of the slots, the temperature of LIVE SKY
+    ('SB_S', 26, 'SemiBold', SB_VALUE),  # the small values (the hours of the weather)
 ]
 
 
@@ -134,12 +143,36 @@ def stocks_file(ttf):
     return '\n'.join(out) + '\n'
 
 
+def standby_file(ttf):
+    out = ['// The faces of STANDBY (made by %s; do not edit).' % TOOL, LICENCE,
+           '// The byte 0xB0 is the degree sign.']
+    for cname, size, weight, chars in SB_FONTS:
+        f = face(ttf, size, weight, size)
+        asc, desc = f.getmetrics()
+        glyphs, data = atlas(f, [(ord(c), c) for c in chars], space_half=True)
+        capb = f.getbbox('0')
+        capital = asc - capb[1] if capb else asc
+        out.append('static const uint8_t %s_A4[%d] = {' % (cname, len(data)))
+        for k in range(0, len(data), 40):
+            out.append(','.join(str(x) for x in data[k:k + 40]) + ',')
+        out.append('};')
+        out.append('static const mglyph_t %s_G[%d] = {' % (cname, len(glyphs)))
+        for g in glyphs:
+            out.append('    {%d, %d, %d, %d, %d, %d, %d},' % g)
+        out.append('};')
+        out.append('static const mfont_t %s = {%d, %d, %d, %s_G, %s_A4};' % (cname, min(255, capital),
+                                                                         int(round((asc + desc) * 1.1)),
+                                                                         len(glyphs), cname, cname))
+    return '\n'.join(out) + '\n'
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('ttf', help='the variable font file of Inter')
     p.add_argument('--out', default=LIB, help='the folder of the made files (default: libs/interfont/)')
     a = p.parse_args()
-    for name, text in (('ck_fonts.inc', clock_file(a.ttf)), ('stocks_font.inc', stocks_file(a.ttf))):
+    for name, text in (('ck_fonts.inc', clock_file(a.ttf)), ('stocks_font.inc', stocks_file(a.ttf)),
+                       ('sb_fonts.inc', standby_file(a.ttf))):
         with open(os.path.join(a.out, name), 'wb') as h:
             h.write(text.encode('ascii'))
         print('%s: %d bytes' % (name, len(text)))

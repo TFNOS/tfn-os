@@ -35,6 +35,14 @@ void axp2101_init_basic(i2c_master_dev_handle_t axp, uint8_t *pmu_on, uint8_t *p
     reg_write(axp, AXP_IRQ_ST1, 0xFF);    // remove old key events
 }
 
+static int s_vbus = -1;  // 0x00 bit 5: VBUS good (a charger or a PC); -1 before the first read
+
+int axp2101_vbus(i2c_master_dev_handle_t axp)
+{
+    axp2101_battery(axp, NULL, NULL);
+    return s_vbus;
+}
+
 int axp2101_battery(i2c_master_dev_handle_t axp, bool *charging, int *mv)
 {
     static int64_t s_at;
@@ -47,6 +55,7 @@ int axp2101_battery(i2c_master_dev_handle_t axp, bool *charging, int *mv)
         if (reg_read(axp, 0x00, st, 2) == ESP_OK && reg_read(axp, 0x34, v, 2) == ESP_OK &&
             reg_read(axp, 0xA4, &pct, 1) == ESP_OK) {
             bool present = st[0] & 0x08;
+            s_vbus = (st[0] & 0x20) ? 1 : 0;
             s_chg = ((st[1] >> 5) & 0x03) == 0x01;
             s_mv = ((v[0] & 0x3F) << 8) | v[1];
             s_pct = present ? (pct > 100 ? 100 : pct) : -1;

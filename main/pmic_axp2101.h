@@ -36,6 +36,8 @@ void axp2101_init_basic(i2c_master_dev_handle_t axp, uint8_t *pmu_on, uint8_t *p
 // board_battery() of these boards: the charge in % (-1: no battery), and the charge state and the battery voltage
 // in mV. It reads the chip once in 2 s at most.
 int axp2101_battery(i2c_master_dev_handle_t axp, bool *charging, int *mv);
+// board_ext_power() of these boards: 1 = VBUS good (a charger or a PC), 0 = no VBUS, -1 = no read yet.
+int axp2101_vbus(i2c_master_dev_handle_t axp);
 
 // A 14-bit ADC value (the register and the next one), in mV for the voltages. -1 when the read fails.
 int axp2101_adc14(i2c_master_dev_handle_t axp, uint8_t reg);

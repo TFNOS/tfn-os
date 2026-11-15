@@ -468,6 +468,7 @@ bool web_audio_active(void) { return false; }
 #include "lan.h"
 __attribute__((weak)) int lan_peers(lan_peer_t *out, int max) { (void)out; (void)max; return 0; }
 __attribute__((weak)) bool lan_send_call(const uint8_t to[6], uint8_t op) { (void)to; (void)op; return false; }
+__attribute__((weak)) bool lan_peer_deep(const uint8_t mac[6]) { (void)mac; return false; }
 __attribute__((weak)) void lan_set_call_rx(void (*cb)(const uint8_t from[6], uint8_t op)) { (void)cb; }
 __attribute__((weak)) void sysui_ask(const char *t, const char *l, const char *y, const char *n, int s, void (*d)(int)) { (void)t; (void)l; (void)y; (void)n; (void)s; (void)d; }
 __attribute__((weak)) void sysui_ask_close(void) {}
@@ -817,6 +818,14 @@ const char *const POWER_OFF_NAMES[POWER_OFF_CHOICES] = {"NEVER", "15 MIN", "30 M
 static int s_pwoff;
 int power_off_choice(void) { return s_pwoff; }
 void power_set_off_choice(int i) { if (i >= 0 && i < POWER_OFF_CHOICES) s_pwoff = i; }
+// (SETUP: DEEP IDLE; the host has no DEEP IDLE and no power test switches)
+const uint16_t POWER_DEEP_S[POWER_DEEP_CHOICES] = {0, 10, 30, 60};
+const char *const POWER_DEEP_NAMES[POWER_DEEP_CHOICES] = {"OFF", "10 S", "30 S", "60 S"};
+static int s_pwdeep = 3;
+int power_deep_choice(void) { return s_pwdeep; }
+void power_set_deep_choice(int i) { if (i >= 0 && i < POWER_DEEP_CHOICES) s_pwdeep = i; }
+__attribute__((weak)) bool power_deep_now(void) { return false; }
+__attribute__((weak)) int power_x(void) { return 0; }
 void link_stats(uint32_t *sent, uint32_t *failed) { *sent = 0; *failed = 0; }
 bool link_send(uint8_t app, uint8_t kind, const void *data, int len) { return len >= 0 && len <= LINK_DATA_MAX; }
 bool link_recv(link_msg_t *m)

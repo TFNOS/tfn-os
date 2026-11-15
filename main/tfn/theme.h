@@ -85,6 +85,16 @@
 #define THEME_MENU_TB_BAT_PLATE rgb(16, 18, 34)     // the box of the battery
 #define THEME_MENU_TB_WIFI_ON   rgb(220, 224, 240)  // a bar of the WiFi signal that is lit
 #define THEME_MENU_TB_WIFI_OFF  rgb(80, 86, 120)    // a bar of the WiFi signal that is not lit
+// the grid menu of a small portrait panel (menu_grid.c, BOARD_UI_GRID: the AMOLED-1.8): soft colours on black
+#define THEME_MENU_GR_BG       rgb(0, 0, 0)        // the black of the AMOLED (under the soft light of the group)
+#define THEME_MENU_GR_TEXT     rgb(244, 245, 250)  // the time, the title, the names of the icons
+#define THEME_MENU_GR_SOFT     rgb(160, 164, 184)  // the count of the apps, the percent of the battery, the hints
+#define THEME_MENU_GR_ICON     rgb(236, 238, 246)  // the WiFi bars, the battery edge, the arrow of BACK
+#define THEME_MENU_GR_DIM      rgb(70, 74, 92)     // the WiFi bars that are not lit
+#define THEME_MENU_GR_BACK     rgb(255, 255, 255)  // the round plate of BACK (soft: a low alpha)
+#define THEME_MENU_GR_NOTE     rgb(255, 170, 70)   // the pill of the unread notices in the status bar
+#define THEME_MENU_GR_NOTE_TXT rgb(30, 18, 6)      // the count on that pill
+#define THEME_MENU_GR_SCROLL   rgb(255, 255, 255)  // the scroll bar
 // the change of the flash layout (layout.c): the screen while the board writes the new table
 #define THEME_LAYOUT_BG    rgb(10, 14, 36)     // the background
 #define THEME_LAYOUT_TITLE rgb(255, 200, 80)   // the title
@@ -137,6 +147,11 @@
 #define THEME_PANEL_TAB_ARROW        rgb(255, 214, 90)   // the arrow on the tab
 #define THEME_PANEL_GRIP             rgb(255, 255, 255)  // the grip at the top of the screen
 #define THEME_PANEL_GRIP_EDGE        rgb(0, 0, 0)        // the dark edge of the grip (it shows on a light game)
+// the soft look of the settings panel (BOARD_UI_GRID: the AMOLED-1.8)
+#define THEME_PANEL_GR_BG     rgb(16, 16, 22)   // the card of the panel (near the black of the AMOLED)
+#define THEME_PANEL_GR_SHADE  rgb(0, 0, 0)      // the soft shade under the card
+#define THEME_PANEL_GR_BTN    rgb(40, 42, 54)   // MENU and the chips (a round pill, no edge)
+#define THEME_PANEL_GR_RESUME rgb(40, 150, 92)  // RESUME (a round pill, no edge)
 
 // the question of a call (sysui.c ask_draw): ANSWER and the other key
 #define THEME_ASK_BACK       rgb(8, 8, 16)       // under the box, when there is no picture of the app
@@ -243,6 +258,7 @@
 #define THEME_NOTE_BANNER_DIM  rgb(150, 160, 185)  // the age on the banner
 #define THEME_NOTE_COUNT       rgb(232, 64, 56)    // the circle of the count of a burst
 #define THEME_NOTE_COUNT_TEXT  rgb(255, 255, 255)  // the count of a burst
+#define THEME_NOTE_GR_BG       rgb(0, 0, 0)        // the screen of the center (BOARD_UI_GRID: the black of the AMOLED)
 
 // the keyboard (kbd.c) and its question (USE THIS TEXT?)
 #define THEME_KBD_BG           rgb(12, 14, 28)     // the screen

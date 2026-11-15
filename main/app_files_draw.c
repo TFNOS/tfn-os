@@ -346,8 +346,16 @@ static void tile(int x, int y, int r, bool hot, bool focus)
     }
 }
 
+#if BOARD_ROUND
+#include "app_files_round.inc"
+#endif
+
 static void home_render(void)
 {
+#if BOARD_ROUND
+    rnd_home();
+    return;
+#endif
     gfx_fill(THEME_FILES_BG);
     mf_text(&MF_N24, 16, HOME_H / 2 + 12, "FILES", THEME_FILES_ACCENT, 255, 0);
     button(TOOLS_X, 4, TOOLS_W, HOME_H - 8, "CARD TOOLS", fil_hot == CT_TOOLS, 0);
@@ -464,6 +472,10 @@ static void t5_list_render(void);
 #endif
 static void list_render(void)
 {
+#if BOARD_ROUND
+    rnd_list();
+    return;
+#endif
 #if T5P
     t5_list_render();
     return;
@@ -771,6 +783,10 @@ static void t5_list_render(void)
 // ---- the panel
 static void act_render(void)
 {
+#if BOARD_ROUND
+    rnd_act();
+    return;
+#endif
     gfx_fill(THEME_FILES_BG);
     gfx_fill_rect(0, 0, SW, PAN_H, THEME_FILES_HEAD);
     gfx_fill_rect(0, PAN_H - 1, SW, 1, THEME_FILES_LINE);
@@ -826,6 +842,10 @@ static void act_render(void)
 // ---- the question
 static void ask_render(int64_t now)
 {
+#if BOARD_ROUND
+    rnd_ask(now);
+    return;
+#endif
     gfx_fill(THEME_FILES_BG);
     int w = SW - 16 - (fil_qclose ? 2 * CLOSE_W : 0);
     static const kfont_t *const F1[] = {&KF_BIG, &KF_TEXT, &KF_NAME};
@@ -900,6 +920,10 @@ static void view_header(const char *name, const char *note, bool hot)
 
 static void info_render(void)
 {
+#if BOARD_ROUND
+    rnd_info();
+    return;
+#endif
     gfx_fill(THEME_FILES_BG);
     view_header(fil_info_name, "INFO", fil_hot == CT_CLOSE);
 #if BOARD_BAR_SCREEN
@@ -924,6 +948,10 @@ static void info_render(void)
 // ---- the text page
 static void text_render(void)
 {
+#if BOARD_ROUND
+    rnd_text();
+    return;
+#endif
     gfx_fill(THEME_FILES_BG);
     int sc = (int)lroundf(fil_tscroll), first = sc / TXT_LH;
     if (first < 0) {
@@ -974,6 +1002,10 @@ static void text_render(void)
 // ---- the picture page
 static void pic_render(int64_t now)
 {
+#if BOARD_ROUND
+    rnd_pic(now);
+    return;
+#endif
     gfx_fill(THEME_FILES_PIC_BG);
     if (fil_pstate == 0) {
         ui_text_c(&KF_TEXT, SW / 2, SH / 2 + 6, "OPENING THE PICTURE...", THEME_FILES_TEXT_DIM);
@@ -1011,6 +1043,10 @@ static void pic_render(int64_t now)
 // ---- the job page
 static void job_render(void)
 {
+#if BOARD_ROUND
+    rnd_job();
+    return;
+#endif
     gfx_fill(THEME_FILES_BG);
     mf_text(&MF_N20, 16, BOARD_BAR_SCREEN ? 32 : 40, fil_job.title, THEME_FILES_ACCENT, 255, 0);
     int by = BOARD_BAR_SCREEN ? 46 : 70, bw = SW - 32;
@@ -1055,6 +1091,9 @@ static void toast_render(int64_t now)
     int w = ui_text_w(f, a), w2 = b[0] ? ui_text_w(f, b) : 0;
     w = (w > w2 ? w : w2) + 36;
     int x = (SW - w) / 2, y = SH - h - 6;
+#if BOARD_ROUND
+    y = LIST_B - h - 6;  // (over the bottom cap: inside the circle)
+#endif
     ui_rrect(x - 2, y - 2, w + 4, h + 4, 14, THEME_FILES_BG);
     ui_rrect(x, y, w, h, 12, fil_msg_err ? THEME_FILES_FAULT_BG : THEME_FILES_OK_BG);
     ui_text_c(f, SW / 2, y + 22, a, THEME_FILES_TEXT);

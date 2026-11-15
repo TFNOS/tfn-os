@@ -10,9 +10,17 @@
 #include "notify.h"
 #include "watch.h"
 #include "../libs/kscroll/kscroll.h"
+#include "set_round.h"
 
+// THE ROUND FRAME (gfx_round()): the title on the top cap, the rows in the middle box (the name, then the pills under
+// it), BACK on the bottom cap.
+#if BOARD_ROUND
+#define NP_RND gfx_round()
+#else
+#define NP_RND false
+#endif
 #define BACK_W 56
-#define PILL_H 36
+#define PILL_H (NP_RND ? RS(42) : 36)
 #define NAPPS  (NT_MAX)
 
 enum {
@@ -33,11 +41,31 @@ static bool wide(void)
 }
 static int row_h(void)
 {
+#if BOARD_ROUND
+    if (NP_RND) {
+        return RS(94);
+    }
+#endif
     return wide() ? 48 : 70;
 }
 static int head_h(void)
 {
+#if BOARD_ROUND
+    if (NP_RND) {
+        return RB_Y;
+    }
+#endif
     return 30;
+}
+// the height of the list on the screen
+static int list_h(void)
+{
+#if BOARD_ROUND
+    if (NP_RND) {
+        return RB_B - RB_Y;
+    }
+#endif
+    return gfx_h - head_h();
 }
 static int nrows(void)
 {
@@ -54,7 +82,7 @@ void notify_page_open(void)
     if (!sys && s_napps < NAPPS) {
         snprintf(s_apps[s_napps++], NT_NAME, "%s", NT_SYSTEM);  // (the firmware updates)
     }
-    ks_init(&s_ks, (float)(gfx_h - head_h()), 0);
+    ks_init(&s_ks, (float)list_h(), 0);
     s_press = -1;
     s_drag = s_back = false;
 }
@@ -62,6 +90,24 @@ void notify_page_open(void)
 // the pills of a row: k = 0 .. 2; x, w of the pill; the row top y (on the screen)
 static int pills(int r, int k, int *x, int *w)
 {
+#if BOARD_ROUND
+    if (NP_RND) {
+        // (the round frame: one pill at the right, or three across the middle box)
+        if (r < RW_APP) {
+            *w = k ? 0 : RS(180);
+            *x = RB_X + RB_W - RS(180);
+            return 1;
+        }
+        const int W[3] = {RS(138), RS(106), RS(106)};
+        int xx = RB_X;
+        for (int i = 0; i < k; i++) {
+            xx += W[i] + RS(8);
+        }
+        *x = xx;
+        *w = W[k];
+        return 3;
+    }
+#endif
     const int x0 = BACK_W + 8, x1 = gfx_w - 8;
     if (r < RW_APP) {
         if (k) {
@@ -92,6 +138,9 @@ static int pills(int r, int k, int *x, int *w)
 }
 static int pill_y(int top)
 {
+    if (NP_RND) {
+        return top + RS(38);
+    }
     return wide() ? top + (row_h() - PILL_H) / 2 : top + 28;
 }
 
@@ -167,7 +216,7 @@ static void toggle(int r, int k)
 // the pill under (x, y): r * 4 + k, or -1
 static int hit(int x, int y)
 {
-    if (y < head_h()) {
+    if (y < head_h() || (NP_RND && y >= head_h() + list_h())) {
         return -1;
     }
     const int sc = ks_ipos(&s_ks);
@@ -188,7 +237,7 @@ static int hit(int x, int y)
 
 void notify_page_update(int64_t now)
 {
-    ks_set_max(&s_ks, (float)(nrows() * row_h() - (gfx_h - head_h()) + 6));
+    ks_set_max(&s_ks, (float)(nrows() * row_h() - list_h() + 6));
     ks_update(&s_ks, now);
 }
 
@@ -200,7 +249,11 @@ bool notify_page_input(const input_event_t *ev, int64_t now)
         s_x0 = ev->x;
         s_y0 = ev->y;
         s_drag = false;
+#if BOARD_ROUND
+        s_back = NP_RND ? rr_back_at(ev->x, ev->y) : ev->x < BACK_W;
+#else
         s_back = ev->x < BACK_W;
+#endif
         if (!s_back && ks_down(&s_ks, (float)ev->y, ev->t_ms)) {
             s_press = -1;
         } else {
@@ -220,7 +273,11 @@ bool notify_page_input(const input_event_t *ev, int64_t now)
         }
         break;
     case IN_TAP:
+#if BOARD_ROUND
+        if (s_back && (NP_RND ? rr_back_at(ev->x, ev->y) : ev->x < BACK_W)) {
+#else
         if (s_back && ev->x < BACK_W) {
+#endif
             sfx_ui(SFX_BACK);
             return true;
         }
@@ -238,9 +295,62 @@ bool notify_page_input(const input_event_t *ev, int64_t now)
     return false;
 }
 
+#if BOARD_ROUND
+// the round frame: the rows (the name, the pills under it) between the caps, then the caps
+static void render_round(void)
+{
+    gfx_fill(THEME_NOTE_PAGE_BG);
+    const int sc = ks_ipos(&s_ks), rh = row_h(), y0 = head_h(), y1 = y0 + list_h();
+    for (int r = 0; r < nrows(); r++) {
+        const int top = y0 + r * rh - sc;
+        if (top + rh < y0 || top > y1) {
+            continue;
+        }
+        const char *name = r == RW_ALL                              ? "ALL NOTIFICATIONS"
+                           : r == RW_DND                            ? "DO NOT DISTURB"
+                           : r == RW_GAME                           ? "IN GAMES"
+                           : r == RW_BG                             ? "BACKGROUND CHECKS"
+                           : !strcmp(s_apps[r - RW_APP], NT_SYSTEM) ? "SYSTEM (UPDATES)"
+                                                                    : s_apps[r - RW_APP];
+        ui_rrect(RB_X - RS(6), top + 2, RB_W + RS(12), rh - 6, RS(12), THEME_NOTE_PAGE_LINE);
+        ui_text(rr_fit(&KF_TEXT, name, RB_W - RS(10)), RB_X + RS(4), top + RS(28), name, THEME_NOTE_PAGE_TEXT);
+        for (int k = 0; k < 3; k++) {
+            int px, pw;
+            if (k >= pills(r, k, &px, &pw)) {
+                break;
+            }
+            char b[24];
+            bool on;
+            value(r, k, b, sizeof b, &on);
+            const bool down = s_press == r * 4 + k;
+            rr_btn(px, pill_y(top), pw, PILL_H, b,
+                   down ? THEME_NOTE_PAGE_PILL_DOWN
+                   : on ? THEME_NOTE_PAGE_PILL_ON
+                        : THEME_NOTE_PAGE_PILL,
+                   on ? THEME_NOTE_PAGE_PILL_TEXT_ON : THEME_NOTE_PAGE_PILL_TEXT);
+        }
+    }
+    int at, sz, al;
+    if (ks_bar(&s_ks, list_h() - 8, &at, &sz, &al) && al > 64) {
+        ui_rrect(RB_X + RB_W + RS(10), y0 + 4 + at, 4, sz, 2, THEME_NOTE_PAGE_SCROLL);
+    }
+    gfx_fill_rect(0, 0, gfx_w, y0, THEME_NOTE_PAGE_BG);
+    gfx_fill_rect(0, y1, gfx_w, gfx_h - y1, THEME_NOTE_PAGE_BG);
+    rr_head("NOTIFICATIONS", "", THEME_NOTE_PAGE_TITLE, THEME_NOTE_PAGE_TEXT);
+    rr_back("< BACK", false, THEME_NOTE_PAGE_BACK, THEME_NOTE_PAGE_BACK, THEME_NOTE_PAGE_BACK_TEXT,
+            THEME_NOTE_PAGE_BACK_TEXT);
+}
+#endif
+
 void notify_page_render(int64_t now)
 {
     (void)now;
+#if BOARD_ROUND
+    if (NP_RND) {
+        render_round();
+        return;
+    }
+#endif
     gfx_fill(THEME_NOTE_PAGE_BG);
     const int sc = ks_ipos(&s_ks), rh = row_h();
     for (int r = 0; r < nrows(); r++) {
@@ -280,7 +390,7 @@ void notify_page_render(int64_t now)
         }
     }
     int at, sz, al;
-    if (ks_bar(&s_ks, gfx_h - head_h() - 8, &at, &sz, &al) && al > 64) {
+    if (ks_bar(&s_ks, list_h() - 8, &at, &sz, &al) && al > 64) {
         gfx_fill_rect(gfx_w - 4, head_h() + 4 + at, 2, sz, THEME_NOTE_PAGE_SCROLL);
     }
     // the head and BACK over the list

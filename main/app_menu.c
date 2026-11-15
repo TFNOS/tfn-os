@@ -16,6 +16,8 @@
 // selection when an app opens, so that the user comes back to the same place.
 // The Tab5 has its own menu (menu_tab5.c): the groups as tabs in a rail at the left, the apps of the
 // group as a grid of big icons, the time and the battery at the top right. The other boards do not change.
+// The AMOLED-1.8 (BOARD_UI_GRID) has its own menu too (menu_grid.c): a status bar and a grid of big icons, made for
+// its portrait panel of 368 x 448.
 
 #include "app_menu_priv.h"
 
@@ -403,6 +405,9 @@ void men_go_level(int level)
 #if BOARD_UI_TABLET
     men_tb_level_changed(from);
 #endif
+#if BOARD_UI_GRID
+    men_gr_level_changed(from);
+#endif
 }
 
 // The PWR key in the menu (main.c): up one level. Returns false at the top level.
@@ -476,6 +481,9 @@ static void test_select_now(void)
 #if BOARD_UI_TABLET
         men_tb_reveal(men_sel);
 #endif
+#if BOARD_UI_GRID
+        men_gr_reveal(men_sel);
+#endif
         if (req == 2) {
             int i = men_sel;
             if (gfx_round()) {
@@ -525,6 +533,9 @@ void menu_redraw_all(void)
 void menu_redraw_all(void)
 {
     men_drawn_reset();
+#if BOARD_UI_GRID
+    men_gr_redraw_all();
+#endif
 }
 #endif
 static void menu_enter(int64_t now)
@@ -560,6 +571,9 @@ static void menu_enter(int64_t now)
     }
 #if BOARD_UI_TABLET
     men_tb_enter(now);
+#endif
+#if BOARD_UI_GRID
+    men_gr_enter(now);
 #endif
 }
 
@@ -611,6 +625,10 @@ static void menu_input(const input_event_t *ev)
     men_tb_input(ev);
     return;
 #endif
+#if BOARD_UI_GRID
+    men_gr_input(ev);
+    return;
+#endif
     men_spot_input(ev);
 }
 
@@ -649,6 +667,9 @@ static void menu_update(int64_t now)
         if (gfx_round()) {
             men_r_level_changed(-1);
         }
+#if BOARD_UI_GRID
+        men_gr_level_changed(-1);
+#endif
     }
     if (s_tsel_req) {
         test_select_now();
@@ -670,6 +691,10 @@ static void menu_update(int64_t now)
     }
 #if BOARD_UI_TABLET
     men_tb_update(now, dt);
+    return;
+#endif
+#if BOARD_UI_GRID
+    men_gr_update(now, dt);
     return;
 #endif
     men_spot_update(now, dt);
@@ -697,6 +722,10 @@ static void menu_render(int64_t now)
     men_tb_render(now);
     return;
 #endif
+#if BOARD_UI_GRID
+    men_gr_render(now);
+    return;
+#endif
     men_spot_render(now);
 }
 
@@ -719,6 +748,9 @@ static void menu_leave(void)
 #if BOARD_UI_TABLET
     men_tb_rooms_free();
     men_tb_redraw_all();
+#endif
+#if BOARD_UI_GRID
+    men_gr_rooms_free();
 #endif
 }
 

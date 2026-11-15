@@ -19,6 +19,9 @@ bool wifi_start(void);
 // (link.c) the radio is stuck: the driver stop + start (full = also its deinit + init), the channel ch, a connect again
 // on the last channel
 void wifi_radio_restart(int ch, bool full);
+// power.c (DEEP IDLE, the power test): the radio stops (off = true), or starts and connects again (off = false)
+void wifi_radio_sleep(bool off);
+bool wifi_can_sleep(void);    // connected as a station (no hotspot, no scan, no capture, not turned off by the user)
 int wifi_rssi(void);          // the signal of the network in use in dBm (-30 strong .. -90 weak); 0 = not connected
 const char *wifi_ssid(void);  // the network in use or the saved one
 

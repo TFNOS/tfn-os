@@ -12,6 +12,7 @@
 #include "link.h"
 #include "wifi.h"
 #include "tfn/theme.h"
+#include "set_round.h"
 
 #define FP_APP     FRIENDS_LINK_APP  // the link app id of LEARN (as FR_APP in friends.c)
 #define FP_K_LEARN 1
@@ -54,20 +55,54 @@ static void button(int x, int y, int w, int h, const char *t, uint16_t bg, uint1
 // right, the friends in 3 rows of 3, LEARN A FRIEND at the bottom right.
 #define BACK_W 56
 #define BTN_H  44
+#if BOARD_ROUND
+// THE ROUND FRAME (gfx_round()): the title on the top cap, the friends in 3 rows of 3 in the middle box, CHANGE, MORE
+// and LEARN A FRIEND in one row under them, BACK on the bottom cap; REMOVE?: NO at the left, YES at the right.
+#define FP_RND gfx_round()
+#else
+#define FP_RND false
+#endif
 static bool wide(void)
 {
     return gfx_w > 400;
 }
 static void friend_btn(int i, int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    if (FP_RND) {
+        int g = RS(8);
+        *w = (RB_W - 2 * g) / 3;
+        *h = RS(52);
+        *x = RB_X + (i % 3) * (*w + g);
+        *y = RB_Y + (i / 3) * (*h + g);
+        return;
+    }
+#endif
     int cols = wide() ? 4 : 3, gap = wide() ? 8 : 6, top = wide() ? 56 : 50;
     *w = (gfx_w - BACK_W - 8 - 4 - (cols - 1) * gap) / cols;
     *h = BTN_H;
     *x = BACK_W + 8 + (i % cols) * (*w + gap);
     *y = top + (i / cols) * (*h + (wide() ? 8 : 4));
 }
+// the row of buttons of the round frame under the friends: 0 CHANGE, 1 MORE, 2 LEARN A FRIEND
+#if BOARD_ROUND
+static void round_row(int i, int *x, int *y, int *w, int *h)
+{
+    int g = RS(8);
+    *w = (RB_W - 2 * g) / 3;
+    *h = RS(54);
+    *x = RB_X + i * (*w + g);
+    *y = RB_Y + 3 * RS(60) + RS(4);
+}
+#endif
 static void learn_btn(int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    if (FP_RND) {
+        round_row(2, x, y, w, h);
+        return;
+    }
+#endif
     *h = BTN_H;
     if (wide()) {
         *w = 120;
@@ -81,6 +116,12 @@ static void learn_btn(int *x, int *y, int *w, int *h)
 }
 static void name_btn(int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    if (FP_RND) {
+        round_row(0, x, y, w, h);
+        return;
+    }
+#endif
     *h = BTN_H;
     if (wide()) {
         *w = 116;
@@ -95,7 +136,7 @@ static void name_btn(int *x, int *y, int *w, int *h)
 // the friends on one page (16 friends: two pages), and the page button (only with more friends)
 static int per_page(void)
 {
-    return wide() ? 8 : 9;
+    return FP_RND ? 9 : wide() ? 8 : 9;
 }
 static int pages(void)
 {
@@ -103,6 +144,12 @@ static int pages(void)
 }
 static void page_btn(int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    if (FP_RND) {
+        round_row(1, x, y, w, h);
+        return;
+    }
+#endif
     *h = BTN_H;
     if (wide()) {
         *w = 116;
@@ -117,6 +164,15 @@ static void page_btn(int *x, int *y, int *w, int *h)
 // REMOVE?: NO at the far left, YES at the far right (0 = YES, 1 = NO)
 static void yes_no(int i, int *x, int *y, int *w, int *h)
 {
+#if BOARD_ROUND
+    if (FP_RND) {
+        *w = RS(140);
+        *h = RS(60);
+        *x = i ? gfx_w / 2 - RS(8) - *w : gfx_w / 2 + RS(8);
+        *y = RS(250);
+        return;
+    }
+#endif
     *w = wide() ? 140 : 112;
     *h = BTN_H;
     *x = i ? (wide() ? 70 : 12) : gfx_w - *w - (wide() ? 70 : 12);
@@ -238,7 +294,7 @@ bool friends_page_input(const input_event_t *ev, int64_t now)
         s_mode = FP_LIST;
         return false;
     }
-    if (x < BACK_W) {
+    if (FP_RND ? rr_back_at(x, y) : x < BACK_W) {
         if (s_mode == FP_LEARN) {
             learn_stop();
             return false;
@@ -304,12 +360,22 @@ bool friends_page_input(const input_event_t *ev, int64_t now)
     return false;
 }
 
+#if BOARD_ROUND
+static void render_round(int64_t now);
+#endif
+
 void friends_page_render(int64_t now)
 {
     if (s_mode == FP_NAME) {
         kbd_render(now);
         return;
     }
+#if BOARD_ROUND
+    if (FP_RND) {
+        render_round(now);
+        return;
+    }
+#endif
     gfx_fill(THEME_FRIENDS_BG);
     // BACK
     gfx_fill_rect(0, 0, BACK_W, gfx_h, THEME_FRIENDS_BACK);
@@ -398,6 +464,87 @@ void friends_page_render(int64_t now)
         button(x, y, w, h, "NO", THEME_FRIENDS_BTN, THEME_FRIENDS_BTN_TEXT);
     }
 }
+
+#if BOARD_ROUND
+// the round frame: the same parts as friends_page_render(), in the places of the head comment of FP_RND
+static void render_round(int64_t now)
+{
+    gfx_fill(THEME_FRIENDS_BG);
+    char b[64];
+    int x, y, w, h;
+    if (s_mode == FP_LEARN) {
+        rr_head("LEARN A FRIEND", "OPEN IT ON THE OTHER BOARD TOO", THEME_FRIENDS_TITLE, THEME_FRIENDS_HELP);
+        int n = 0;
+        for (int i = 0; i < N_CAND; i++) {
+            if (!s_cand[i].seen || now - s_cand[i].seen > 4000) {
+                continue;
+            }
+            friend_btn(n++, &x, &y, &w, &h);
+            snprintf(b, sizeof b, s_cand[i].added ? "%s: A FRIEND" : "ADD %s", s_cand[i].name);
+            rr_btn(x, y, w, h, b, s_cand[i].added ? THEME_FRIENDS_BTN_ADDED : THEME_FRIENDS_BTN_ADD,
+                   THEME_FRIENDS_BTN_TEXT);
+        }
+        if (!n) {
+            snprintf(b, sizeof b, "LOOKING%.*s", (int)(now / 400) % 4, "...");
+            rr_line(&KF_BIG, RS(220), b, THEME_FRIENDS_WARN);
+            snprintf(b, sizeof b, "THIS BOARD IS %s", friends_my_name());
+            rr_line(&KF_TEXT, RS(256), b, THEME_FRIENDS_TEXT_DIM);
+        } else {
+            rr_line(&KF_TEXT, RS(330), "TAP ITS NAME", THEME_FRIENDS_HELP);
+        }
+        if (s_msg[0] && now - s_msg_at < 4000) {
+            rr_line(&KF_TEXT, RS(362), s_msg, THEME_FRIENDS_OK);
+        }
+        rr_back("STOP", false, THEME_FRIENDS_BACK, THEME_FRIENDS_BACK, THEME_FRIENDS_BACK_TEXT,
+                THEME_FRIENDS_BACK_TEXT);
+        return;
+    }
+    snprintf(b, sizeof b, "THIS BOARD: %s", friends_my_name());
+    rr_head("FRIENDS", b, THEME_FRIENDS_TITLE, THEME_FRIENDS_NAME);
+    int near[FRIENDS_MAX], nn = friends_near(near, FRIENDS_MAX);
+    if (s_fpage >= pages()) {
+        s_fpage = 0;
+    }
+    for (int i = s_fpage * per_page(); i < friends_count() && i < (s_fpage + 1) * per_page(); i++) {
+        bool is_near = false;
+        for (int k = 0; k < nn; k++) {
+            is_near |= near[k] == i;
+        }
+        friend_btn(i - s_fpage * per_page(), &x, &y, &w, &h);
+        rr_btn(x, y, w, h, friends_get(i)->name, THEME_FRIENDS_BTN_FRIEND, THEME_FRIENDS_BTN_TEXT);
+        if (is_near) {
+            ui_circle(x + RS(10), y + h / 2, RS(4), THEME_FRIENDS_NEAR, 255);
+        }
+    }
+    if (!friends_count()) {
+        rr_line(&KF_TEXT, RS(170), "NO FRIENDS YET", THEME_FRIENDS_WARN);
+        rr_line(&KF_TEXT, RS(198), "LEARN ONE HERE, OR TAP", THEME_FRIENDS_WARN);
+        rr_line(&KF_TEXT, RS(226), "THE ADD BADGE IN A LOBBY", THEME_FRIENDS_WARN);
+    } else {
+        rr_line(&KF_LABEL, RS(374), "TAP A FRIEND TO REMOVE IT", THEME_FRIENDS_TEXT_DIM);
+    }
+    name_btn(&x, &y, &w, &h);
+    rr_btn(x, y, w, h, "CHANGE NAME", THEME_FRIENDS_BTN, THEME_FRIENDS_BTN_TEXT);
+    if (pages() > 1) {
+        page_btn(&x, &y, &w, &h);
+        snprintf(b, sizeof b, "MORE %d/%d", s_fpage + 1, pages());
+        rr_btn(x, y, w, h, b, THEME_FRIENDS_BTN, THEME_FRIENDS_BTN_TEXT);
+    }
+    learn_btn(&x, &y, &w, &h);
+    rr_btn(x, y, w, h, "LEARN A FRIEND", THEME_FRIENDS_BTN_ADD, THEME_FRIENDS_BTN_TEXT);
+    rr_back("< BACK", false, THEME_FRIENDS_BACK, THEME_FRIENDS_BACK, THEME_FRIENDS_BACK_TEXT, THEME_FRIENDS_BACK_TEXT);
+    if (s_mode == FP_REMOVE) {
+        gfx_darken_rect(0, 0, gfx_w, gfx_h, 1);
+        ui_rbox(RS(60), RS(160), RS(346), RS(170), RS(18), THEME_FRIENDS_ASK_BG, THEME_FRIENDS_ASK_EDGE, 2);
+        snprintf(b, sizeof b, "REMOVE %s?", friends_get(s_remove) ? friends_get(s_remove)->name : "");
+        rr_line(&KF_BIG, RS(214), b, THEME_FRIENDS_TEXT);
+        yes_no(0, &x, &y, &w, &h);
+        rr_btn(x, y, w, h, "YES", THEME_FRIENDS_BTN_DANGER, THEME_FRIENDS_BTN_TEXT);
+        yes_no(1, &x, &y, &w, &h);
+        rr_btn(x, y, w, h, "NO", THEME_FRIENDS_BTN, THEME_FRIENDS_BTN_TEXT);
+    }
+}
+#endif
 
 void friends_page_leave(void)
 {

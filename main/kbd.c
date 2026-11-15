@@ -19,6 +19,7 @@
 // final letters): the SYM key goes abc -> HEB -> #+= -> abc. The text is UTF-8: DEL takes one whole letter, and Hebrew
 // shows in the Rubik font (uikit). kbd_set_ok_question("") makes OK act at once (a search: no question).
 
+#include <math.h>
 #include <stdio.h>
 #include "tfn/theme.h"
 #include <string.h>
@@ -74,6 +75,34 @@
 #define PV_H    84
 #define PV_HYST 5
 #define KB_BIG  1  // the text scales: one step bigger
+#elif BOARD_ROUND
+// The round panels: in the native round frame of an app (APP_ROUND_HI: 466 x 466, 412 on the Watcher; KR() scales the
+// values of 466) the title and the text are on the top cap, the 4 rows of keys go across the wide middle of the circle
+// (KEY_X0 .. KEY_X0 + 10 keys), CANCEL, SHOW and OK are on the bottom cap, and the text uses the smooth fonts. In the
+// 320 x 240 frame (an app with round_fit) the keyboard is the one of that frame (the values after ':').
+#define KB_RND  gfx_round()
+#define KR(v)   ((v) * gfx_w / 466)
+#define KB_W    (KB_RND ? gfx_w : 320)
+#define KB_H    (KB_RND ? gfx_h : 240)
+#define KEY_W   (KB_RND ? KR(38) : 32)
+#define KEY_H   (KB_RND ? KR(52) : 39)
+#define KEY_X0  (KB_RND ? (KB_W - 10 * KEY_W) / 2 : 0)
+#define TOP_H   (KB_RND ? KR(150) : 82)  // the top of the keys
+#define KEY_GAP (KB_RND ? 2 : 1)
+#define BTN_Y   (KB_RND ? KR(370) : 37)  // the buttons: the bottom cap
+#define BTN_H   (KB_RND ? KR(54) : 44)
+#define CAN_X   0  // (the round frame: round_btn() has the places of the buttons)
+#define CAN_W   100
+#define SHOW_X  110
+#define SHOW_W  100
+#define OK_X    220
+#define OK_W    100
+#define FIELD_X (KB_RND ? KR(63) : 4)
+#define FIELD_W (KB_RND ? KR(340) : 312)
+#define FIELD_Y (KB_RND ? KR(84) : 14)
+#define PV_W    (KB_RND ? KR(64) : 60)
+#define PV_H    (KB_RND ? KR(62) : 56)
+#define PV_HYST (KB_RND ? 4 : 3)
 #else
 #define KB_W    320
 #define KB_H    240
@@ -98,6 +127,9 @@
 #endif
 #ifndef KB_BIG
 #define KB_BIG 0
+#endif
+#ifndef KEY_X0
+#define KEY_X0 0  // the left end of the keys
 #endif
 #define PV_DELAY_MS 200  // the preview shows when the finger stays this long
 #define PV_GAP      4    // between the preview and its key (the stem)
@@ -213,6 +245,10 @@ int kbd_state(void)
 #elif BOARD_UI_TABLET
 #define ASK_Y 130
 #define ASK_W 250  // NO: x 0 .. 250, YES: x 390 .. 640
+#elif BOARD_ROUND
+#define ASK_Y (KB_RND ? KR(226) : 96)
+#define ASK_H KR(110)  // (the round frame: NO and YES side by side in the middle of the circle)
+#define ASK_W (KB_RND ? KR(183) : 124)
 #else
 #define ASK_Y 96
 #define ASK_W 124  // NO: x 0 .. 124, YES: x 196 .. 320
@@ -220,6 +256,14 @@ int kbd_state(void)
 
 int kbd_ask_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (KB_RND) {
+        if (y < ASK_Y - 6 || y >= ASK_Y + ASK_H + 6) {
+            return -1;
+        }
+        return x < KB_W / 2 ? 0 : 1;
+    }
+#endif
     if (y < ASK_Y) {
         return -1;
     }
@@ -245,8 +289,38 @@ static void ask_line(int y, const char *s, int big, uint16_t c)
     gfx_text_center_in(0, KB_W, y, s, sc, c);
 }
 
+#if BOARD_ROUND
+// The question on a round panel: the two lines over the middle, NO and YES side by side.
+static void ask_render_round(const char *l1, const char *l2, int hot, int focus)
+{
+    gfx_fill(THEME_KBD_BG);
+    static const kfont_t *const F1[] = {&KF_BIG, &KF_TEXT, &KF_NAME}, *const F2[] = {&KF_TEXT, &KF_NAME, &KF_LABEL};
+    if (l1 && l1[0]) {
+        ui_text_c(ui_text_fit(F1, 3, l1, KR(340)), KB_W / 2, KR(150), l1, THEME_KBD_ASK_TEXT);
+    }
+    if (l2 && l2[0]) {
+        ui_text_c(ui_text_fit(F2, 3, l2, KR(380)), KB_W / 2, KR(190), l2, THEME_KBD_ASK_TEXT_DIM);
+    }
+    for (int a = 0; a < 2; a++) {
+        int x = a ? KB_W / 2 + KR(5) : KB_W / 2 - KR(5) - ASK_W;
+        bool on = hot == a;
+        uint16_t bg = on ? THEME_KBD_HOT : (a ? THEME_KBD_ASK_YES : THEME_KBD_ASK_NO);
+        ui_rbox(x, ASK_Y, ASK_W, ASK_H, KR(16), bg, focus == a ? THEME_KBD_FOCUS : THEME_KBD_ASK_EDGE,
+                focus == a ? 3 : 1);
+        ui_text_c(&KF_TITLE, x + ASK_W / 2, ASK_Y + ASK_H / 2 + KF_TITLE.asc / 2, a ? "YES" : "NO",
+                  on ? THEME_KBD_TEXT_HOT : THEME_KBD_TEXT);
+    }
+}
+#endif
+
 void kbd_ask_render(const char *l1, const char *l2, int hot, int focus)
 {
+#if BOARD_ROUND
+    if (KB_RND) {
+        ask_render_round(l1, l2, hot, focus);
+        return;
+    }
+#endif
     gfx_fill(THEME_KBD_BG);
 #if BOARD_BAR_SCREEN
     ask_line(8, l1, 2, THEME_KBD_ASK_TEXT);
@@ -279,8 +353,13 @@ static bool key_at(int x, int y, int *r, int *c)
     if (y < TOP_H) {
         return false;
     }
+#if BOARD_ROUND
+    if (KB_RND && y >= TOP_H + 4 * KEY_H + 4) {
+        return false;  // (the round frame: the buttons are under the keys)
+    }
+#endif
     *r = (y - TOP_H) / KEY_H;
-    *c = x / KEY_W;
+    *c = (x - KEY_X0) / KEY_W;
     if (*r > 3) {
         *r = 3;  // (the 320 x 240 frame: 2 px under the last row)
     }
@@ -298,7 +377,7 @@ static bool key_at(int x, int y, int *r, int *c)
 static void track_key(int x, int y)
 {
     if (s_press_r >= 0) {
-        int kx = s_press_c * KEY_W, ky = TOP_H + s_press_r * KEY_H;
+        int kx = KEY_X0 + s_press_c * KEY_W, ky = TOP_H + s_press_r * KEY_H;
         if (x >= kx - PV_HYST && x < kx + KEY_W + PV_HYST && y >= ky - PV_HYST && y < ky + KEY_H + PV_HYST) {
             return;
         }
@@ -312,9 +391,35 @@ static void track_key(int x, int y)
     }
 }
 
+#if BOARD_ROUND
+// the buttons of the bottom cap: CANCEL, (SHOW), OK side by side in the middle (i = 0, 1, 2)
+static void round_btn(int i, int *x, int *w)
+{
+    int n = s_secret ? 3 : 2, bw = s_secret ? KR(82) : KR(108), g = KR(5), x0 = KB_W / 2 - (n * bw + (n - 1) * g) / 2;
+    int k = i == 0 ? 0 : (i == 1 ? 1 : n - 1);
+    *x = x0 + k * (bw + g);
+    *w = bw;
+}
+#endif
+
 // top buttons: 0 = CANCEL, 1 = SHOW, 2 = OK
 static int top_at(int x, int y)
 {
+#if BOARD_ROUND
+    if (KB_RND) {
+        if (y < BTN_Y - 4 || y >= BTN_Y + BTN_H + 8) {
+            return -1;
+        }
+        for (int i = 0; i < 3; i++) {
+            int bx, bw;
+            round_btn(i, &bx, &bw);
+            if ((i != 1 || s_secret) && x >= bx - 3 && x < bx + bw + 3) {
+                return i;
+            }
+        }
+        return -1;
+    }
+#endif
 #if BOARD_BAR_SCREEN
     if (y >= TOP_H) {
         return -1;
@@ -668,7 +773,7 @@ static void draw_preview(void)
     if (tw > w) {
         w = tw;
     }
-    int kx = s_press_c * KEY_W, ky = TOP_H + s_press_r * KEY_H;
+    int kx = KEY_X0 + s_press_c * KEY_W, ky = TOP_H + s_press_r * KEY_H;
     int x = kx + KEY_W / 2 - w / 2;
     if (x < 0) {
         x = 0;
@@ -685,12 +790,124 @@ static void draw_preview(void)
     gfx_fill_rect(kx + KEY_GAP, bot, KEY_W - 2 * KEY_GAP, ky - bot + KEY_GAP, bg);  // the stem
     gfx_fill_rect(x, top, w, h, bg);
     gfx_frame_rect(x, top, w, h, 2, edge);
+#if BOARD_ROUND
+    if (KB_RND) {
+        const kfont_t *pf = special ? &KF_TEXT : &KF_TITLE;
+        ui_text_c(pf, x + w / 2, top + h / 2 + pf->asc / 2, lab, THEME_KBD_PREVIEW_TEXT);
+        return;
+    }
+#endif
     if (ascii_only(lab)) {
         gfx_text_center_in(x, w, top + (h - 7 * sc) / 2, lab, sc, THEME_KBD_PREVIEW_TEXT);
     } else {
         ui_text_c(&KF_TITLE, x + w / 2, top + h / 2 + 12, lab, THEME_KBD_PREVIEW_TEXT);
     }
 }
+
+#if BOARD_ROUND
+// The text field on a round panel: the smooth font, the end of a long text, the cursor.
+static void text_round(int x, int y, int w, int h, int64_t now)
+{
+    char shown[72];
+    int len = (int)strlen(s_buf);
+    len = len > (int)sizeof(shown) - 1 ? (int)sizeof(shown) - 1 : len;
+    for (int i = 0; i < len; i++) {
+        shown[i] = (s_secret && !s_show) ? '*' : s_buf[i];
+    }
+    shown[len] = 0;
+    const char *view = shown;
+    const kfont_t *f = &KF_BIG;
+    while (*view && ui_text_w(f, view) > w - 24) {
+        view++;
+        while (((unsigned char)*view & 0xC0) == 0x80) {
+            view++;
+        }
+    }
+    ui_rrect(x, y, w, h, h / 3, THEME_KBD_FIELD);
+    int tw = ui_text_w(f, view), base = y + h / 2 + f->asc / 2;
+    bool rtl = !ascii_only(view);
+    int tx = rtl ? x + w - 12 - tw : x + 12;
+    ui_text(f, tx, base, view, THEME_KBD_FIELD_TEXT);
+    if ((now / 500) & 1) {
+        gfx_fill_rect(rtl ? tx - 4 : tx + tw + 2, base - f->asc, 2, f->asc + 4, THEME_KBD_CURSOR);
+    }
+}
+
+// The keyboard on a round panel (the head comment of the part BOARD_ROUND above).
+static void render_round(int64_t now)
+{
+    gfx_fill(THEME_KBD_BG);
+    // the title: the largest font that fits the circle at its line, else its start
+    {
+        int dy = KR(64) - KF_TEXT.asc - KB_H / 2, r = KB_W / 2;
+        int tw = 2 * (int)sqrtf((float)(r * r - dy * dy)) - KR(40);
+        const kfont_t *f = ui_text_w(&KF_TEXT, s_title) <= tw ? &KF_TEXT : &KF_LABEL;
+        char t[72];
+        snprintf(t, sizeof t, "%s", s_title);
+        for (size_t n = strlen(t); n > 3 && ui_text_w(f, t) > tw; n--) {
+            t[n - 1] = 0;
+            t[n - 2] = t[n - 3] = '.';
+        }
+        ui_text_c(f, KB_W / 2, KR(64), t, THEME_KBD_TITLE);
+    }
+    text_round(FIELD_X, FIELD_Y, FIELD_W, KR(50), now);
+    static const char *const BT[3] = {"CANCEL", "SHOW", "OK"};
+    for (int i = 0; i < 3; i++) {
+        if (i == 1 && !s_secret) {
+            continue;
+        }
+        int bx, bw;
+        round_btn(i, &bx, &bw);
+        bool hot = s_press_top == i, on = (i == 2) || (i == 1 && s_show), focus = s_focus == 42 - i;
+        uint16_t bg = hot ? THEME_KBD_HOT : (on ? THEME_KBD_ON : THEME_KBD_BTN);
+        ui_rbox(bx, BTN_Y, bw, BTN_H, BTN_H / 3, bg, focus ? THEME_KBD_FOCUS : bg, focus ? 3 : 1);
+        const kfont_t *f = ui_text_w(&KF_TEXT, BT[i]) <= bw - 8 ? &KF_TEXT : &KF_LABEL;
+        ui_text_c(f, bx + bw / 2, BTN_Y + BTN_H / 2 + f->asc / 2, BT[i], hot ? THEME_KBD_TEXT_HOT : THEME_KBD_TEXT);
+    }
+    for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 10; c++) {
+            const char *ks = key_str(r, c);
+            char k = ks[0];
+            int x = KEY_X0 + c * KEY_W, y = TOP_H + r * KEY_H;
+            bool hot = r == s_press_r && c == s_press_c, special = (unsigned char)k < ' ';
+            uint16_t bg = hot ? THEME_KBD_HOT : (special ? THEME_KBD_KEY_SPECIAL : THEME_KBD_KEY);
+            if (k == K_SHIFT && (s_mode == M_UPPER || s_mode == M_SYM2)) {
+                bg = THEME_KBD_ON;
+            }
+            ui_rrect(x + KEY_GAP, y + KEY_GAP, KEY_W - 2 * KEY_GAP, KEY_H - 2 * KEY_GAP, 6, bg);
+            char lab[8];
+            if (!special) {
+                snprintf(lab, sizeof lab, "%s", ks);
+            } else {
+                key_label(k, lab, sizeof lab);
+            }
+            const kfont_t *f = special ? &KF_LABEL : &KF_BIG;
+            uint16_t fg = hot ? THEME_KBD_TEXT_HOT : THEME_KBD_TEXT;
+            int cx = x + KEY_W / 2, cy = y + KEY_H / 2;
+            if (k == K_SHIFT && s_mode < M_SYM1) {
+                // (SHIFT: an arrow up; the word is too wide for the key)
+                for (int j = 0; j < 8; j++) {
+                    gfx_fill_rect(cx - j, cy - 9 + j, 2 * j + 1, 1, fg);
+                }
+                gfx_fill_rect(cx - 3, cy - 1, 7, 8, fg);
+            } else if (k == K_SPACE) {
+                // (SPACE: the space mark)
+                gfx_fill_rect(cx - 11, cy + 4, 23, 2, fg);
+                gfx_fill_rect(cx - 11, cy - 2, 2, 6, fg);
+                gfx_fill_rect(cx + 10, cy - 2, 2, 6, fg);
+            } else {
+                ui_text_c(f, x + KEY_W / 2, y + KEY_H / 2 + f->asc / 2, lab, fg);
+            }
+            if (s_focus == r * 10 + c) {
+                gfx_frame_rect(x, y, KEY_W, KEY_H, 2, THEME_KBD_FOCUS);
+            }
+        }
+    }
+    if (s_key_touch && s_press_r >= 0 && now - s_down_t >= PV_DELAY_MS) {
+        draw_preview();
+    }
+}
+#endif
 
 void kbd_render(int64_t now)
 {
@@ -705,6 +922,12 @@ void kbd_render(int64_t now)
         kbd_ask_render(s_ask == 1 ? (s_okq ? s_okq : "USE THIS TEXT?") : "DROP THE TEXT?", l2, s_ask_hot, s_ask_focus);
         return;
     }
+#if BOARD_ROUND
+    if (KB_RND) {
+        render_round(now);
+        return;
+    }
+#endif
     gfx_fill(THEME_KBD_BG);
     gfx_text(FIELD_X, 3, s_title, 1 + KB_BIG, THEME_KBD_TITLE);
     draw_text(FIELD_X, FIELD_Y + 2, FIELD_W, now);

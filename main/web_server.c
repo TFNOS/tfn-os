@@ -1,5 +1,6 @@
 // The web server of the board: the settings and the list of the modules that add their routes (web_server.h).
 #include "web_server.h"
+#include "esp_timer.h"
 #include <stddef.h>
 #include "tfn_extras.h"
 #include "app.h"
@@ -59,6 +60,21 @@ static void (*const WEB_MODULES[])(httpd_handle_t) = {
 };
 // clang-format on
 
+static volatile int64_t s_web_at;  // ms: the last new connection (power.c DEEP IDLE keeps the radio on after it)
+
+static esp_err_t web_open(httpd_handle_t hd, int fd)
+{
+    (void)hd;
+    (void)fd;
+    s_web_at = esp_timer_get_time() / 1000;
+    return ESP_OK;
+}
+
+int64_t web_server_last_ms(void)
+{
+    return s_web_at;
+}
+
 esp_err_t web_server_start(void)
 {
     if (s_http) {
@@ -71,6 +87,7 @@ esp_err_t web_server_start(void)
     // When all 7 connections are in use, the oldest one closes and the new one comes in. A page that
     // went away keeps its connections, and the manager then gets no answer.
     cfg.lru_purge_enable = true;
+    cfg.open_fn = web_open;
     // Core 0 runs the app. A web task on core 0 (the manager asks each 2 s) gives the games a stop of 50-90 ms
     // each 2 s. On core 1 at priority 2, the audio, LCD, touch and IMU tasks and the render helpers of
     // the apps (priority 3) come first. At priority 3 the stops come back on the

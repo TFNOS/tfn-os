@@ -18,7 +18,8 @@ its texts in each frame, and the question of SETUP > DEVELOPER MODE. Its second 
 round board kind: the round frames. test_setup_pages.c compiles
 the two consent pages of SETUP, main/tfn_pub_page.c and main/pool_page.c (the ESP-IDF fakes of tests/unit/fake_sysui/).
 The test of the app upload of the board web API (test_tfn_web.c: op=put and op=commit of main/tfn_web.c) uses the
-fakes of tests/unit/fake_web/ and the work folder tfn_web/ in the output folder of the unit tests (OUT).
+fakes of tests/unit/fake_web/ and the work folder tfn_unit_web/ in the temp folder of the system. The reason: a sync
+tool (Dropbox) can hold the files of a work folder in the repo, and then the test cannot remove its upload folders.
 
 Usage: python tests/unit/run.py
 """
@@ -26,6 +27,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -81,7 +83,7 @@ TESTS = [
     ('test_sysui_ask.c', SYSUI_SRCS, [], [FAKE_SYSUI]),
     ('test_sysui_ask.c', SYSUI_SRCS, [], [FAKE_SYSUI], ROUND_KIND),
     ('test_setup_pages.c', ['main/tfn_pub_page.c', 'main/pool_page.c', 'main/tfn_pub_core.c'], [], [FAKE_SYSUI]),
-    ('test_tfn_web.c', ['main/tfn_web.c'], [os.path.join(OUT, 'tfn_web')], [FAKE_WEB]),
+    ('test_tfn_web.c', ['main/tfn_web.c'], [os.path.join(tempfile.gettempdir(), 'tfn_unit_web')], [FAKE_WEB]),
 ]
 
 # the Python tests of the pools, of the WiFi install of the SDK and of the developer tools (each prints one line that

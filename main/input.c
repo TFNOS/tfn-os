@@ -22,6 +22,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "power.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -29,6 +30,7 @@
 #include "driver/gpio.h"
 #include "esp_sleep.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 #include "board.h"
 #include "input.h"
 #include "settings.h"
@@ -615,11 +617,44 @@ static bool pt_app(const int8_t *own, int j, bool with_held)
 // One report of the touch panel at the time t (ms): the calibration, the virtual fingers of the tests, the finger
 // tracker, the pull zone, the points and the end buttons of the app, the events. Returns the count of the points of the
 // panel.
+// THE SCREEN OFF: A NEW TOUCH MUST BE IN TWO READS. A touch chip sometimes sends one report with a point and no
+// finger (the AMOLED-1.8 on USB power woke its dark screen by itself about once an hour). With the screen off and no
+// finger down, the panel is read again up to CONFIRM_READS times, CONFIRM_MS apart, after the first point of a new
+// touch. A point in one of these reads = a real touch (it goes on at once). No point in all of them = a false report:
+// no event, no wake. A real tap on the dark AMOLED-1.8 had no point in the read 20 ms after its first one, so one read
+// again is not enough. The log line shows the points of each read (the data to tell a tap from a false report).
+#define CONFIRM_MS    20
+#define CONFIRM_READS 5
+static int touch_confirmed(int *px, int *py)
+{
+    int n = board_touch_points(px, py, INPUT_MAX_POINTS);
+    if (n == 0 || !s_slow || s_es.down) {
+        return n;
+    }
+    const int x0 = px[0], y0 = py[0];
+    char seq[CONFIRM_READS + 1];
+    int k = 0;
+    while (k < CONFIRM_READS) {
+        vTaskDelay(pdMS_TO_TICKS(CONFIRM_MS));
+        n = board_touch_points(px, py, INPUT_MAX_POINTS);
+        seq[k++] = (char)('0' + n);
+        if (n) {
+            break;
+        }
+    }
+    seq[k] = 0;
+    static uint32_t s_false;
+    s_false += n == 0;
+    ESP_LOGI("input", "touch: the screen off, a new touch at (%d,%d), the reads after it: %s: %s (%lu false)", x0, y0,
+             seq, n ? "a touch" : "a false report, ignored", (unsigned long)s_false);
+    return n;
+}
+
 static int input_poll(int64_t t)
 {
     {
         int px[INPUT_MAX_POINTS] = {0}, py[INPUT_MAX_POINTS] = {0};
-        int n = board_touch_points(px, py, INPUT_MAX_POINTS);
+        int n = touch_confirmed(px, py);
         const int n_panel = n;
         // the raw points (SETUP > TOUCH TEST), then the calibration; a copy of the virtual fingers
         portENTER_CRITICAL(&s_ends_lock);
@@ -761,7 +796,7 @@ static void input_task(void *arg)
             gpio_intr_disable(s_int_pin);
             wake = xTaskGetTickCount();
         } else {
-            vTaskDelayUntil(&wake, pdMS_TO_TICKS(s_poll_ms));
+            vTaskDelayUntil(&wake, pdMS_TO_TICKS(s_slow && (power_x() & PWX_TOUCH) ? 500 : s_poll_ms));
         }
         int n = input_poll(esp_timer_get_time() / 1000);
         if (by_int && n == 0) {

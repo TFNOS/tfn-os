@@ -29,6 +29,13 @@ int esp_now_register_recv_cb(void *cb)
     (void)cb;
     return 0;
 }
+// (link.c counts the frames in flight with the send callback; with no callback here it sends one ESP-NOW frame in
+// each 250 ms at most, and the LAN copy of each packet goes before that queue: the games of 2 BOARDS are not slower)
+int esp_now_register_send_cb(void *cb)
+{
+    (void)cb;
+    return 0;
+}
 int esp_now_unregister_recv_cb(void)
 {
     return 0;

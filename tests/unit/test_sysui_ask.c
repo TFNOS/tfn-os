@@ -655,7 +655,7 @@ static bool text_fits(int i, const box_t *panel, const box_t *yes, const box_t *
 // line of them fits (text_fits).
 static void test_fit(const char *frame_name, const char *title, const char *line, const char *yes)
 {
-    char what[200];
+    char what[320];
     int k = 0;
     s_answers = 0;
     sysui_ask(title, line, yes, "NO", 120, answer);
@@ -669,8 +669,9 @@ static void test_fit(const char *frame_name, const char *title, const char *line
              line);
     expect(text_lines(title, &k) > 0 && text_lines(line, &k) > 0 && note_lines(yes, &k) > 0, what);
     for (int i = 0; i < s_ntext; i++) {
-        snprintf(what, sizeof what, "%s: \"%s\" fits (in the panel, not on a button, the avatar or another text)",
-                 frame_name, s_text[i]);
+        snprintf(what, sizeof what,
+                 "%.30s: \"%.120s\" fits (in the panel, not on a button, the avatar or another text)", frame_name,
+                 s_text[i]);
         expect(text_fits(i, &panel, &yb, &nb), what);
     }
     sysui_ask_close();
@@ -680,7 +681,7 @@ static void test_fit(const char *frame_name, const char *title, const char *line
 // start and "..." at the end of its last line (not cut in the middle with no mark); each line fits (text_fits).
 static void test_fit_cut(const char *frame_name, const char *line)
 {
-    char what[260];
+    char what[320];
     int k = 0;
     sysui_ask("UPDATE MEGA WORLD WAR MAMMOTH MEMORY MASTERS?", line, "UPDATE", "NO", 120, answer);
     frame();
@@ -690,8 +691,9 @@ static void test_fit_cut(const char *frame_name, const char *line)
                    (text_lines(line, &k) > 0 || text_lines_as(line, &k, true) > 0),
            what);
     for (int i = 0; i < s_ntext; i++) {
-        snprintf(what, sizeof what, "%s: \"%s\" fits (in the panel, not on a button, the avatar or another text)",
-                 frame_name, s_text[i]);
+        snprintf(what, sizeof what,
+                 "%.30s: \"%.120s\" fits (in the panel, not on a button, the avatar or another text)", frame_name,
+                 s_text[i]);
         expect(text_fits(i, &panel, &yb, &nb), what);
     }
     sysui_ask_close();

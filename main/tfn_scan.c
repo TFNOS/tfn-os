@@ -163,7 +163,7 @@ static void do_rescan_locked(void)
     if (!tfa_e) {
         return;
     }
-#if TFA_ICON_BIG
+#if TFA_ICON_TASK
     tfa_icon_gen++;
 #endif
     int64_t t0 = esp_timer_get_time();

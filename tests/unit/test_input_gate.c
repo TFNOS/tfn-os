@@ -57,6 +57,11 @@ void board_touch_int_ack(void)
 {
 }
 
+int power_x(void)
+{
+    return 0;  // (no power test switches: the normal touch read)
+}
+
 uint32_t store_get(const char *key, uint32_t def)
 {
     (void)key;

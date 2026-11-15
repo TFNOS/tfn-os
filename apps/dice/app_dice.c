@@ -90,7 +90,9 @@ typedef struct {
 } rc_t;
 typedef struct {
     rc_t tab[M_N], tray, tray_dd, pan, pan_dd, chip[KN + 1];
-    bool side;  // the result panel at the side (else a bar over the tray)
+    bool side;     // the result panel at the side (else a bar over the tray)
+    bool round;    // the round panel: a round tray; the tabs, the chips and the history are discs on the arcs
+    rc_t hist[3];  // (round) the discs of the last results at the right arc
     const kfont_t *f_tab, *f_hint, *f_spec, *f_small;
     const mfont_t *f_hist, *f_chip, *f_badge;
     float tot_k;  // the scale of the big total (1 = the caps of MF_N34, 35 px)
@@ -107,9 +109,51 @@ static inline rc_t mk_rc(int x, int y, int w, int h)
     return r;
 }
 
+// the box of a disc of radius r at the angle a (degrees; 0 = right, 90 = down) on a ring of radius rr round the centre
+static rc_t ring_rc(float a, float rr, float r)
+{
+    float x = gfx_w * 0.5f + rr * fcos(a * 0.017453f), y = gfx_h * 0.5f + rr * fsin(a * 0.017453f);
+    return mk_rc((int)(x - r), (int)(y - r), (int)(2 * r), (int)(2 * r));
+}
+// the round panel (the 1.75C 466 x 466, the Watcher 412): a round felt tray in the middle; the 3 modes are discs on
+// the left arc, the last 3 results discs on the right arc, the total in the top cap, the D&D chips on the bottom arc
+static void lay_round(void)
+{
+    float k = gfx_w / 466.0f;
+    for (int i = 0; i < M_N; i++) {
+        s_ly.tab[i] = ring_rc(235 - 30 * i, 190 * k, 34 * k);
+    }
+    for (int i = 0; i < 3; i++) {
+        s_ly.hist[i] = ring_rc(-55 + 30 * i, 190 * k, 30 * k);
+    }
+    int tr = (int)(145 * k), dr = (int)(118 * k);
+    s_ly.tray = mk_rc(gfx_w / 2 - tr, (int)(262 * k) - tr, 2 * tr, 2 * tr);
+    s_ly.tray_dd = mk_rc(gfx_w / 2 - dr, (int)(222 * k) - dr, 2 * dr, 2 * dr);
+    s_ly.pan = mk_rc(gfx_w / 2 - (int)(100 * k), (int)(22 * k), (int)(200 * k), (int)(78 * k));
+    s_ly.pan_dd = s_ly.pan;
+    for (int i = 0; i <= KN; i++) {
+        s_ly.chip[i] = ring_rc(150 - i * (120.0f / KN), 190 * k, 27 * k);
+    }
+    s_ly.round = true;
+    s_ly.f_tab = &KF_NAME;
+    s_ly.f_hint = &KF_BIG;
+    s_ly.f_spec = &KF_NAME;
+    s_ly.f_small = &KF_LABEL;
+    s_ly.f_hist = &MF_N20;
+    s_ly.f_chip = &MF_N16;
+    s_ly.f_badge = &MF_LABEL;
+    s_ly.tot_k = 1.2f * k;
+    s_ly.tab_r = (int)(19 * k);
+    s_ly.badge_r = 10;
+}
+
 static void lay_init(void)
 {
     memset(&s_ly, 0, sizeof s_ly);
+    if (gfx_round()) {
+        lay_round();
+        return;
+    }
 #if BOARD_BAR_SCREEN
     // the 3.49 (640 x 172): the modes at the left, the tray, the result and the history at the right; the D&D chips
     // in a row under the tray
@@ -318,6 +362,12 @@ static void die_look(die_t *d, int kind, int part)
 static float grid(int n, float *px, float *py)
 {
     const rc_t *t = tray();
+    rc_t sq;
+    if (s_ly.round) {  // (the square inside the round felt)
+        int sd = t->w * 70 / 100;
+        sq = mk_rc(t->x + (t->w - sd) / 2, t->y + (t->h - sd) / 2, sd, sd);
+        t = &sq;
+    }
     if (n <= 0) {
         return 10;
     }
@@ -517,6 +567,21 @@ static void die_walls(die_t *e, const rc_t *t, bool live)
     float R = e->r;
     float m = R * 0.92f + 2;
     bool hit = false;
+    if (s_ly.round) {
+        // the round felt: the die stays in the circle; it bounces off the wall along the normal
+        float cx = t->x + t->w * 0.5f, cy = t->y + t->h * 0.5f, lim = t->w * 0.5f - m * 1.05f;
+        float dx = e->x - cx, dy = e->y - cy, d = sqrtf(dx * dx + dy * dy);
+        if (d > lim && d > 0.01f) {
+            float nx = dx / d, ny = dy / d, vn = e->vx * nx + e->vy * ny;
+            e->x = cx + nx * lim;
+            e->y = cy + ny * lim;
+            if (vn > 0) {
+                e->vx -= 1.55f * vn * nx;
+                e->vy -= 1.55f * vn * ny;
+                hit = true;
+            }
+        }
+    }
     if (e->x < t->x + m) {
         e->x = t->x + m;
         if (e->vx < 0) {
@@ -858,6 +923,42 @@ static uint32_t hash2(int x, int y)
     return h ^ (h >> 16);
 }
 
+// the round tray of the round panel: a wood ring, then the felt with a soft light and a dark edge
+static void bg_round(uint16_t *dst, const rc_t *t)
+{
+    float cx = t->x + t->w * 0.5f, cy = t->y + t->h * 0.5f, R = t->w * 0.5f, rim = R * 0.06f + 3;
+    // the dark rim of the circle of the panel (a soft vignette)
+    tfd_ring(gfx_w * 0.5f, gfx_h * 0.5f, gfx_w * 0.5f - 6, 14, rgb(40, 30, 70), 160);
+    tfd_disc(cx + 3, cy + 5, R + 3, rgb(6, 6, 14), 160);
+    tfd_disc(cx, cy, R + 1, rgb(40, 20, 8), 256);
+    tfd_disc(cx, cy, R, rgb(122, 70, 30), 256);
+    tfd_ring(cx, cy, R - rim * 0.35f, rim * 0.4f, rgb(160, 98, 46), 150);
+    float fr = R - rim;
+    tfd_disc(cx, cy, fr + 1, rgb(214, 172, 84), 256);
+    float lx = cx, ly = cy - fr * 0.12f;
+    for (int y = (int)(cy - fr); y <= (int)(cy + fr); y++) {
+        if (y < 0 || y >= gfx_h) {
+            continue;
+        }
+        uint16_t *row = &dst[y * gfx_w];
+        float dy = y - cy, hw2 = fr * fr - dy * dy;
+        if (hw2 <= 0) {
+            continue;
+        }
+        float hw = sqrtf(hw2);
+        for (int x = (int)(cx - hw + 1); x <= (int)(cx + hw - 1); x++) {
+            float ex = (x - lx) / fr, ey = (y - ly) / fr, d2 = ex * ex + ey * ey;
+            float l = 1.0f - 0.5f * (d2 > 1.4f ? 1.4f : d2);
+            float dx = x - cx, e = fr - sqrtf(dx * dx + dy * dy);  // (the inner shadow of the wall)
+            if (e < 12) {
+                l *= 0.6f + 0.033f * e;
+            }
+            int n = (int)(hash2(x, y) & 15) - 8;
+            row[x] = tfd_rgb((int)(10 + 14 * l) + n / 3, (int)(46 + 74 * l) + n, (int)(34 + 46 * l) + n / 2);
+        }
+    }
+}
+
 static void bg_make(void)
 {
     if (s_bg_mode == s_mode && s_bg) {
@@ -870,6 +971,11 @@ static void bg_make(void)
     // the room: a dark blue to violet
     tfd_vgrad(0, 0, gfx_w, gfx_h, rgb(16, 18, 38), rgb(26, 14, 40));
     const rc_t *t = tray();
+    if (s_ly.round) {
+        bg_round(dst, t);
+        tfd_screen();
+        return;
+    }
     // the wood rim of the tray, then the felt with a soft light in the middle and a dark edge
     int rim = gfx_w >= 600 && gfx_h >= 300 ? 7 : 5;
     tfd_rrect(t->x - 1, t->y - 1, t->w + 2, t->h + 2, 14, rgb(40, 20, 8), 256);
@@ -1487,7 +1593,7 @@ static void banner(const char *s, const kfont_t *f, uint16_t col, float dy, int 
 {
     const rc_t *t = tray();
     int w = ui_text_w(f, s) + 28, h = f == &KF_BIG ? 40 : 30;
-    int x = t->x + t->w / 2 - w / 2, y = t->y + 12 + (int)dy;
+    int x = t->x + t->w / 2 - w / 2, y = t->y + (s_ly.round ? t->h / 6 : 12) + (int)dy;
     tfd_rrect(x, y, w, h, h / 2, rgb(10, 10, 20), alpha * 200 / 256);
     if (alpha > 128) {
         ui_text_c(f, t->x + t->w / 2, y + h / 2 + (f == &KF_BIG ? 9 : 6), s, col);
@@ -1522,12 +1628,61 @@ static const char *spec_fit(const char *spec, int nd, const kfont_t *f, int w, c
     return buf;
 }
 
+// the result of the round panel: the total in the top cap with the dice of the throw under it (or the hint); the
+// last 3 results in discs on the right arc
+static void panel_round(uint16_t tc, const char *spec)
+{
+    const rc_t *p = &s_ly.pan;
+    int cx = p->x + p->w / 2;
+    char fb1[24];
+    int room = (int)(gfx_w * 0.5f);
+    if (s_has_res) {
+        float ty = p->y + 24 * s_ly.tot_k;
+        draw_total((float)cx, ty, s_ly.tot_k, tc);
+        const char *sub =
+                s_res.parts[0] ? s_res.parts : spec_fit(s_res.spec, s_res.nd, s_ly.f_spec, room, fb1, sizeof fb1);
+        ui_text_c(s_ly.f_spec, cx, p->y + p->h, sub, rgb(170, 184, 230));
+    } else {
+        const char *h = s_mode == M_DND && !s_nd ? T("ADD DICE", "הוסיפו קוביות") : T("TAP OR SHAKE", "הקישו או נערו");
+        int hroom = 2 * (cx - (s_ly.tab[0].x + s_ly.tab[0].w) - 6);  // (between the first tab and its mirror)
+        const kfont_t *f = fit(s_ly.f_hint, &KF_TEXT, h, hroom);
+        ui_text_c(f, cx, p->y + p->h / 2 + f->asc / 2, h, rgb(255, 226, 140));
+        if (s_nd) {
+            ui_text_c(s_ly.f_spec, cx, p->y + p->h, spec_fit(spec, set_n(), s_ly.f_spec, room, fb1, sizeof fb1),
+                      rgb(150, 160, 210));
+        }
+    }
+    int first = s_has_res ? 1 : 0;
+    for (int n = 0; n < 3; n++) {
+        const rc_t *r = &s_ly.hist[n];
+        float hx = r->x + r->w * 0.5f, hy = r->y + r->h * 0.5f, hr = r->w * 0.5f;
+        int i = first + n;
+        if (i >= s_nh) {
+            tfd_ring(hx, hy, hr - 2, 2, rgb(44, 46, 80), 200);
+            continue;
+        }
+        const res_t *q = &s_hist[i];
+        uint16_t c = q->nat == 20 ? rgb(255, 210, 80) : q->nat == 1 ? rgb(200, 100, 100) : rgb(220, 226, 255);
+        int fade = 255 - n * 50;
+        tfd_disc(hx, hy, hr, ui_mix(rgb(16, 18, 38), rgb(64, 68, 110), fade), 256);
+        tfd_disc(hx, hy, hr - 2, rgb(24, 26, 48), 256);
+        char b[8];
+        snprintf(b, sizeof b, "%d", q->total);
+        const mfont_t *f = mf_width(s_ly.f_hist, b, 0) <= r->w - 10 ? s_ly.f_hist : &MF_N16;
+        mf_text_c(f, (int)hx, (int)hy + f->asc / 2, b, c, fade, 0);
+    }
+}
+
 static void draw_panel(void)
 {
     const rc_t *p = s_mode == M_DND ? &s_ly.pan_dd : &s_ly.pan;
     uint16_t tc = s_res.nat == 20 ? rgb(255, 214, 70) : s_res.nat == 1 ? rgb(200, 90, 90) : rgb(255, 255, 255);
     char spec[24], fb1[24];
     spec_text(spec, sizeof spec);
+    if (s_ly.round) {
+        panel_round(tc, spec);
+        return;
+    }
     if (s_ly.side) {
         int cx = p->x + p->w / 2;
         // the top block: the total and the dice of the throw (or the hint)
@@ -1641,6 +1796,17 @@ static void draw_tabs(void)
     for (int i = 0; i < M_N; i++) {
         const rc_t *r = &s_ly.tab[i];
         bool on = i == s_mode;
+        if (s_ly.round) {
+            // a disc with the dice of the mode
+            float cx = r->x + r->w * 0.5f, cy = r->y + r->h * 0.5f, rr = r->w * 0.5f;
+            tfd_disc(cx, cy, rr, on ? rgb(255, 196, 80) : rgb(44, 46, 80), 256);
+            tfd_disc(cx, cy, rr - 3, on ? rgb(84, 56, 150) : rgb(30, 32, 58), 256);
+            if (on) {
+                tfd_disc(cx, cy - rr * 0.3f, rr * 0.62f, rgb(120, 86, 200), 110);
+            }
+            tab_icon(i, cx, cy, (float)s_ly.tab_r);
+            continue;
+        }
         if (on) {
             tfd_rrect(r->x, r->y, r->w, r->h, 12, rgb(255, 196, 80), 256);
             tfd_rrect(r->x + 2, r->y + 2, r->w - 4, r->h - 4, 10, rgb(84, 56, 150), 256);
@@ -1710,11 +1876,70 @@ static void chip_shape(int k, float cx, float cy, float s, uint16_t c, int a)
     tfd_poly(p, n, c, a);
 }
 
+// a chip of the round panel: a disc (CLEAR: a red disc with a cross; "SURE?" over it when it waits for the second tap)
+static void chip_round(int i, const rc_t *r, int64_t now, float nudge)
+{
+    float cx = r->x + r->w * 0.5f, cy = r->y + r->h * 0.5f, rr = r->w * 0.5f;
+    if (i == KN) {
+        bool any = dnd_count() > 0, armed = any && now - s_clr_t < CLR_MS;
+        tfd_disc(cx, cy, rr, armed ? rgb(255, 120, 120) : any ? rgb(150, 60, 70) : rgb(56, 46, 62), 256);
+        tfd_disc(cx, cy, rr - 2, armed ? rgb(190, 40, 60) : any ? rgb(70, 26, 40) : rgb(34, 30, 46), 256);
+        uint16_t c = any ? rgb(255, 200, 200) : rgb(120, 110, 130);
+        float a = rr * 0.32f;
+        tfd_line(cx - a, cy - a, cx + a, cy + a, 3.5f, c, 256);
+        tfd_line(cx - a, cy + a, cx + a, cy - a, 3.5f, c, 256);
+        if (armed) {
+            const char *s = T("SURE?", "בטוח?");
+            int w = ui_text_w(&KF_NAME, s) + 16, h = 28;
+            int bx = (int)(cx + rr) - w, by = r->y - h - 4;
+            tfd_rrect(bx, by, w, h, 12, rgb(190, 40, 60), 256);
+            ui_text_c(&KF_NAME, bx + w / 2, by + h / 2 + KF_NAME.asc / 2 - 1, s, rgb(255, 255, 255));
+        }
+        return;
+    }
+    int n = s_set[i];
+    const uint8_t *kc = K_COL[i == K100 ? KN : i];
+    uint16_t col = rgb(kc[0], kc[1], kc[2]);
+    uint16_t edge = n ? col : rgb(52, 56, 92);
+    if (nudge > 0) {
+        edge = ui_mix(edge, rgb(255, 230, 140), (int)(nudge * 255));
+    }
+    tfd_disc(cx, cy, rr, edge, 256);
+    tfd_disc(cx, cy, rr - 2.5f, n ? rgb(36, 36, 64) : rgb(26, 28, 50), 256);
+    float s = rr * 0.62f;
+    uint16_t fill = n ? col : ui_mix(rgb(26, 28, 50), col, 150);
+    chip_shape(i, cx + s * 0.08f, cy + s * 0.1f, s, rgb(0, 0, 0), 120);
+    chip_shape(i, cx, cy, s, fill, 256);
+    chip_shape(i, cx - s * 0.12f, cy - s * 0.16f, s * 0.62f, rgb(255, 255, 255), 50);
+    char b[6];
+    if (i == K100) {
+        snprintf(b, sizeof b, "%%");
+    } else {
+        snprintf(b, sizeof b, "%d", K_SIDES[i]);
+    }
+    uint16_t ink = i == K100 ? rgb(40, 34, 52) : rgb(255, 255, 255);
+    int base = (int)(cy + s_ly.f_chip->asc / 2.0f) + (i == K4 ? (int)(s * 0.22f) : 0);
+    mf_text_c(s_ly.f_chip, (int)cx, base, b, ink, n ? 255 : 170, 0);
+    if (n) {
+        int br = s_ly.badge_r;
+        float bx = cx + rr * 0.72f, by = cy - rr * 0.72f;
+        tfd_disc(bx, by, br + 1.5f, rgb(20, 16, 30), 256);
+        tfd_disc(bx, by, (float)br, rgb(255, 214, 70), 256);
+        char c[4];
+        snprintf(c, sizeof c, "%d", n);
+        mf_text_c(s_ly.f_badge, (int)bx, (int)by + s_ly.f_badge->asc / 2, c, rgb(40, 24, 0), 255, 0);
+    }
+}
+
 static void draw_chips(int64_t now)
 {
     float nudge = now - s_nudge_t < 900 ? fsin((float)(now - s_nudge_t) / 900.0f * 3.1416f) : 0;
     for (int i = 0; i <= KN; i++) {
         const rc_t *r = &s_ly.chip[i];
+        if (s_ly.round) {
+            chip_round(i, r, now, nudge);
+            continue;
+        }
         if (i == KN) {
             // CLEAR
             bool any = dnd_count() > 0, armed = any && now - s_clr_t < CLR_MS;
@@ -1845,5 +2070,5 @@ const app_t app_dice = {
         .update = update,
         .render = render,
         .draw_icon = draw_icon,
-        .round_fit = true,
+        .round = APP_ROUND_HI,
 };
