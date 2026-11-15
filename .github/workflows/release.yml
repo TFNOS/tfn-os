@@ -217,7 +217,7 @@ jobs:
         run: |
           command -v openssl > /dev/null || { apt-get update -qq && apt-get install -y -qq openssl > /dev/null; }
           b="build_rel/$KIND"
-          python3 sdk/tools/fw_sign.py sign "$b/tfn_os.bin" --key "$RUNNER_TEMP/keys/ota.pem" --kind "$KIND" \
+          python3 sdk/tools/fw_sign.py sign "$b/long_tetris.bin" --key "$RUNNER_TEMP/keys/ota.pem" --kind "$KIND" \
             --version "$VERSION" --out "$b/signed.bin"
           python3 sdk/tools/fw_sign.py verify "$b/signed.bin" --pub "$OTA_PUB" --kind "$KIND"
           # the board trusts only the keys of its image: each public key of the release must be in it
@@ -296,9 +296,12 @@ jobs:
           done
       - name: Make the signed store
         run: |
-          python3 sdk/tools/store_index.py make store_pkgs --out store_out --key "$RUNNER_TEMP/keys/store.pem" \
+          # (the system Python of the ESP-IDF container has no "cryptography"; the Python of ESP-IDF has it: esptool)
+          . "$IDF_PATH/export.sh" > /dev/null
+          python -c "import cryptography" || python -m pip install --quiet cryptography
+          python sdk/tools/store_index.py make store_pkgs --out store_out --key "$RUNNER_TEMP/keys/store.pem" \
             --release "$VERSION" --kinds "$KINDS" | tee -a "$GITHUB_STEP_SUMMARY"
-          python3 sdk/tools/store_index.py verify store_out --pub "${{ needs.keys.outputs.store_pub }}"
+          python sdk/tools/store_index.py verify store_out --pub "${{ needs.keys.outputs.store_pub }}"
       - uses: actions/upload-artifact@v7
         with:
           name: tfn-sdk
