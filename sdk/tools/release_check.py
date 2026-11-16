@@ -34,6 +34,7 @@ Exit 0 = all good (RELEASE CHECK OK); 1 = a fault (each fault has a line FAULT).
 """
 import argparse
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -41,6 +42,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -121,6 +123,9 @@ class Check:
         print('ok    ' + text)
 
 
+RETRIES = 5         # the more tries of a download (Source.get)
+
+
 class Source:
     """The files of a site: a URL or a folder. get(rel) -> bytes, or None when the file is not there."""
 
@@ -134,12 +139,22 @@ class Source:
             return self.cache[rel]
         data = None
         if self.url:
-            try:
-                with urllib.request.urlopen(self.base + urllib.parse.quote(rel), timeout=60) as r:
-                    data = r.read()
-            except urllib.error.HTTPError as e:
-                if e.code != 404:
-                    raise
+            # (a big store is about 1000 files: the web host sends a 5xx or resets a connection now and then; such a
+            # fault gets RETRIES more tries with a longer pause each time; a 404 = the file is not there)
+            for k in range(RETRIES + 1):
+                try:
+                    with urllib.request.urlopen(self.base + urllib.parse.quote(rel), timeout=60) as r:
+                        data = r.read()
+                    break
+                except urllib.error.HTTPError as e:
+                    if e.code == 404:
+                        break
+                    if k == RETRIES or (e.code < 500 and e.code != 429):
+                        raise
+                except (urllib.error.URLError, ConnectionError, TimeoutError, http.client.HTTPException):
+                    if k == RETRIES:
+                        raise
+                time.sleep(2 * (k + 1))
         else:
             p = os.path.join(self.base, *store_index.safe_rel(rel).split('/'))
             if os.path.isfile(p):
