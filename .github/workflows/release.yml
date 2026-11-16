@@ -17,7 +17,8 @@
 #      The other values of a release build: force_cfg and release_cfg of boards.json (release_cfg.py force). Each
 #      signed image must hold the 65 bytes of each public key of the release (release_cfg.py keys): a build with a
 #      wrong key list stops before the release.
-#   3. sdk: the SDK package, the apps of apps/ with the SDK package, and the signed static store (store_index.py).
+#   3. sdk: the SDK package, the apps of apps/ with the SDK package, the data packs of the apps (store_pack.py) and
+#      the signed static store with the packs (store_index.py: <store>/packs/<name>/).
 #   4. publish: the release files (release_pack.py: also channel.json and tfn-poolmgr-V.zip, the pool manager of
 #      poolmgr/ with copies of its shared modules), the check of the files against this tree (release_check.py
 #      --tree), the GitHub release, and the web site (pages_build.py).
@@ -182,8 +183,11 @@ jobs:
           echo "$VERSION" > version.txt
           # (a tfn_local.h of a private setup would come first in main/tfn_defaults.h and keep its own keys)
           [ ! -f main/tfn_local.h ] || { echo "::error::main/tfn_local.h is in the tree: a release build takes only the keys of the release"; exit 1; }
+          # the static store of the boards = the store of the Pages site of this repo
+          owner="${GITHUB_REPOSITORY%%/*}"
           python3 sdk/tools/release_cfg.py header --out main/tfn_release_keys.h --store-pub "$STORE_PUB" \
-            --ota-pub "$OTA_PUB" ${OTA_PUB2:+--ota-pub2 "$OTA_PUB2"}
+            --ota-pub "$OTA_PUB" ${OTA_PUB2:+--ota-pub2 "$OTA_PUB2"} \
+            --store-url "https://${owner,,}.github.io/${GITHUB_REPOSITORY#*/}/store/"
           cat main/tfn_release_keys.h
       - name: Build
         run: |
@@ -294,13 +298,23 @@ jobs:
             python3 sdk_out/tfn-sdk/tools/tfn_app.py build "$d" --sdk sdk_out/tfn-sdk --kinds "$kinds" --out store_pkgs
             echo "::endgroup::"
           done
+      - name: Make the data packs of the store
+        run: |
+          # (each apps/<x>/pack.json: the files of the app folder, or a script of the app that draws them; the
+          # FOUR SEASONS baker needs numpy and Pillow; store_pack.py stops when a script changes a table of the code)
+          . "$IDF_PATH/export.sh" > /dev/null
+          python -c "import numpy, PIL" || python -m pip install --quiet numpy pillow
+          python sdk/tools/store_pack.py make apps --out packs_out | grep -E "^PACK" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "${PIPESTATUS[0]}" = 0
       - name: Make the signed store
         run: |
           # (the system Python of the ESP-IDF container has no "cryptography"; the Python of ESP-IDF has it: esptool)
           . "$IDF_PATH/export.sh" > /dev/null
           python -c "import cryptography" || python -m pip install --quiet cryptography
           python sdk/tools/store_index.py make store_pkgs --out store_out --key "$RUNNER_TEMP/keys/store.pem" \
-            --release "$VERSION" --kinds "$KINDS" | tee -a "$GITHUB_STEP_SUMMARY"
+            --release "$VERSION" --kinds "$KINDS" --packs packs_out | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "- the store (the apps, their zips and the data packs): $(du -sm store_out | cut -f1) MB of the 1 GB of a Pages site" \
+            >> "$GITHUB_STEP_SUMMARY"
           python sdk/tools/store_index.py verify store_out --pub "${{ needs.keys.outputs.store_pub }}"
       - uses: actions/upload-artifact@v7
         with:

@@ -6,10 +6,9 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>TFN OS apps</title>
-<meta name="description" content="The free apps of TFN OS: download the signed files of an app and install them on your board.">
+<meta name="description" content="Free games and tools for TFN OS. Connect your board by USB and install an app with one click.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/site.css">
-<link rel="stylesheet" href="css/install.css">
 <link rel="stylesheet" href="css/store.css">
 <script src="js/theme.js"></script>
 </head>
@@ -32,34 +31,89 @@
   </div>
 </header>
 
-<main id="main" class="wrap flasher">
-  <h1 class="flasher-title">The apps</h1>
-  <p class="flasher-lede">Free apps for TFN OS. Each app file has the signature of the TFN OS store. Your board checks the signature before it installs the app.</p>
+<main id="main">
+  <section class="st-hero">
+    <div class="wrap st-hero-in">
+      <div class="st-head">
+        <h1>Apps for your board</h1>
+        <p class="st-lede">Games and tools for TFN OS. They are free, they have the signature of the TFN OS store, and an install takes one click over USB.</p>
+      </div>
 
-  <p id="error" class="error" role="alert" hidden></p>
-  <p id="store-facts" class="note" hidden>Store release <b id="release"></b>, store key <b id="key-id"></b>. The page checked the signature of the list and checks the SHA-256 of each file before you save it.</p>
-
-  <section class="step" aria-labelledby="h-kind">
-    <h2 id="h-kind"><span class="step-n">1</span>Choose your board</h2>
-    <p><label for="kind">The board kind:</label> <select id="kind"></select></p>
-    <p>Your board must run TFN OS. To install it, use the <a href="install.html">install page</a>.</p>
+      <div class="link-card" id="link" aria-live="polite">
+        <div class="link-idle" id="link-idle">
+          <h2>Connect your board</h2>
+          <p>Connect the board to this computer with a USB cable. The board must run TFN OS (<a href="install.html">install it</a>). The page then shows the apps for your board and installs them.</p>
+          <button class="btn btn-primary" type="button" id="connect">Connect by USB</button>
+          <p class="link-note" id="no-usb" hidden>This browser cannot use USB. Use Chrome or Edge on a computer to install with one click. Here you can look at the apps and save their signed files.</p>
+        </div>
+        <div class="link-on" id="link-on" hidden>
+          <div class="link-board">
+            <span class="dot" aria-hidden="true"></span>
+            <div>
+              <b id="lk-name"></b>
+              <span id="lk-facts"></span>
+            </div>
+          </div>
+          <p class="link-note" id="lk-note" hidden></p>
+          <button class="btn" type="button" id="disconnect">Disconnect</button>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section class="step" id="step-apps" aria-labelledby="apps-title" hidden>
-    <h2><span class="step-n">2</span><span id="apps-title">The apps</span></h2>
-    <ul id="apps" class="app-list"></ul>
-  </section>
+  <div class="wrap">
+    <p id="error" class="error" role="alert" hidden></p>
 
-  <section class="step" id="step-install" aria-labelledby="h-install" hidden>
-    <h2 id="h-install"><span class="step-n">3</span>Install the app on the board</h2>
-    <p>Unzip the file that you saved. It holds the files of the app: manifest.txt, app.elf, icon.bin and sig. Then use one of these ways:</p>
-    <ol class="how">
-      <li><b>The web page of the board.</b> Connect the board to your WiFi. SETUP &gt; WEB PAGE on the board shows its address. On a computer or a phone in the same network, open <code>http://&lt;the board address&gt;/apps</code>. Under "Install an app file", select all the files of the app, and click Install.</li>
-      <li><b>The SD card.</b> Copy the folder with the files of the app to the SD card. Put the card into the board, open the folder in FILES, and tap INSTALL.</li>
-    </ol>
-    <p>The app is then in the menu of the board. The board refuses a file with no good signature, and a file for another board kind.</p>
-  </section>
+    <div class="st-bar">
+      <div class="chips" role="group" aria-label="Show">
+        <button type="button" class="chip" data-group="all" aria-pressed="true">All</button>
+        <button type="button" class="chip" data-group="games" aria-pressed="false">Games</button>
+        <button type="button" class="chip" data-group="tools" aria-pressed="false">Tools</button>
+      </div>
+      <label class="kind-pick" id="kind-pick">For the board <select id="kind"></select></label>
+    </div>
+
+    <ul class="gallery" id="apps" aria-live="polite"></ul>
+
+    <section class="trust">
+      <h2>Why you can trust these files</h2>
+      <p>The TFN OS store signs each app with its key (ECDSA P-256). <b>Your board checks that signature</b> before it installs an app, against the store key that is in TFN OS itself. A changed or damaged file never goes on the board. This page also checks the signature of the app list with the same key, and the SHA-256 of each file before it uses it.</p>
+      <p id="store-facts" class="note" hidden>Store release <b id="release"></b>, store key <b id="key-id"></b>.</p>
+      <details class="other-ways">
+        <summary>Other ways to install an app</summary>
+        <ol>
+          <li><b>The STORE app of the board.</b> On a board with WiFi, open STORE in the menu and tap an app.</li>
+          <li><b>The web page of the board.</b> Save the signed file of the app (the Download button in the window of the app) and unzip it. SETUP &gt; WEB PAGE on the board shows its address. Open <code>http://&lt;the board address&gt;/apps</code> on a computer in the same network. Under "Install an app file", select all the files of the app, and click Install.</li>
+          <li><b>The SD card.</b> Copy the folder with the files of the app to the SD card. Open the folder in FILES on the board, and tap INSTALL.</li>
+        </ol>
+      </details>
+    </section>
+  </div>
 </main>
+
+<dialog class="app-dlg" id="dlg" aria-labelledby="dlg-name">
+  <div class="dlg-media" id="dlg-media"></div>
+  <div class="dlg-body">
+    <div class="dlg-head">
+      <canvas class="ico" id="dlg-ico" width="48" height="48" aria-hidden="true"></canvas>
+      <div>
+        <h2 id="dlg-name"></h2>
+        <span class="tag" id="dlg-group"></span>
+      </div>
+      <button type="button" class="dlg-x" id="dlg-x" aria-label="Close">&times;</button>
+    </div>
+    <p id="dlg-desc"></p>
+    <details class="he" id="dlg-he-box"><summary>עברית</summary><p id="dlg-he" lang="he" dir="rtl"></p></details>
+    <dl class="facts-list" id="dlg-facts"></dl>
+    <div class="dlg-extra" id="dlg-extra"></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn btn-primary" id="dlg-install"></button>
+      <button type="button" class="btn" id="dlg-download"></button>
+    </div>
+    <div class="bar" id="dlg-bar" hidden><span></span></div>
+    <p class="dlg-msg" id="dlg-msg" role="status"></p>
+  </div>
+</dialog>
 
 <footer class="foot">
   <div class="wrap">

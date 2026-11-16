@@ -1,0 +1,65 @@
+glasshouse 7
+name THE ORCHID HOUSE | בית הסחלבים
+idea Crack the right pane. Keep the orchid whole. | סדקו את הזגוגית הנכונה. שמרו על הסחלב שלם.
+sky dusk
+ground moss
+object orchid 258 139
+moves 2
+par 1
+goal down tower 50
+deco inside 118 72 398 137
+deco palm 160 128 74 9 30
+deco palm 352 128 80 8 26
+deco crane 588 139 436
+deco wall 118 125 240
+deco wall 276 125 398
+deco arch 258 72 42
+deco lamppost 80 139
+deco barrow 43 137
+deco pots 101 137
+deco can 64 137
+deco lantern 166 95 74
+deco lantern 352 95 74
+deco pipe 398 80 430 62
+cell lw0 130.2 106 24.5 38 grid=2x2 look=1 static
+roof lwr0 130.2 80 24.5 14 grid=2x2 static
+cell lw1 154.8 106 24.5 38 grid=2x2 look=1 static
+roof lwr1 154.8 80 24.5 14 grid=2x2 static
+cell lw2 179.2 106 24.5 38 grid=2x2 look=1 static
+roof lwr2 179.2 80 24.5 14 grid=2x2 static
+cell lw3 203.8 106 24.5 38 grid=2x2 look=1 static
+roof lwr3 203.8 80 24.5 14 grid=2x2 static
+cell rw0 312.2 106 24.5 38 grid=2x2 look=1 static
+roof rwr0 312.2 80 24.5 14 grid=2x2 static
+cell rw1 336.8 106 24.5 38 grid=2x2 look=1 static
+roof rwr1 336.8 80 24.5 14 grid=2x2 static
+cell rw2 361.2 106 24.5 38 grid=2x2 look=1 static
+roof rwr2 361.2 80 24.5 14 grid=2x2 static
+cell rw3 385.8 106 24.5 38 grid=2x2 look=1 static
+roof rwr3 385.8 80 24.5 14 grid=2x2 static
+cell tl 228 98.5 24 53 grid=2x3 look=1 static
+cell tr 288 98.5 24 53 grid=2x3 look=1 static
+ball ball 412 86 9 dens=45 damp=0.15
+rope chain ground 436 22 ball 412 86 look=chain
+rope hold rw3 392 96 ball 404 90 sub=1
+tank tank 480 51 72 34 spill=90 dens=0.8 tag=tower
+beam deck 480 69.5 60 3 tag=tower
+beam lleg 462 104 5 66 tag=tower
+beam rleg 498 104 5 66 tag=tower
+beam br1 480 98 36 3 tag=tower
+beam br2 480 122 36 3 tag=tower
+weld tk tank deck 480 68
+weld d1 deck lleg 462 71
+weld d2 deck rleg 498 71
+weld b1 br1 lleg 462 98
+weld b2 br1 rleg 498 98
+weld b3 br2 lleg 462 122
+weld b4 br2 rleg 498 122
+weld lf lleg ground 462 136 break=30
+hinge rf rleg ground 498 136
+lamp lamp 258 69 7 9 dens=8 tough=0
+rope lc ground 258 31 lamp 258 64 look=cable
+move crack rw3 at=392,96 sub=1
+move cut lc
+solve 0 rw3
+fail 0 lc

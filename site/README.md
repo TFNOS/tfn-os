@@ -16,7 +16,7 @@ open licence, game data, your WiFi or home addresses).
 |---|---|
 | `index.html`, `css/site.css`, `js/site.js`, `js/theme.js` | the start page |
 | `install.html`, `css/install.css`, `js/flasher/` | the web flasher |
-| `store.html`, `css/store.css`, `js/store/` | the store page: the apps of each board kind, from `store/index.json` |
+| `store.html`, `css/store.css`, `js/store/` | the store page: a gallery of the apps of each board kind, from `store/index.json` (signed by a key of `STORE_KEYS` in `js/store/core.js`), with the previews of `media/apps/media.json`, and the install over USB (`js/store/usb.js`: Web Serial to the console of TFN OS: `sdusb put` of each file with a CRC check, then `apps commit`; the board checks the signature) |
 | `js/boards.js` | the board kinds: chip, flash size, USB IDs, picture |
 | `vendor/esptool-js-0.7.0/` | esptool-js 0.7.0 (`bundle.js` of the npm package, Apache 2.0, with its LICENSE) |
 | `fonts/` | Bricolage Grotesque and Atkinson Hyperlegible Next (latin, woff2, SIL OFL 1.1) |

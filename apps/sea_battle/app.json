@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "SEA BATTLE",
+ "sym": "app_sea",
+ "group": "GAMES",
+ "emoji": "🚢",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_sea.c",
+  "sea_art.c"
+ ],
+ "idf": "all",
+ "store": {
+  "en": "The pencil-and-paper sea battle on a 10 by 10 grid. Place five ships, then shoot in turn against the computer or a friend's board. A loupe shows big squares, so you hit the right one: tap a square to aim, then tap FIRE.",
+  "he": "משחק קרב ים על רשת של 10 על 10. מסדרים חמש ספינות ואז יורים בתורות, נגד המחשב או נגד הלוח של חבר. זכוכית מגדלת מציגה ריבועים גדולים כדי לפגוע בריבוע הנכון: געו בריבוע כדי לכוון, ואז ב-FIRE."
+ }
+}

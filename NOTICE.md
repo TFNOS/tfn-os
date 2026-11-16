@@ -96,6 +96,15 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 - **Source:** [minimp3](https://github.com/lieff/minimp3) by lieff.
 - **Licence:** CC0 1.0 (public domain); the notice is in the file header and in `third_party/minimp3/LICENSE`.
 
+## The music of THE TURNING WOOD (the MuseScore General sound bank)
+
+- **Files:** the MP3 music of the data pack of THE TURNING WOOD (`apps/turning_wood/pack/wood/` `m_*.mp3`; on the
+  card `/sdcard/wood/m_*.mp3`), made by a tool that is not in this tree. The notes are new; the instrument sounds come
+  from the sound bank.
+- **Source:** MuseScore_General.sf3 0.2 (S. Christian Collins), from FluidR3Mono (Michael Cowgill) and FluidR3
+  (Frank Wen); the other names are in the licence file.
+- **Licence:** MIT. The notices must go with each derivative work: [docs/licenses/MuseScore_General_License.md](docs/licenses/MuseScore_General_License.md), and a copy in the data
+  pack (`/sdcard/wood/m_licence.txt`).
 ## zstd (the decoder of the ZIM reader)
 
 - **Files:** `third_party/zstd/zstddeclib.c` (the single-file decoder, made by the tool of the release) and
@@ -199,6 +208,31 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 ## TRIVIA: the pictures, the logo and the effects
 
 ## RIM RUNNER: the effects
+
+## The games of the store: the effects, the music and the data
+
+- **Files:** the game folders `apps/cubby/`, `apps/gummy_siege/`, `apps/murano/`, `apps/turning_wood/`, `apps/dirt_kings/`, `apps/kart/`, `apps/coil/`, `apps/summer/`, `apps/deep_current/`, `apps/boulevard/`, `apps/four_seasons/`, `apps/glasshouse/`, `apps/orbital/`, `apps/chess/`, `apps/backgammon/`, `apps/checkers/`, `apps/sea_battle/`.
+- **The sound effects:** the MP3 files of `apps/cubby/sfx/`, `apps/gummy_siege/sfx/`, `apps/murano/sfx/`, `apps/turning_wood/sfx/`, `apps/dirt_kings/sfx/`, `apps/kart/sfx/`, `apps/summer/sfx/`, `apps/deep_current/sfx/`, `apps/boulevard/sfx/`, `apps/four_seasons/sfx/`, `apps/glasshouse/sfx/`, `apps/orbital/sfx/`, `apps/backgammon/sfx/`, `apps/checkers/sfx/` (most games have them as C data in their app file:
+  the file `<x>_sfx.c` of the folder), CC0 (public domain): Kenney (kenney.nl) and OpenGameArt (opengameart.org)
+  packs. The file `SOURCES.md` of each `sfx/` folder names the pack and the source file of each effect.
+- **The music:** the music data of these games (the `*_music.c` files) is own music of this project, composed for
+  each game, except COIL RIDER (below).
+- **The data:** the pictures, the art tables, the levels and the boards in these folders (for example
+  `apps/dirt_kings/dk25_data.c`, `apps/boulevard/bv_art.c`, `apps/backgammon/bg_art.c`, `apps/checkers/ck_art.c`,
+  `apps/gummy_siege/gs_data.c`) are own work of this project. Tools that are not in this tree made them from own
+  drawings, renders and level files.
+- **The data packs:** the pictures of `apps/turning_wood/pack/wood/` are own work of this project (the music of that
+  pack: the entry of THE TURNING WOOD above). `apps/four_seasons/tools/bake.py` draws the pictures of the FOUR SEASONS
+  pack (own work); the release makes that pack with it.
+- **Licence:** the licence of this repo (`LICENSE`), except the parts above with their own licence.
+
+## The music of COIL RIDER
+
+- **Files:** `apps/coil/cr_music.c` (three MIDI pieces of the owner, the same data as the music of CRUISE).
+- **Owner:** the tracks are the own compositions of Omer Agmon.
+  (c) Omer Agmon. Licence: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/): use, share and change them, and name Omer Agmon as the composer.
+- **Use:** they are in this repo only so that the firmware can play them. Do not use them outside this project
+  without permission.
 
 ## The web site (tfnos.xyz)
 

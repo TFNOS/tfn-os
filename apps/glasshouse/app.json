@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "GLASSHOUSE",
+ "sym": "app_glass",
+ "group": "GAMES",
+ "emoji": "🪴",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_glass.c",
+  "gl_sfx.c",
+  "gl_music.c"
+ ],
+ "store": {
+  "en": "A destruction puzzle in a diorama of glass and timber. Cut a rope, pull a pin or crack a pane, and the chain of events in real physics brings down the marked part, but the fragile thing must stay whole. 10 levels, slow motion, replay. English and Hebrew.",
+  "he": "GLASSHOUSE: פאזל הרס בדיורמה של זכוכית ועץ. חתכו חבל, שלפו פין או סדקו זגוגית, ושרשרת אירועים בפיזיקה אמיתית מפילה את החלק המסומן, אבל הדבר השביר חייב להישאר שלם. 10 שלבים, הילוך איטי ושידור חוזר. עברית ואנגלית."
+ }
+}

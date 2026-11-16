@@ -1,0 +1,32 @@
+glasshouse 8
+name THE CONSERVATORY | החממה הגדולה
+idea Two moves, in the right order. | שני מהלכים, בסדר הנכון.
+sky winter
+ground snow
+object swan 236 139
+moves 2
+par 2
+goal break tower 3
+deco fence 520 139 80
+deco tree 70 139 36
+deco lamppost 430 139
+deco shed 600 139 42
+deco rocks 290 139 18
+plank shelf 160 70 52 4 static
+post sleg 136 104 4 68 static
+ball iron 176 62 6 dens=14
+plank ramp 196 21.5 5 100 a=8
+hinge rh ramp ground 189 71
+weld rp ramp ground 195 30
+stone blk 268 129 14 20 static
+cell g1 330 120 30 38 grid=2x2 tag=tower
+cell g2 330 82 30 38 grid=2x2 tag=tower
+roof g3 330 56 30 14 grid=2x1 tag=tower
+weld gw1 g1 ground 330 139 break=25
+weld gw2 g2 g1 330 101 break=400
+weld gw3 g3 g2 330 63 break=400
+move pull rp at=195,30
+move kick iron dir=1,0 power=2.2
+solve 0 rp
+solve 2.5 iron
+fail 0 iron

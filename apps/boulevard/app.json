@@ -1,0 +1,19 @@
+{
+ "tfn_app": 1,
+ "name": "BOULEVARD",
+ "sym": "app_blvd",
+ "group": "GAMES",
+ "emoji": "🏙️",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_blvd.c",
+  "bv_music.c",
+  "bv_art.c",
+  "bv_sfx.c"
+ ],
+ "store": {
+  "en": "A property game of Tel Aviv: buy streets from Florentin to Rothschild, add floors and towers, collect rent and trade. 2 to 6 players on one board or with friends on their boards, and bots. Hebrew and English. Needs an SD card.",
+  "he": "משחק נדל\"ן של תל אביב: קונים רחובות מפלורנטין עד רוטשילד, בונים קומות ומגדלים, גובים שכירות ומחליפים. 2 עד 6 שחקנים על לוח אחד או עם חברים על הלוחות שלהם, ובוטים. עברית ואנגלית. צריך כרטיס SD."
+ }
+}

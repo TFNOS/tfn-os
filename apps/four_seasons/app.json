@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "FOUR SEASONS",
+ "sym": "app_seasons",
+ "group": "GAMES",
+ "emoji": "🍂",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_seasons.c",
+  "fs_music.c"
+ ],
+ "idf": "all",
+ "store": {
+  "en": "A calm pixel-art puzzle in one valley. Find, repair and fly grandpa's old kite. Drag to change the season: each one shows and hides other things. 14 places, hints, no time limit. Hebrew and English. Needs an SD card (about 1 MB).",
+  "he": "חידת פיקסל רגועה בעמק אחד. מצאו, תקנו והעיפו את העפיפון הישן של סבא. גררו כדי להחליף עונה: כל עונה מראה ומסתירה דברים אחרים. 14 מקומות, רמזים, בלי מגבלת זמן. עברית ואנגלית. צריך כרטיס SD (בערך 1 MB)."
+ }
+}

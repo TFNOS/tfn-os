@@ -1,0 +1,39 @@
+glasshouse 10
+name THE TWO WINGS | שתי הכנפיים
+idea Bring down both wings. Each one falls away. | הפילו את שתי הכנפיים. כל אחת נופלת החוצה.
+sky gold
+ground cobble
+object fish 320 139
+moves 3
+par 2
+goal down wings 80
+deco lamppost 240 139
+deco lamppost 372 139
+deco flowers 320 139 30
+deco barrel 610 139
+cell lw1 196 120 30 38 grid=2x2 tag=wings
+cell lw2 196 82 30 38 grid=2x2 tag=wings
+roof lw3 196 56 30 14 grid=2x1 tag=wings
+weld lwa lw1 ground 196 139 break=40
+weld lwb lw2 lw1 196 101 break=400
+weld lwc lw3 lw2 196 63 break=400
+rope wl lw3 196 50 ground 60 136 len=196
+winch wa rope=wl speed=45 min=40
+cell rw1 480 120 30 38 grid=2x2 tag=wings
+cell rw2 480 82 30 38 grid=2x2 tag=wings
+roof rw3 480 56 30 14 grid=2x1 tag=wings
+weld rwa rw1 ground 480 139 break=40
+weld rwb rw2 rw1 480 101 break=400
+weld rwc rw3 rw2 480 63 break=400
+plank tr 435.4 86.3 7 104 a=6 dens=3
+hinge th tr ground 430 138
+weld tp tr ground 433 100
+plank tt 273 90.3 7 96 a=6 dens=3
+hinge th2 tt ground 268 138
+weld tp2 tt ground 271 100
+move start wa
+move pull tp at=433,100
+move pull tp2 at=271,100
+solve 0 wa
+solve 3 tp
+fail 0 tp2

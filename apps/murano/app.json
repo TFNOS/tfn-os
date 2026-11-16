@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "MURANO",
+ "sym": "app_murano",
+ "group": "GAMES",
+ "emoji": "🏺",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_murano.c",
+  "mu_sfx.c",
+  "mu_music.c"
+ ],
+ "store": {
+  "en": "Blow glass in a Venice workshop, 1740. Keep the pipe turning or the hot glass sags; blow, tilt to stretch it, pinch a neck with the jacks, reheat before it sets. 5 days of orders, then market days. At dawn the piece shows its real colour. English and Hebrew.",
+  "he": "ניפוח זכוכית בסדנה בוונציה, 1740. סובבו את הצינור, אחרת הזכוכית החמה צונחת; נשפו, הטו כדי למתוח, צבטו צוואר בצבת וחממו שוב לפני שהיא מתקשה. 5 ימי הזמנות ואז ימי שוק. בשחר היצירה מראה את צבעה האמיתי. עברית ואנגלית."
+ }
+}

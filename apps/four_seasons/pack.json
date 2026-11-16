@@ -1,0 +1,8 @@
+{
+ "tfn_pack": 1,
+ "about": "The data pack of FOUR SEASONS: tools/bake.py draws the scenes (numpy, Pillow); the effects come from sfx/.",
+ "name": "seasons",
+ "dir": "seasons",
+ "make": {"run": ["tools/bake.py", "--out", "{out}"], "same": ["fs_geo.inc"]},
+ "files": [{"from": "sfx", "to": "sfx"}]
+}

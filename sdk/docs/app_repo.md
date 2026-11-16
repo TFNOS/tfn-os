@@ -91,9 +91,9 @@ REVIEWED until the store signs it ([store.md](store.md), section 6).
 | --- | --- |
 | `#include "tfn/gfx.h"` (and `app.h`, `input.h`, `audio.h`, `settings.h`, `sysui.h`, `uikit.h` ...) | The public API of TFN OS ([api.md](api.md)). |
 | `#include "tfn/board.h"` | The capabilities of the board of the kind (`BOARD_BAR_SCREEN`, `LCD_W`, `LCD_H` ...). |
-| `#include "tfdraw/tfdraw.h"`, `"tficon/tficon.h"`, `"kscroll/kscroll.h"`, `"jingle/jingle.h"`, `"quest_tilt/quest_tilt.h"`, `"t5view/t5view.h"`, `"sndrel/sndrel.h"` | The header libs. |
+| `#include "tfdraw/tfdraw.h"`, `"tficon/tficon.h"`, `"kscroll/kscroll.h"`, `"jingle/jingle.h"`, `"quest_tilt/quest_tilt.h"`, `"t5view/t5view.h"`, `"sndrel/sndrel.h"`, `"rndout/rndout.h"`, `"rndview/rndview.h"`, `"tf3d/tf3d.inc"`, `"advhint/advhint.inc"` | The header libs (`tf3d.inc` and `advhint.inc`: the app includes the code in one source). |
 | `#include "tfsfx/tfsfx.h"`, `"tfphys/tfphys.h"`, `"tfnet/tfnet.h"`, `"tfmqtt/tfmqtt.h"`, `"zimread/zimread.h"`, `"zstd/zstd.h"` | The module libs: their code is in the firmware (ABI names, rev 22). Include the header only. The network functions of `tfnet` need the permission `net`. |
-| `#include "rfpulse/rfpulse.h"`, `"rfpulse/rfp_board.h"`, `"rfdecode/rfdecode.h"`, `"irdecode/irdecode.h"`, `"rfsrc/rfsrc.h"`, `"sdrdsp/sdr_spec.h"` (and the other `sdr_*.h`), `"strokefont/strokefont.h"`, `"drumkit/drumkit.h"` | More module libs of the firmware (the radio and pulse tools, the stroke font, the drums). Include the header only. `"rfpulse/rfp_sketch.inc"` is the wiring sketch of a pin connection: the app compiles it. |
+| `#include "rfpulse/rfpulse.h"`, `"rfpulse/rfp_board.h"`, `"rfdecode/rfdecode.h"`, `"irdecode/irdecode.h"`, `"rfsrc/rfsrc.h"`, `"sdrdsp/sdr_spec.h"` (and the other `sdr_*.h`), `"strokefont/strokefont.h"`, `"drumkit/drumkit.h"`, `"midi_bg/midi_bg.h"`, `"midi_bg/bgn.h"` | More module libs of the firmware (the radio and pulse tools, the stroke font, the drums, the background music player). Include the header only. `"rfpulse/rfp_sketch.inc"` is the wiring sketch of a pin connection: the app compiles it. |
 | `#include "minimp3/minimp3.h"`, `"simplewebp/simplewebp.h"` | The source libs: the app compiles them (one source of the app defines the implementation). |
 | `esp_heap_caps.h`, `esp_random.h`, `esp_timer.h`, `esp_log.h`, `esp_err.h`, `freertos/FreeRTOS.h`, `freertos/task.h`, `freertos/queue.h`, `freertos/semphr.h` | The usual ESP-IDF headers. The default include folders (`"idf": "min"`) have them. |
 | Other ESP-IDF headers (`esp_wifi.h`, `driver/uart.h`, `lwip/sockets.h`, `esp_tls.h` ...) | Put `"idf": "all"` in `app.json`. Then the build has all include folders of ESP-IDF. Each raw ESP-IDF name must be in the ABI ([raw.md](raw.md)). |
@@ -109,8 +109,10 @@ its path in the repo (`"../../libs/tfdraw/tfdraw.h"`) or by its bare name (`"tfd
   scales another size. A pixel with an alpha under 128 is a hole (the menu shows its background there).
 - With no PNG file, the tool makes a plain tile: a rounded square in a colour from the id, with the first letter of
   the name.
-- The icon of the package has one frame. An animated icon (the `draw_icon` of the `app_t`) needs the icon tool of the
-  repo (`sdk/tools/host`, `mk_app.py`). That tool compiles the whole repo, so it cannot run out of the repo.
+- An animated icon: a PNG file with a column of 2 to 16 square frames (the height = the number of frames x the width;
+  the first frame at the top). Each frame shows for 125 ms. The icons of the apps of this repo are such columns
+  (`apps/<app>/icon.png`), made from the `draw_icon` of each app by the icon tool (`sdk/tools/host`, `mk_app.py`); the
+  same `icon.bin` comes out of them.
 
 The `app_t` flags of `manifest.txt` (`landscape`, `native`, `round`, `round_fit`, `wheel`, `key`, `run`, `needs`) come
 from the `app_t` in `app.elf` of each kind. They are the values of the board kind.

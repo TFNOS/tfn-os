@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "DEEP CURRENT",
+ "sym": "app_deep",
+ "group": "GAMES",
+ "emoji": "🪼",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_deep.c",
+  "dc_music.c",
+  "dc_sfx.c"
+ ],
+ "store": {
+  "en": "You are a glowing sea creature that becomes what it eats: each prey adds a fin, jaws, spines, a shell or a lure. Hunters tear off parts. Ride the deep current from the shallows to the abyss. Tilt to swim, touch to dash. Hebrew and English. Needs an SD card.",
+  "he": "אתם יצור ים זוהר שהופך למה שהוא אוכל: כל טרף מוסיף סנפיר, לסתות, קוצים, שריון או פיתיון. טורפים קורעים חלקים. רכבו על הזרם העמוק מהמים הרדודים עד התהום. הטו כדי לשחות, געו כדי לזנק. עברית ואנגלית. צריך כרטיס SD."
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "COIL RIDER",
+ "sym": "app_coil",
+ "group": "GAMES",
+ "emoji": "🏍️",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_coil.c",
+  "cr_levels.c",
+  "cr_music.c"
+ ],
+ "store": {
+  "en": "A motorbike trial on stretchy springs through 14 hand-built levels of caves, cliffs, islands and a loop. Tilt to ride, hold a side to lean, both sides to load the springs and bounce, double tap to turn. Take all the crystals, then the gate. English and Hebrew.",
+  "he": "טריאל אופנועים על קפיצים נמתחים ב-14 שלבים בנויים ביד: מערות, צוקים, איים ולולאה. הטו כדי לרכוב, החזיקו צד כדי להישען, שני צדדים כדי לטעון את הקפיצים ולקפוץ, הקשה כפולה כדי להסתובב. אספו את כל הגבישים, ואז את השער. עברית ואנגלית."
+ }
+}

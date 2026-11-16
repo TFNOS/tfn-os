@@ -34,7 +34,7 @@
 // the app files of sdk/tools/store_index.py. A board with no manager uses it (the store source AUTO), and the board
 // owner can set another address. HTTPS only.
 #ifndef TFN_STATIC_STORE_URL
-#define TFN_STATIC_STORE_URL "https://omeriko9.github.io/tfn-os/store/"
+#define TFN_STATIC_STORE_URL "https://tfnos.github.io/tfn-os/store/"
 #endif
 // The store source of a board with no setting (main/tfn_sstore.h): 0 = AUTO (the manager when the board knows one,
 // else the static store), 1 = MGR (the manager only: the board never asks the static store), 2 = STATIC.

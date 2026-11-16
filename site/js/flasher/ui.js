@@ -333,6 +333,7 @@ async function onWrite() {
       (state.plan.mode === 'install' ? 'On the board, open SETUP > WIFI to join your network.' : 'Your apps and settings stay.');
     log('Done: ' + state.plan.mode + ' ' + state.plan.version + ' for ' + state.board.kind + '.');
     stat('done', Object.assign({ sec: Math.round((Date.now() - t0) / 1000) }, what));
+    $('next-apps').hidden = false;
     await state.esp.close();
     state.esp = null;
     state.plan = null;

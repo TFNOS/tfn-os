@@ -154,7 +154,16 @@ def c_bytes(v):
     return ', '.join('0x%s' % v[i:i + 2] for i in range(0, len(v), 2))
 
 
-def header_text(store_pub, ota_pub, ota_pub2=''):
+STORE_URL = re.compile(r'^https://[a-z0-9.-]+(/[A-Za-z0-9._~-]+)*/$')
+
+
+def store_url(v):
+    if not STORE_URL.match(v or '') or len(v) >= 160:
+        raise Fault('the store address %r is not an https:// address that ends with / (159 characters at most)' % v)
+    return v
+
+
+def header_text(store_pub, ota_pub, ota_pub2='', url=''):
     keys = [('TFN_STORE_PUBKEY_BYTES', key_hex(store_pub, 'the store key')),
             ('TFN_OTA_PUBKEY1_BYTES', key_hex(ota_pub, 'the OTA key'))]
     if ota_pub2:
@@ -163,6 +172,9 @@ def header_text(store_pub, ota_pub, ota_pub2=''):
            '// main/tfn_defaults.h reads this file. The build makes it: git does not track it.', '#pragma once']
     for name, v in keys:
         out += ['#ifndef %s' % name, '#define %s %s' % (name, c_bytes(v)), '#endif']
+    if url:
+        # the static store of this release (main/tfn_sstore.h): the Pages site of the repo that made the release
+        out += ['#ifndef TFN_STATIC_STORE_URL', '#define TFN_STATIC_STORE_URL "%s"' % store_url(url), '#endif']
     return '\n'.join(out) + '\n'
 
 
@@ -174,6 +186,7 @@ def main(argv=None):
     h.add_argument('--store-pub', required=True)
     h.add_argument('--ota-pub', required=True)
     h.add_argument('--ota-pub2', default='')
+    h.add_argument('--store-url', default='')
     f = sub.add_parser('force')
     f.add_argument('sdkconfig')
     f.add_argument('--boards', required=True)
@@ -190,10 +203,10 @@ def main(argv=None):
     a = p.parse_args(argv)
     try:
         if a.cmd == 'header':
-            text = header_text(a.store_pub, a.ota_pub, a.ota_pub2)
+            text = header_text(a.store_pub, a.ota_pub, a.ota_pub2, a.store_url)
             with open(a.out, 'w', encoding='utf-8', newline='\n') as out:
                 out.write(text)
-            print('%s: %d keys' % (a.out, text.count('#define ')))
+            print('%s: %d values' % (a.out, text.count('#define ')))
         elif a.cmd == 'force':
             if not os.path.isfile(a.sdkconfig):
                 raise Fault('no %s (run "idf.py reconfigure" first)' % a.sdkconfig)

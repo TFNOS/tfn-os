@@ -63,6 +63,13 @@ def test_header(tmp):
     expect(text.count('#ifndef ') == 2, 'header: each value only when it is not defined')
     rc = R.main(['header', '--out', out, '--store-pub', KEY_S, '--ota-pub', KEY_A, '--ota-pub2', KEY_B])
     expect(rc == 0 and '#define TFN_OTA_PUBKEY2_BYTES 0x04, 0xb2' in read(out), 'header: the second OTA key')
+    rc = R.main(['header', '--out', out, '--store-pub', KEY_S, '--ota-pub', KEY_A, '--store-url',
+                 'https://tfnos.github.io/tfn-os/store/'])
+    expect(rc == 0 and '#define TFN_STATIC_STORE_URL "https://tfnos.github.io/tfn-os/store/"' in read(out),
+           'header: the address of the static store')
+    for bad in ('http://tfnos.github.io/tfn-os/store/', 'https://tfnos.github.io/tfn-os/store', 'https://a/"b/'):
+        expect(R.main(['header', '--out', out, '--store-pub', KEY_S, '--ota-pub', KEY_A, '--store-url', bad]) == 1,
+               'header: a bad store address stops the job (%s)' % bad)
     for bad, what in ((KEY_A[:-2], 'a short key'), ('05' + KEY_A[2:], 'not 04'), ('', 'no key'),
                       (KEY_A[:-1] + 'g', 'not hex')):
         expect(R.main(['header', '--out', out, '--store-pub', KEY_S, '--ota-pub', bad]) == 1,

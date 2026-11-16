@@ -3,6 +3,7 @@
 Pages, a release). A board or a person gets the files with plain GET requests.
 
   python store_index.py make <packages> --out <store> --key <pem> [--release V] [--kinds lcd349,cores3]
+                         [--packs <folder>]
   python store_index.py verify <store> --pub <pem | 130 hex digits> [--kinds lcd349,cores3]
   python store_index.py pub <pem>
 
@@ -14,6 +15,16 @@ app.elf, icon.bin, sig and, for some apps, watch.elf. The store gets:
   <store>/apps/<id>/<kind>/<file>             the files of each package, as the board install takes them
   <store>/apps/<id>/<id>-<kind>.zip           the same files in one zip (for the page "Install an app file" of the
                                               board web page)
+  <store>/packs/<name>/<file>                 the files of each data pack (--packs: the output folder of
+                                              store_pack.py: <folder>/packs.json and <folder>/<name>/...)
+
+THE DATA PACKS (the big files of an app for the SD card). With packs, index.json also has
+  "packs": [{"name": "wood", "dir": "wood", "app": "wood", "path": "packs/wood/", "size": <the bytes of all files>,
+             "files": [{"path": "p_cabin_a.twp", "size": n, "sha256": "<hex>"}, ...]}, ...]
+and the entry of each app with a pack has "pack": "<name>". A file of a pack goes to the SD card as
+/sdcard/<dir>/<path> (<path> can have folders: "sfx/click.mp3"); the store has it at <path of the pack><path>. The
+board parser of the index (main/tfn_sstore_core.c) skips these keys. The signature of the index covers the size and
+the SHA-256 of each file of each pack.
 
 The signature of each package is the file "sig" that the board checks (main/tfn_app.c tfa_sig_ok): the same signature
 form over manifest.txt, by the same store key. manifest.txt holds the SHA-256 of app.elf, icon.bin and watch.elf, so
@@ -287,7 +298,42 @@ def entry_of(m):
             'emoji': m.get('emoji', ''), 'desc': m.get('desc', ''), 'desc_he': m.get('desc_he', ''), 'kinds': {}}
 
 
-def make(src, out, key_path, release='', kinds=()):
+PACK_PART = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')
+
+
+def pack_rel(path):
+    """A file path of a pack: folders and a name of A-Z a-z 0-9 . _ - (no "..", no back slash, no start "/")."""
+    if not isinstance(path, str) or not all(PACK_PART.match(p) for p in path.split('/')):
+        raise StoreError('a file of a pack has a path that is not safe: %r' % (path,))
+    return path
+
+
+def read_packs(src):
+    """[(meta, [(rel path, bytes)])] of the output folder of store_pack.py."""
+    p = os.path.join(src, 'packs.json')
+    if not os.path.isfile(p):
+        raise StoreError('no packs.json in %s (store_pack.py make)' % src)
+    with open(p, encoding='utf-8') as h:
+        meta = json.load(h)
+    out = []
+    for m in meta:
+        d = os.path.join(src, m.get('name', ''))
+        if not ID_RX.match(m.get('name', '')) or not ID_RX.match(m.get('dir', '')) or not os.path.isdir(d):
+            raise StoreError('packs.json: the pack %r has no good name, dir or folder' % m.get('name'))
+        files = []
+        for root, dirs, names in os.walk(d):
+            dirs.sort()
+            for f in sorted(names):
+                rel = os.path.relpath(os.path.join(root, f), d).replace(os.sep, '/')
+                with open(os.path.join(root, f), 'rb') as h:
+                    files.append((pack_rel(rel), h.read()))
+        if not files:
+            raise StoreError('the pack %s has no files' % m['name'])
+        out.append((m, sorted(files)))
+    return out
+
+
+def make(src, out, key_path, release='', kinds=(), packs=''):
     key = load_key(key_path)
     pt = point_of(key)
     pkgs = read_packages(src, kinds)
@@ -317,6 +363,23 @@ def make(src, out, key_path, release='', kinds=()):
         apps.append(app)
     index = {'tfn_store': STORE_FORMAT, 'release': release, 'key_id': key_id(pt), 'pubkey': pt.hex(),
              'kinds': sorted({k for a in apps for k in a['kinds']}), 'apps': apps}
+    if packs:
+        by_id = {a['id']: a for a in apps}
+        plist = []
+        for m, files in read_packs(packs):
+            if m.get('app') not in by_id:
+                raise StoreError('the pack %s is for the app %r, which is not in the store' % (m['name'], m.get('app')))
+            if 'pack' in by_id[m['app']]:
+                raise StoreError('the app %s has two packs' % m['app'])
+            base = 'packs/%s/' % m['name']
+            fl = []
+            for rel, data in files:
+                write(os.path.join(out, *(base + rel).split('/')), data)
+                fl.append({'path': rel, 'size': len(data), 'sha256': sha256(data)})
+            by_id[m['app']]['pack'] = m['name']
+            plist.append({'name': m['name'], 'dir': m['dir'], 'app': m['app'], 'path': base,
+                          'size': sum(f['size'] for f in fl), 'files': fl})
+        index['packs'] = plist
     data = (json.dumps(index, indent=1, ensure_ascii=False, sort_keys=False) + '\n').encode('utf-8')
     write(os.path.join(out, 'index.json'), data)
     write(os.path.join(out, 'index.sig'), sign(key, data))
@@ -364,7 +427,48 @@ def check_index_form(index):
                 if not isinstance(v.get('size'), int) or v['size'] <= 0 or not HEX64.match(str(v.get('sha256', ''))):
                     raise StoreError('%s/%s: %s has no size or SHA-256' % (a['id'], kind, f))
             safe_rel(e['zip'].get('path'))
+    check_packs_form(index, seen)
     return True
+
+
+def check_packs_form(index, ids):
+    """The form of "packs" of index.json and of the "pack" of each app (THE DATA PACKS at the top)."""
+    packs = index.get('packs', [])
+    if not isinstance(packs, list):
+        raise StoreError('index.json: "packs" is not a list')
+    names, dirs = set(), set()
+    for p in packs:
+        if not isinstance(p, dict) or not ID_RX.match(str(p.get('name', ''))) or p['name'] in names:
+            raise StoreError('index.json: a pack has no good name, or the name is not unique')
+        where = 'the pack ' + p['name']
+        names.add(p['name'])
+        if not ID_RX.match(str(p.get('dir', ''))) or p['dir'] in dirs:
+            raise StoreError('%s: the card folder "dir" is not good or not unique' % where)
+        dirs.add(p['dir'])
+        if p.get('app') not in ids:
+            raise StoreError('%s: "app" is not an app of the index' % where)
+        if safe_rel(p.get('path')) != 'packs/%s/' % p['name']:
+            raise StoreError('%s: the path is not packs/<name>/' % where)
+        fl = p.get('files')
+        if not isinstance(fl, list) or not fl:
+            raise StoreError('%s: no files' % where)
+        seen = set()
+        for f in fl:
+            if not isinstance(f, dict) or pack_rel(f.get('path')) in seen:
+                raise StoreError('%s: a file has no path, or the path is not unique' % where)
+            seen.add(f['path'])
+            if not isinstance(f.get('size'), int) or f['size'] < 0 or not HEX64.match(str(f.get('sha256', ''))):
+                raise StoreError('%s: %s has no size or SHA-256' % (where, f['path']))
+        if p.get('size') != sum(f['size'] for f in fl):
+            raise StoreError('%s: "size" is not the sum of the files' % where)
+    for a in index['apps']:
+        if 'pack' in a:
+            want = [p for p in packs if p['name'] == a['pack']]
+            if not want or want[0]['app'] != a['id']:
+                raise StoreError('%s: "pack" names no pack of this app' % a['id'])
+    for p in packs:
+        if not any(a.get('pack') == p['name'] for a in index['apps']):
+            raise StoreError('the pack %s: its app does not name it' % p['name'])
 
 
 def check_store(get, pt, kinds=()):
@@ -401,6 +505,13 @@ def check_store(get, pt, kinds=()):
             if zb is None or len(zb) != e['zip']['size'] or sha256(zb) != e['zip']['sha256']:
                 raise StoreError('%s/%s: the zip is not the file of the index' % (a['id'], kind))
             n += 1
+    for p in index.get('packs', []):
+        for f in p['files']:
+            b = get(p['path'] + f['path'])
+            if b is None:
+                raise StoreError('the pack %s: no file %s' % (p['name'], f['path']))
+            if len(b) != f['size'] or sha256(b) != f['sha256']:
+                raise StoreError('the pack %s: %s is not the file of the index' % (p['name'], f['path']))
     return n, index
 
 
@@ -414,6 +525,12 @@ def folder_getter(root):
     return get
 
 
+def packs_text(index):
+    """'<n> data packs (<files> files, <bytes> bytes)' of an index."""
+    p = index.get('packs', [])
+    return '%d data packs (%d files, %d bytes)' % (len(p), sum(len(x['files']) for x in p), sum(x['size'] for x in p))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -423,6 +540,7 @@ def main(argv=None):
     m.add_argument('--key', required=True, help='the store key (a P-256 private PEM file)')
     m.add_argument('--release', default='', help='the release of the store (only a fact in the index)')
     m.add_argument('--kinds', default='', help='only these kinds (a list with commas)')
+    m.add_argument('--packs', default='', help='the data packs: the output folder of store_pack.py make')
     v = sub.add_parser('verify', help='check a store folder')
     v.add_argument('store')
     v.add_argument('--pub', required=True,
@@ -434,13 +552,15 @@ def main(argv=None):
     kinds = tuple(k for k in getattr(a, 'kinds', '').split(',') if k)
     try:
         if a.cmd == 'make':
-            idx = make(a.packages, a.out, a.key, a.release, kinds)
+            idx = make(a.packages, a.out, a.key, a.release, kinds, a.packs)
             n = sum(len(x['kinds']) for x in idx['apps'])
-            print('STORE MADE: %d apps, %d packages, key %s -> %s' % (len(idx['apps']), n, idx['key_id'], a.out))
+            print('STORE MADE: %d apps, %d packages, %s, key %s -> %s' % (len(idx['apps']), n, packs_text(idx),
+                                                                         idx['key_id'], a.out))
         elif a.cmd == 'verify':
             pt = parse_pub(a.pub)
             n, idx = check_store(folder_getter(a.store), pt, kinds)
-            print('STORE OK: %d apps, %d packages, key %s' % (len(idx['apps']), n, key_id(pt)))
+            print('STORE OK: %d apps, %d packages, %s, key %s' % (len(idx['apps']), n, packs_text(idx),
+                                                                 key_id(pt)))
         else:
             pt = parse_pub(a.pem)
             print('%s\nkey ID %s' % (pt.hex(), key_id(pt)))

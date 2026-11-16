@@ -1,8 +1,8 @@
 {
  "tfn_store": 1,
  "release": "9.8.7",
- "key_id": "5fd7e9f3b8acb6de",
- "pubkey": "04541eb061b2f398c9fd6a3fff669761cb49d0910081e7859ef37c830c5fdfb483aa171fd1913444e8274d8813d200403473d1992889a67e2087e7029cbe113d86",
+ "key_id": "046fc4be0ce531d9",
+ "pubkey": "040379d1194cab56e00a6ad2c7f8c5842d77d0e1b19764cb3a2975641a7752cee35df565fb4d1068869b3932a667b265b3a6f40bb5846facaea3b714f2926e9fa2",
  "kinds": [
   "cores3",
   "lcd349"
@@ -40,13 +40,13 @@
       },
       "sig": {
        "size": 64,
-       "sha256": "95ba67d36ae8bac6df7bd9356c6277818d29cc95934198afd7987e4922c899e5"
+       "sha256": "1f3cd776cc6b3298d7a3b06bd6aa253283f4613d2f8c04e3dbad35965721f740"
       }
      },
      "zip": {
       "path": "apps/abix/abix-lcd349.zip",
       "size": 4165,
-      "sha256": "8c941fa23f6058d2491358100979099f3f72fc0fb2db03840a30da5979723886"
+      "sha256": "f5beaaf7f1fdd63ed2da11cfb39074b3ed36cd36f259e6972e3498c9a59be4dc"
      }
     }
    }
@@ -86,13 +86,13 @@
       },
       "sig": {
        "size": 64,
-       "sha256": "79e8e0a8fe85970ab15690c61ddd8d3fc506d32d6d4874b24bb65c84b10d0c86"
+       "sha256": "bc2ff578fae3bbc4674a62d4b87e073fd180bf2f46cea54faf00bc7cc343ca2d"
       }
      },
      "zip": {
       "path": "apps/demo/demo-cores3.zip",
       "size": 4176,
-      "sha256": "1c51a7a21103fcc89bb70c8c945a5d63e1366465c591ef8a899dd4980b6646d4"
+      "sha256": "12903a277e661dc97ea24780ca0099bfac9100846696a491b9395fe7fcd0b20d"
      }
     },
     "lcd349": {
@@ -120,16 +120,17 @@
       },
       "sig": {
        "size": 64,
-       "sha256": "89dbd3f327c2aa522d9d4cc91d34534adcfe610514e3cda533a67d1dbc48ec79"
+       "sha256": "e5c59e53b0b523c648dfa303005f6d7c8fe7d5315ca7a38fdc4b94b7e360a746"
       }
      },
      "zip": {
       "path": "apps/demo/demo-lcd349.zip",
       "size": 4176,
-      "sha256": "7d272b904bc167e2deb3938f36e756600ac42fd6ceb88ee03c1384de5ba137fd"
+      "sha256": "59a906a92370d3f5ab911794802fffa683be8d1793f404ff4381b6a33032a885"
      }
     }
-   }
+   },
+   "pack": "demo"
   },
   {
    "id": "fut",
@@ -165,13 +166,13 @@
       },
       "sig": {
        "size": 64,
-       "sha256": "736b874609f7408a5506e5f03e7e369b04778a835d0234161415a2cae90a0289"
+       "sha256": "b0e3811502e1ba13054e066dd4bb4babac30b5072a05b58f586770121253827c"
       }
      },
      "zip": {
       "path": "apps/fut/fut-cores3.zip",
       "size": 4172,
-      "sha256": "b2cf3bf9fba81fdfe272fb5bb539b0b83c3b6678652de818a9e62d415909b77a"
+      "sha256": "a0b964e69fe9b74fd9263d2e8abffcbbcccc177c17f982aee63bb44d9410e90a"
      }
     },
     "lcd349": {
@@ -198,13 +199,13 @@
       },
       "sig": {
        "size": 64,
-       "sha256": "c4737db78149761daeb0d8db024bbbed4ec65c2413479256d1974f341c08b7c0"
+       "sha256": "2ca92cb2f83bcc6085e7278a9f801edb29bb242e274d8e24f42cb8e73988e4d0"
       }
      },
      "zip": {
       "path": "apps/fut/fut-lcd349.zip",
       "size": 4170,
-      "sha256": "cad552e81e0d3632fcc4cfe4812ac591eb003c9a5092eb08566c3b2d1e0d139a"
+      "sha256": "fabe269b6e6e4ebbadb980dcd032f453cb8d6a223170773f4c7aa71be58f65ef"
      }
     }
    }
@@ -241,7 +242,7 @@
       },
       "sig": {
        "size": 64,
-       "sha256": "18ab99fd05cfac9566314cd8a687f9e774dcf03ea77d3b2c14c65e967dceb6db"
+       "sha256": "608349eb3db45cc77e6ce22a7d11a9142fffeffe208005aa77c7e66ec35c06f2"
       },
       "watch.elf": {
        "size": 700,
@@ -251,10 +252,31 @@
      "zip": {
       "path": "apps/watchy/watchy-lcd349.zip",
       "size": 5020,
-      "sha256": "1a840fc737e7b97bc668e9eb9f94ea2ee959e77965bba0f30916267458419ae7"
+      "sha256": "5617708a2f958c6f06f765f55b009a09468d163e214f56367526cef2fd0592ad"
      }
     }
    }
+  }
+ ],
+ "packs": [
+  {
+   "name": "demo",
+   "dir": "demo",
+   "app": "demo",
+   "path": "packs/demo/",
+   "size": 2065,
+   "files": [
+    {
+     "path": "sfx/click.mp3",
+     "size": 17,
+     "sha256": "565459a796f66eaf4a288930f7f43e080dc1c2040bc053a840a3790d6af5c934"
+    },
+    {
+     "path": "world.bin",
+     "size": 2048,
+     "sha256": "10fc3c51a152e90e5b90319b601d92ccf37290ef53c35ff92507687d8a911a08"
+    }
+   ]
   }
  ]
 }

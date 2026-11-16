@@ -1,0 +1,7 @@
+{
+ "tfn_pack": 1,
+ "about": "The data pack of THE TURNING WOOD: the painted places, the layers, the close-ups and the music (MP3).",
+ "name": "wood",
+ "dir": "wood",
+ "files": [{"from": "pack/wood", "to": ""}]
+}

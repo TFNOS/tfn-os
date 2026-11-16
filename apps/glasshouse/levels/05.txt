@@ -1,0 +1,33 @@
+glasshouse 5
+name THE RAIN BARREL | חבית הגשם
+idea Open the valve: the water fills the bucket. | פתחו את הברז: המים ממלאים את הדלי.
+sky storm
+ground cobble
+object candle 170 139
+moves 1
+par 1
+goal break frame 2
+deco gallows 360 139 118 -40
+deco pipe 250 10 320 12
+deco pipe 120 20 170 22
+deco barrel 450 139
+deco barrow 520 139
+deco lamppost 70 139
+deco shed 600 139 40
+deco rocks 240 139 20
+bucket bk 320 40 16 16
+rope r1 ground 320 24 bk 320 32 break=6
+pipe va 320 16 0 1 rate=40 time=9
+pipe vb 170 26 0 1 rate=40 time=6
+cell f1 306 122 30 34 grid=2x2 tag=frame
+cell f2 336 122 30 34 grid=2x2 tag=frame
+roof f3 321 98 60 14 grid=4x1 tag=frame
+weld fw1 f1 ground 306 139
+weld fw2 f2 ground 336 139
+weld fw3 f1 f2 321 122
+weld fw4 f3 f1 306 105
+weld fw5 f3 f2 336 105
+move open va
+move open vb
+solve 0 va
+fail 0 vb

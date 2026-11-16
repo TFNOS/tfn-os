@@ -4,6 +4,7 @@
  "sym": "app_serial",
  "group": "UTIL",
  "emoji": "🔌",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_serial.c",

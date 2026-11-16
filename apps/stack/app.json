@@ -4,6 +4,7 @@
  "sym": "app_stack",
  "group": "GAMES",
  "emoji": "🏗️",
+ "icon": "icon.png",
  "srcs": [
   "app_stack.c"
  ],

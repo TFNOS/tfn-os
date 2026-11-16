@@ -1,0 +1,18 @@
+{
+ "tfn_app": 1,
+ "name": "DIRT KINGS",
+ "sym": "app_dirt25",
+ "group": "GAMES",
+ "emoji": "🏁",
+ "icon": "icon.png",
+ "new": true,
+ "srcs": [
+  "app_dirt25.c",
+  "dk25_data.c",
+  "dk_sfx.c"
+ ],
+ "store": {
+  "en": "Monster trucks race in a dirt arena, as Super Off Road, with art made in Blender. Hold the board up as a wheel, or steer with a finger. The camera follows your truck, a small map shows the rest. Jumps, mud, nitro, a garage, a season of 8 arenas, races with 2-4 friends.",
+  "he": "משאיות מפלצת מתחרות בזירת עפר, כמו Super Off Road, עם גרפיקה מ-Blender. מחזיקים את הלוח כמו הגה, או מסובבים באצבע. המצלמה עוקבת אחרי המשאית ומפה קטנה מראה את השאר. קפיצות, בוץ, ניטרו, מוסך, עונה של 8 זירות ומרוצים עם 2-4 חברים."
+ }
+}

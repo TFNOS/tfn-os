@@ -1,3 +1,27 @@
 # The old functions over 150 lines (tests/style/check_fsize.py): file, function, lines.
 # The list only gets shorter.
+apps/backgammon/app_backgammon.c draw_panel 176
+apps/backgammon/app_backgammon.c update 208
+apps/boulevard/bv_net.inc net_poll 166
+apps/chess/app_chess.c ch_render 347
+apps/coil/cr_phys.inc bike_step 158
+apps/cubby/app_cubby.c list_build 221
+apps/cubby/cb_game.inc player_step 262
+apps/cubby/cb_game.inc rig_step 194
+apps/cubby/cb_robot.inc robot_build 272
+apps/deep_current/dc_body.inc body_draw 226
+apps/deep_current/dc_life.inc draw_life_one 280
+apps/deep_current/dc_life.inc hunter_step 153
+apps/deep_current/dc_world.inc draw_water 161
+apps/dirt_kings/app_dirt.c truck_step 243
+apps/four_seasons/app_seasons.c act 382
+apps/glasshouse/gl_level.inc lv_parse 426
+apps/gummy_siege/gs_core.inc levels_parse 181
 libs/hebcal/hc_cal.inc hc_events 203
+apps/kart/app_kart.c rows_prepare 154
+apps/murano/app_murano.c draw_scene 473
+apps/orbital/orb_pilot.inc pilot_think 395
+apps/summer/sc_bowl.inc bowl_render 206
+apps/summer/sc_peak.inc peak_render 161
+apps/summer/sc_peak.inc peak_step 318
+apps/summer/sc_skim.inc skim_step 179

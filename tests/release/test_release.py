@@ -372,11 +372,29 @@ def main():
         for i, kind in enumerate(kinds):
             fake_package(pk, 'dice', kind, 100 + i)
             fake_package(pk, 'clock', kind, 200 + i)
+        # a data pack of dice (store_pack.py: packs.json and the files of the pack)
+        packs = os.path.join(t, 'packs')
+        write(os.path.join(packs, 'packs.json'), b'[{"name": "dicepk", "dir": "dice", "app": "dice"}]\n')
+        write(os.path.join(packs, 'dicepk', 'world.bin'), bytes(range(256)) * 40)
+        write(os.path.join(packs, 'dicepk', 'sfx', 'roll.mp3'), b'ID3 a test effect')
         store = os.path.join(t, 'store')
-        store_index.make(pk, store, store_pem, VERSION)
+        idx = store_index.make(pk, store, store_pem, VERSION, packs=packs)
         get = store_index.folder_getter(store)
-        n, _ = store_index.check_store(get, bytes.fromhex(store_pub))
+        n, idx2 = store_index.check_store(get, bytes.fromhex(store_pub))
         expect(n == 2 * len(kinds), 'store_index.py: make, then verify: %d packages' % n)
+        dice = [x for x in idx2['apps'] if x['id'] == 'dice'][0]
+        pk1 = idx2.get('packs', [{}])[0]
+        expect(dice.get('pack') == 'dicepk' and pk1.get('dir') == 'dice' and pk1.get('path') == 'packs/dicepk/' and
+               [f['path'] for f in pk1.get('files', [])] == ['sfx/roll.mp3', 'world.bin'] and pk1.get('size') == 10257 and
+               os.path.isfile(os.path.join(store, 'packs', 'dicepk', 'sfx', 'roll.mp3')),
+               'store_index.py: the data pack in the index ("packs", "pack") and in packs/<name>/')
+        expect(idx == idx2, 'store_index.py: the index of make is the index of verify')
+        try:
+            write(os.path.join(packs, 'packs.json'), b'[{"name": "dicepk", "dir": "dice", "app": "nosuch"}]\n')
+            store_index.make(pk, os.path.join(t, 'store_x'), store_pem, VERSION, packs=packs)
+            expect(False, 'store_index.py: a pack of an app that is not in the store: refused')
+        except store_index.StoreError:
+            expect(True, 'store_index.py: a pack of an app that is not in the store: refused')
         expect(store_index.main(['verify', store, '--pub', store_pub]) == 0, 'store_index.py verify: exit 0')
         expect(store_index.main(['verify', store, '--pub', other_pub]) == 1, 'store_index.py: another key: exit 1')
         os.makedirs(os.path.join(t, 'bad'))
@@ -386,6 +404,14 @@ def main():
         expect(store_index.main(['verify', bad, '--pub', store_pub]) == 1, 'store_index.py: a changed index: exit 1')
         bad = damaged(store, os.path.join(t, 'bad'), 'apps/clock/%s/sig' % kinds[0], flip)
         expect(store_index.main(['verify', bad, '--pub', store_pub]) == 1, 'store_index.py: a changed sig: exit 1')
+        bad = damaged(store, os.path.join(t, 'bad'), 'packs/dicepk/world.bin', flip)
+        expect(store_index.main(['verify', bad, '--pub', store_pub]) == 1, 'store_index.py: a changed pack file: exit 1')
+        bad = damaged(store, os.path.join(t, 'bad'), 'index.json', lambda d: d.replace(b'"pack": "dicepk"', b'"x": 1'))
+        try:
+            store_index.check_index_form(json.loads(open(os.path.join(bad, 'index.json'), 'rb').read()))
+            expect(False, 'store_index.py: a pack that its app does not name: a fault of the form')
+        except store_index.StoreError:
+            expect(True, 'store_index.py: a pack that its app does not name: a fault of the form')
 
         # the web site and the release files
         site = os.path.join(t, 'site')
@@ -408,6 +434,8 @@ def main():
             ('site', 'firmware/%s/app.bin' % kinds[0], flip, 'an app of the site changed'),
             ('site', 'js/flasher/flow.js', lambda d: None, 'a script of the install page is not there'),
             ('site', 'store/apps/dice/%s/app.elf' % kinds[-1], flip, 'an app file of the store changed'),
+            ('site', 'store/packs/dicepk/sfx/roll.mp3', flip, 'a file of a data pack changed'),
+            ('site', 'store/packs/dicepk/world.bin', lambda d: None, 'a file of a data pack is not there'),
             ('rel', 'tfn-os-%s-%s.bin' % (VERSION, kinds[0]), flip, 'an OTA file of the release changed'),
             ('rel', 'SHA256SUMS', lambda d: d[:-10], 'SHA256SUMS cut'),
         ]

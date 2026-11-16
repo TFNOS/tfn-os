@@ -1,0 +1,31 @@
+glasshouse 3
+name THE PENDULUM | המטוטלת
+idea Crack the pane that holds the rope. | סדקו את הזגוגית שמחזיקה את החבל.
+sky night
+ground cobble
+object bird 178 139
+moves 1
+par 1
+goal break cloche 2
+deco gallows 330 139 112 0.1
+deco lamppost 110 139
+deco lamppost 560 139
+deco bench 470 139 36
+deco barrel 610 139
+deco rocks 40 139 26
+ball bob 279 91 8 damp=0.25
+rope ch ground 330 29 bob 279 91 look=chain
+cell win 240 110 28 40 grid=2x2 static
+rope hold win 248 99 bob 279 91 sub=1
+cell k1 372 120 30 38 grid=2x2 tag=cloche
+roof k2 372 94 30 14 grid=2x1 tag=cloche
+weld kw1 k1 ground 372 139 break=60
+weld kw2 k2 k1 372 101 break=40
+cell win2 140 70 24 30 grid=1x2 static
+pot pot 178 92 12 12 dens=3
+rope hold2 win2 146 64 pot 178 86 sub=0
+rope hang pot 178 86 ground 178 60
+move crack win at=248,99 sub=1
+move crack win2 at=146,64 sub=0
+solve 0 win
+fail 0 win2

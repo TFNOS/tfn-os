@@ -4,6 +4,7 @@
  "sym": "app_level",
  "group": "UTIL",
  "emoji": "📐",
+ "icon": "icon.png",
  "srcs": [
   "app_level.c"
  ],

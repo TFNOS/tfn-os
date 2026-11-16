@@ -84,6 +84,34 @@ static bool usbfs_path(const char *hex, char full[sizeof USBFS_ROOT + USBFS_PATH
     }
     return true;
 }
+
+// The board storage (no SD card): only the install folder of one app. "/~board/.tmp_<id>/<file>" becomes
+// TFN_DATA_DIR "/.tmp_<id>/<file>"; then "apps commit <id>" installs the files (the web page of the site sends an app
+// this way to a board with no card). Other paths stay on the SD card. Returns false for a path under /~board that is
+// not such a file.
+#define USBFS_BOARD "/~board/"
+static bool usbfs_board(char full[sizeof USBFS_ROOT + USBFS_PATH_MAX], bool *board)
+{
+    char *path = full + sizeof USBFS_ROOT - 1;
+    *board = !strncmp(path, USBFS_BOARD, sizeof USBFS_BOARD - 1);
+    if (!*board) {
+        return true;
+    }
+    const char *rest = path + sizeof USBFS_BOARD - 1;
+    const size_t tmp = strlen(TFN_TMP_USB);
+    if (strncmp(rest, TFN_TMP_USB, tmp)) {
+        return false;
+    }
+    const size_t id = strspn(rest + tmp, "abcdefghijklmnopqrstuvwxyz0123456789_");
+    const char *name = rest + tmp + id;
+    if (!id || id > 20 || name[0] != '/' || !name[1] || strchr(name + 1, '/')) {
+        return false;
+    }
+    char out[sizeof USBFS_ROOT + USBFS_PATH_MAX];
+    snprintf(out, sizeof out, "%s/%s", TFN_DATA_DIR, rest);
+    snprintf(full, sizeof out, "%s", out);
+    return true;
+}
 static void usbfs_u64(uint8_t *out, uint64_t value)
 {
     for (int i = 0; i < 8; i++) {
@@ -217,11 +245,13 @@ static void usbfs_put_cmd(uint32_t id, const char *hex, const char *first, const
 {
     uint64_t off = 0;
     char full[sizeof USBFS_ROOT + USBFS_PATH_MAX];
-    if (!usbfs_path(hex, full) || !usbfs_number(first, 10, &off) || !second || off > LONG_MAX) {
+    bool board = false;
+    if (!usbfs_path(hex, full) || !usbfs_board(full, &board) || !usbfs_number(first, 10, &off) || !second ||
+        off > LONG_MAX) {
         usbfs_error(id, "BAD_REQUEST");
         return;
     }
-    if (!USBFS_MOUNT()) {
+    if (!board && !USBFS_MOUNT()) {
         usbfs_error(id, "NO_CARD");
         return;
     }
@@ -365,11 +395,12 @@ static __attribute__((noinline)) void usbfs_command(char *args)
         return;
     }
     char path[sizeof USBFS_ROOT + USBFS_PATH_MAX];
-    if (!usbfs_path(hex, path)) {
+    bool board = false;
+    if (!usbfs_path(hex, path) || !usbfs_board(path, &board) || (board && list)) {
         usbfs_error(id, "BAD_PATH");
         return;
     }
-    if (!USBFS_MOUNT()) {
+    if (!board && !USBFS_MOUNT()) {
         usbfs_error(id, "NO_CARD");
         return;
     }

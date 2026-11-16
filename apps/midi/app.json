@@ -4,6 +4,7 @@
  "sym": "app_midictl",
  "group": "UTIL",
  "emoji": "🎚️",
+ "icon": "icon.png",
  "srcs": [
   "app_midictl.c"
  ],

@@ -4,6 +4,7 @@
  "sym": "app_i2c",
  "group": "UTIL",
  "emoji": "🔎",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_i2c.c",

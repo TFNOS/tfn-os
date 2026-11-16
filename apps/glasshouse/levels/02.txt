@@ -1,0 +1,32 @@
+glasshouse 2
+name THE TRELLIS | הסבכה
+idea Pull a pin: the trellis falls the way it leans. | שלפו פין: הסבכה נופלת לצד שאליו היא נוטה.
+sky gold
+ground lawn
+object vase 172 139
+moves 1
+par 1
+goal break bottles 2
+deco hedge 70 139 60
+deco fence 540 139 70
+deco tree 610 139 44
+deco flowers 470 139 36
+deco flowers 130 139 30
+deco pots 430 139
+plank t1 305.4 86.3 7 104 a=6 dens=3
+hinge h1 t1 ground 300 138
+weld p1 t1 ground 303 100
+plank t2 230.6 86.3 7 104 a=-6 dens=3
+hinge h2 t2 ground 236 138
+weld p2 t2 ground 233 100
+plank bench 362 126 84 4 static
+post leg1 324 133 4 10 static
+post leg2 400 133 4 10 static
+bottle b0 330 116 7 16 tough=1.0 tag=bottles look=0
+bottle b1 348 116 7 16 tough=1.0 tag=bottles look=1
+bottle b2 366 116 7 16 tough=1.0 tag=bottles look=2
+bottle b3 384 116 7 16 tough=1.0 tag=bottles look=0
+move pull p1 at=303,100
+move pull p2 at=233,100
+solve 0 p1
+fail 0 p2

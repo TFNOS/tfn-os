@@ -1,0 +1,25 @@
+glasshouse 9
+name THE GLASS DOMINOES | דומינו הזכוכית
+idea Stop the last pane before it falls on the vase. | עצרו את הזגוגית האחרונה לפני שהיא נופלת על האגרטל.
+sky dawn
+ground lawn
+object vase 375 139
+moves 2
+par 2
+goal down row 60
+deco hedge 60 139 70
+deco tree 140 139 40
+deco flowers 470 139 40
+deco shed 570 139 48
+deco gallows 352 139 104 0.1
+cell d0 258 116 10 46 grid=1x3 dens=2.4 tag=row
+cell d1 282 116 10 46 grid=1x3 dens=2.4 tag=row
+cell d2 306 116 10 46 grid=1x3 dens=2.4 tag=row
+cell d3 330 116 10 46 grid=1x3 dens=2.4 tag=row
+crate stop 352 50 14 16 dens=2
+rope sr ground 352 36 stop 352 42
+move kick d0 at=258,96 dir=1,0 power=1.6
+move cut sr
+solve 0 sr
+solve 2 d0
+fail 0 d0

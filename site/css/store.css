@@ -1,43 +1,529 @@
-/* The store page. It uses the tokens of site.css and the steps of install.css. */
+/* The store page: a gallery of the apps. It uses the tokens of site.css. The band at the top is always dark (as the
+   hero of the front page), the gallery follows the theme. */
 
-.app-list {
-  list-style: none;
-  padding: 0;
-  margin: 16px 0 0;
-  display: grid;
-  gap: 14px;
-}
-
-.app-card {
-  padding: 16px 18px;
-  border: 1px solid var(--line);
+.error {
+  margin: 18px 0 0;
+  padding: 14px 18px;
   border-radius: 12px;
-  background: var(--paper-2);
+  border-left: 5px solid var(--bad);
+  background: color-mix(in srgb, var(--bad) 10%, var(--paper));
+  color: var(--ink);
 }
 
-.app-card h3 {
-  font-size: 1.25rem;
-  margin-bottom: 4px;
+/* the dark band with the USB panel */
+.st-hero {
+  --ink: #f3f1ff;
+  --ink-2: #c4c2ea;
+  --line: rgba(255, 255, 255, 0.16);
+  color: var(--ink);
+  background:
+    radial-gradient(60% 120% at 12% 0%, rgba(124, 108, 255, 0.35), transparent 70%),
+    radial-gradient(50% 90% at 95% 100%, rgba(79, 208, 196, 0.22), transparent 70%),
+    #0b0b24;
+  padding: clamp(28px, 5vw, 56px) 0;
 }
 
-.app-card p {
-  max-width: 68ch;
-  margin-bottom: 12px;
-  overflow-wrap: anywhere;
+.st-hero-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: clamp(20px, 4vw, 56px);
+  align-items: center;
 }
 
-.app-meta {
+.st-head h1 {
+  font-size: clamp(2.3rem, 6vw, 4.2rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+
+.st-lede {
+  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
   color: var(--ink-2);
+  max-width: 46ch;
+  margin: 0;
+}
+
+.link-card {
+  padding: 22px 24px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(6px);
+}
+
+.link-card h2 {
+  font-size: 1.35rem;
+  margin: 0 0 8px;
+}
+
+.link-card p {
+  color: var(--ink-2);
+  margin: 0 0 16px;
+}
+
+.link-card a {
+  color: #c8c1ff;
+}
+
+.st-hero .btn-primary {
+  background: #a59bff;
+  border-color: #a59bff;
+  color: #14163b;
+}
+
+.st-hero .btn {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: var(--ink);
+}
+
+.st-hero .btn-primary {
+  color: #14163b;
+}
+
+.link-note {
   font-size: 0.95rem;
 }
 
-.how li {
+.link-board {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.link-board b {
+  display: block;
+  font-family: var(--font-d);
+  font-size: 1.2rem;
+}
+
+.link-board span {
+  color: var(--ink-2);
+}
+
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: #4fd0c4;
+  box-shadow: 0 0 0 4px rgba(79, 208, 196, 0.25);
+}
+
+/* the bar over the gallery */
+.st-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 28px 0 18px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: 700 0.98rem/1 var(--font-b);
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.kind-pick {
+  color: var(--ink-2);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.kind-pick select {
+  max-width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+/* the gallery */
+.gallery {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 48px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 22px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+@media (min-width: 900px) {
+  .card.wide {
+    grid-column: span 2;
+  }
+}
+
+.shot {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 640 / 172;
+  padding: 0;
+  border: 0;
+  background: #06061a;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.card.wide .shot {
+  aspect-ratio: 640 / 230;
+}
+
+.shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* an app with no preview: its own animated icon on a soft colour */
+.shot.icon-only {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(70% 140% at 50% 0%, var(--tint, #3b2f9a), #08081d 75%);
+}
+
+.shot.icon-only canvas {
+  height: 72%;
+  width: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  flex: 1;
+}
+
+.card-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.ico {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #0a0a20;
+  image-rendering: pixelated;
+}
+
+.card-name {
+  min-width: 0;
+  flex: 1;
+}
+
+.card-name h3 {
+  font-size: 1.18rem;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.card-name h3 button {
+  all: unset;
+  cursor: pointer;
+}
+
+.card-name h3 button:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.tag.games {
+  color: var(--violet);
+}
+
+.tag.tools {
+  color: var(--teal);
+}
+
+.card-desc {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.97rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.card-meta {
+  color: var(--ink-2);
+  font-size: 0.88rem;
+}
+
+.card .btn {
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 0.95rem;
+}
+
+.btn.done {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+/* the progress of an install */
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--violet), var(--teal));
+  transition: width 0.2s linear;
+}
+
+.card .bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0;
+}
+
+.card-msg {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+.card-msg.bad,
+.dlg-msg.bad {
+  color: var(--bad);
+}
+
+/* the window of one app */
+.app-dlg {
+  width: min(920px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  overflow: auto;
+}
+
+.app-dlg::backdrop {
+  background: rgba(6, 6, 22, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.dlg-media {
+  background: #06061a;
+}
+
+.dlg-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.dlg-media .shot {
+  width: 100%;
+  height: auto;
+}
+
+.dlg-media .shot.icon-only {
+  aspect-ratio: 640 / 200;
+}
+
+.dlg-body {
+  padding: 18px 22px 22px;
+}
+
+.dlg-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
   margin-bottom: 10px;
+}
+
+.dlg-head .ico {
+  width: 48px;
+  height: 48px;
+}
+
+.dlg-head h2 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.dlg-head > div {
+  flex: 1;
+}
+
+.dlg-x {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dlg-body > p {
   max-width: 72ch;
 }
 
-#kind {
-  max-width: 100%;
-  font: inherit;
-  padding: 6px 8px;
+.he summary {
+  cursor: pointer;
+  color: var(--ink-2);
+}
+
+.facts-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 18px;
+  margin: 16px 0;
+}
+
+.facts-list dt {
+  color: var(--ink-2);
+}
+
+.facts-list dd {
+  margin: 0;
+}
+
+.dlg-extra {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.dlg-extra img {
+  height: 160px;
+  width: auto;
+  border-radius: 10px;
+  background: #000;
+}
+
+.dlg-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.dlg-msg {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+}
+
+/* the part about the signatures */
+.trust {
+  max-width: 78ch;
+  margin: 8px 0 56px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+
+.trust h2 {
+  font-size: 1.4rem;
+}
+
+.other-ways summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+.other-ways li {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 760px) {
+  .st-hero-in {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
 }

@@ -132,7 +132,7 @@ The public store of TFN OS is a folder of plain files on a web host (GitHub Page
 release): `sdk/tools/store_index.py` makes it, and `.github/workflows/release.yml` makes it for each release.
 
 ```
-python sdk/tools/store_index.py make <packages> --out <store> --key <store key .pem> [--release V] [--kinds lcd349,cores3]
+python sdk/tools/store_index.py make <packages> --out <store> --key <store key .pem> [--release V] [--kinds lcd349,cores3] [--packs <packs>]
 python sdk/tools/store_index.py verify <store> --pub <public key: .pem or 130 hex digits>
 ```
 
@@ -144,6 +144,7 @@ python sdk/tools/store_index.py verify <store> --pub <public key: .pem or 130 he
 | `index.sig` | 64 bytes: the ECDSA P-256 / SHA-256 signature (r, then s) of the bytes of `index.json`. |
 | `apps/<id>/<kind>/` | `manifest.txt`, `app.elf`, `icon.bin`, `sig` (and `watch.elf`): the package as the board installs it. |
 | `apps/<id>/<id>-<kind>.zip` | The same files in one zip, for a person. |
+| `packs/<name>/<file>` | The files of a data pack (with `--packs`): the big files of an app for the SD card. |
 
 `make` signs each `manifest.txt` again with the store key (the file `sig`: the form that the board checks). The store
 takes no package of a developer key (`publisher=`): the store signs only the packages that it builds. The signature of
@@ -154,3 +155,31 @@ no fault in `verify`. The board trusts the store key only when its firmware has 
 The web page `store.html` of the site reads the index, checks its signature, and gives the zip of an app after a check
 of its size and SHA-256. The person installs the files with the web page of the board (`/apps`, "Install an app
 file") or from the SD card (FILES > INSTALL). The STORE app of the board reads only a manager now.
+
+### 7.1 The data packs of the static store
+
+An app that reads big files from the SD card (pictures, music) has a data pack. The file `pack.json` in the app
+folder (next to `app.json`) tells how the pack is made:
+
+```
+{
+ "tfn_pack": 1,
+ "name": "seasons",
+ "dir": "seasons",
+ "make": {"run": ["tools/bake.py", "--out", "{out}"], "same": ["fs_geo.inc"]},
+ "files": [{"from": "sfx", "to": "sfx"}]
+}
+```
+
+- `name`: the name of the pack in the store (`packs/<name>/`). `dir`: the folder on the SD card (`/sdcard/<dir>/`).
+- `make` (optional): a Python script of the app folder that writes the files into `{out}`. `same`: the tables of the
+  C code that the script also writes; they must not change, else the pack does not fit the app.
+- `files` (optional): the files or folders of the app folder that go into the pack (`to`: their place in the pack).
+
+`python sdk/tools/store_pack.py make apps --out <packs>` makes all packs; `store_index.py make --packs <packs>` puts
+them into the store. The index then has a list `packs`: for each pack its `name`, `dir`, `app` (the app id), `path`
+(`packs/<name>/`), `size` (all bytes) and `files` (each with `path`, `size` and `sha256`; a file goes to the card as
+`/sdcard/<dir>/<path>`). The entry of the app has `"pack": "<name>"`. The signature of the index covers each file of
+each pack, and `verify` checks each one. A file can have 100 MB at most (the limit of GitHub Pages), and the whole
+store must stay below about 1 GB (`release_check.py`). The board parser of the index skips these keys: the board does
+not install a pack from the static store; a person copies the pack to the card.

@@ -4,6 +4,7 @@
  "sym": "app_weather",
  "group": "UTIL",
  "emoji": "🌤️",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_weather.c"

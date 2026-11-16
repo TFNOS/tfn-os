@@ -4,6 +4,7 @@
  "sym": "app_simon",
  "group": "GAMES",
  "emoji": "🟢",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_simon.c"

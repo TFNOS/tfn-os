@@ -1,0 +1,29 @@
+glasshouse 1
+name THE COLD FRAME | מסגרת הקור
+idea Cut the rope: the crate falls on the glass. | חתכו את החבל: הארגז נופל על הזכוכית.
+sky dusk
+ground moss
+object egg 220 139
+moves 1
+par 1
+goal break frame 2
+deco shed 540 139 46
+deco gallows 340 139 118 40
+deco barrow 120 139
+deco pots 470 139
+deco flowers 270 139 40
+deco hedge 40 139 50
+deco rocks 600 139 20
+deco can 160 139
+crate box 380 36 20 18 dens=2.5
+rope r1 ground 380 22 box 380 27 len=6
+cell c1 370 121 36 36 grid=3x2 tag=frame
+cell c2 406 121 36 36 grid=3x2 tag=frame
+roof c3 388 96 72 14 grid=3x1 tag=frame
+weld w1 c1 ground 370 139
+weld w2 c2 ground 406 139
+weld w3 c1 c2 388 121
+weld w4 c3 c1 370 103 break=14
+weld w5 c3 c2 406 103 break=14
+move cut r1
+solve 0 r1

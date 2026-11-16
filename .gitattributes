@@ -1,2 +1,4 @@
 # The sample static store of the unit test: signed bytes (no line end change)
 tests/unit/sstore/** -text
+# the files of a data pack of the store: their SHA-256 goes into the store index (no line end change)
+apps/*/pack/** -text

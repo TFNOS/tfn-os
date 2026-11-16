@@ -4,6 +4,7 @@
  "sym": "app_touchlab",
  "group": "UTIL",
  "emoji": "👆",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_touchlab.c"

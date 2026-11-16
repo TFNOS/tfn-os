@@ -4,6 +4,7 @@
  "sym": "app_mqtt",
  "group": "UTIL",
  "emoji": "📬",
+ "icon": "icon.png",
  "new": true,
  "form": "host|Broker address (a name or an IP);port|Port (1883, or 8883 with TLS);tls|TLS|c:NO,YES;user|User name (if the broker asks);pass|Password (if the broker asks)|s;topics|Topics to subscribe (commas: home/#, zigbee2mqtt/#)",
  "form_help": "The board connects to this MQTT broker as a client (MQTT 3.1.1): open MQTT, then the settings panel > BROKER > THE BOARD PAGE. In BROKER mode the board is the broker on port 1883; with BROKER LOGIN set to THE PAGE LOGIN it asks for this user name and password.",

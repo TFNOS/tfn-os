@@ -163,6 +163,38 @@ static void key_tests(void)
     CHECK(tfn_ss_index_key(&o, &l, s_index.b, s_index.n, NULL, 64, pk, who) == TFN_PUB_NONE);
 }
 
+// The data packs (sdk/tools/store_index.py "packs" at the root and "pack" in an app): the board parser skips both
+// keys, at the end of the index (the sample) and at the start of the root and of an app.
+static void pack_tests(void)
+{
+    tfn_cat_t c[MAXAPPS];
+    tfn_ss_pkg_t p[MAXAPPS];
+    char msg[160];
+    const char *ix = (const char *)s_index.b;
+    CHECK(strstr(ix, "\n \"packs\": [") && strstr(ix, "\"pack\": \"demo\"") && strstr(ix, "\"dir\": \"demo\""));
+    int n = parse(&s_index, "lcd349", TEST_ABI, 20, s_pub, c, p, msg);
+    CHECK(n == 1 && !strcmp(c[0].id, "demo") && msg[0] == 0);
+    tfn_store_cat_free(c, n);
+    blob_t b = edit("{\n \"tfn_store\": 1,", "{\n \"packs\": [{\"name\": \"x\", \"dir\": \"x\", \"files\": [{\"path\": "
+                                             "\"a/b.bin\", \"size\": 1, \"sha256\": \"00\"}], \"size\": 1}],\n"
+                                             " \"tfn_store\": 1,");
+    CHECK(b.b != NULL);
+    if (b.b) {
+        n = parse(&b, "lcd349", TEST_ABI, 20, s_pub, c, p, msg);
+        CHECK(n == 1 && !strcmp(c[0].id, "demo"));
+        tfn_store_cat_free(c, n);
+        free(b.b);
+    }
+    b = edit("\"id\": \"demo\",", "\"pack\": {\"name\": [1, {\"a\": null}]}, \"id\": \"demo\",");
+    CHECK(b.b != NULL);
+    if (b.b) {
+        n = parse(&b, "cores3", TEST_ABI, 20, s_pub, c, p, msg);
+        CHECK(n == 1 && !strcmp(c[0].id, "demo") && c[0].code == 26123);
+        tfn_store_cat_free(c, n);
+        free(b.b);
+    }
+}
+
 static void parse_tests(void)
 {
     tfn_cat_t c[MAXAPPS];
@@ -206,6 +238,7 @@ static void parse_tests(void)
     free(cp);
     // another key than the key of the signature
     CHECK(parse(&s_index, "lcd349", TEST_ABI, 20, s_other, c, p, msg) == -1 && strstr(msg, "another key"));
+    pack_tests();
 }
 
 // the damaged copies of the index: each one gives -1
@@ -317,7 +350,7 @@ static void file_tests(void)
 static void url_tests(void)
 {
     char o[64];
-    CHECK(tfn_ss_url_ok("https://omeriko9.github.io/tfn-os/store/"));
+    CHECK(tfn_ss_url_ok("https://tfnos.github.io/tfn-os/store/"));
     CHECK(tfn_ss_url_ok("https://example.org"));
     CHECK(!tfn_ss_url_ok("http://example.org/"));
     CHECK(!tfn_ss_url_ok("https://"));

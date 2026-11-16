@@ -1,0 +1,32 @@
+glasshouse 4
+name THE POTTING BENCH | שולחן השתילה
+idea Push the iron ball down the ramp. | דחפו את כדור הברזל במורד הכבש.
+sky day
+ground planks
+object teacup 70 139
+moves 1
+par 1
+goal break frame 2
+deco shed 580 139 50
+deco can 500 139
+deco pots 520 139
+deco flowers 230 139 50
+deco tree 30 139 30
+deco bench 450 139 30
+plank shelf 150 74 60 4 static
+post sleg 124 106 4 62 static
+ball iron 160 66 6 dens=14
+plank ramp 249 101 150 6 a=18 static
+cell f1 350 122 32 34 grid=2x2 tag=frame
+cell f2 382 122 32 34 grid=2x2 tag=frame
+roof f3 366 98 64 14 grid=4x1 tag=frame
+weld fw1 f1 ground 350 139
+weld fw2 f2 ground 382 139
+weld fw3 f1 f2 366 122
+weld fw4 f3 f1 350 105
+weld fw5 f3 f2 382 105
+crate box 132 65 14 14
+move kick iron dir=1,0 power=2.2
+move kick box dir=-1,-0.3 power=2.5
+solve 0 iron
+fail 0 box

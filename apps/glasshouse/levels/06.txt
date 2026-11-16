@@ -1,0 +1,29 @@
+glasshouse 6
+name THE WINCH | הכננת
+idea Start the winch that pulls the tower away. | הפעילו את הכננת שמושכת את המגדל הרחק.
+sky dawn
+ground sand
+object globe 214 139
+moves 1
+par 1
+goal down tower 60
+deco tree 90 139 40
+deco tree 560 139 34
+deco rocks 140 139 30
+deco flowers 390 139 30
+deco barrow 610 139
+deco pots 30 139
+cell t1 330 120 30 38 grid=2x2 tag=tower
+cell t2 330 82 30 38 grid=2x2 tag=tower
+roof t3 330 56 30 14 grid=2x1 tag=tower
+weld tw1 t1 ground 330 139 break=40
+weld tw2 t2 t1 330 101 break=400
+weld tw3 t3 t2 330 63 break=400
+rope wr t3 330 50 ground 470 136 len=210
+rope wl t3 330 50 ground 190 136 len=210
+winch wa rope=wr speed=45 min=40
+winch wb rope=wl speed=45 min=40
+move start wa
+move start wb
+solve 0 wa
+fail 0 wb

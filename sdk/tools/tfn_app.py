@@ -236,14 +236,22 @@ def to_px(r, g, b):
 
 
 def icon_png(path):
+    """The frames of the icon from a PNG file: one picture = a still icon; a column of square pictures (the height = 2
+    to ICON_FRAMES times the width, the first frame at the top) = an animated icon. Each frame is scaled to
+    ICON_SIZE x ICON_SIZE; a pixel with alpha < 128 is a hole."""
     w, h, rows = png_read(path)
     n = tfn_pkg.ICON_SIZE
-    fr = []
-    for y in range(n):
-        for x in range(n):
-            r, g, b, a = rows[y * h // n][x * w // n]
-            fr.append(to_px(r, g, b) if a >= 128 else None)
-    return [fr]
+    count = h // w if h % w == 0 and 2 <= h // w <= tfn_pkg.ICON_FRAMES else 1
+    fh = h // count
+    frames = []
+    for f in range(count):
+        fr = []
+        for y in range(n):
+            for x in range(n):
+                r, g, b, a = rows[f * fh + y * fh // n][x * w // n]
+                fr.append(to_px(r, g, b) if a >= 128 else None)
+        frames.append(fr)
+    return frames
 
 
 # a 5 x 7 font for the plain icon (one row = 5 bits, the high bit at the left)

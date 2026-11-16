@@ -3,7 +3,8 @@
 the public release that makes the store of GitHub Pages).
 
 It makes a TEST key in a temporary folder (the private key never goes into git or into the output), fake app
-packages of two board kinds, and then runs "store_index.py make" and "store_index.py verify". The output folder gets
+packages of two board kinds and a data pack of the app demo (the keys "packs" and "pack" of the index: the board
+parser must skip them), and then runs "store_index.py make" and "store_index.py verify". The output folder gets
 the files that the C test reads:
 
   index.json, index.sig       the signed index, as the board gets it
@@ -91,8 +92,12 @@ def main():
             for kind in kinds:
                 fake_package(pkgs, pid, kind, rev, abi, perms, watch, seed)
                 seed += 1
+        packs = os.path.join(t, 'packs')
+        write(os.path.join(packs, 'packs.json'), b'[{"name": "demo", "dir": "demo", "app": "demo"}]\n')
+        write(os.path.join(packs, 'demo', 'world.bin'), bytes(range(256)) * 8)
+        write(os.path.join(packs, 'demo', 'sfx', 'click.mp3'), b'ID3 a fake effect')
         store = os.path.join(t, 'store')
-        idx = si.make(pkgs, store, pem, release='9.8.7')
+        idx = si.make(pkgs, store, pem, release='9.8.7', packs=packs)
         pub = si.point_of(key).hex()
         if si.main(['verify', store, '--pub', pub]) != 0:
             sys.exit('store_index.py verify: FAULT')

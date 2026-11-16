@@ -21,7 +21,8 @@ The checks:
   1. the site: each page, script, style sheet, font and picture that the pages and the scripts of js/ name is there;
   2. the firmware: firmware/index.json has each board kind of js/boards.js with a web install; each manifest has the
      size and the SHA-256 of each file, and buildPlan of the page makes an INSTALL and an UPDATE plan with no fault;
-  3. the store: the checks of store_index.py verify (the signature of the index, each file, each app signature);
+  3. the store: the checks of store_index.py verify (the signature of the index, each file, each app signature,
+     each file of the data packs); no file over 100 MB and no store over 900 MB (the limits of GitHub Pages);
   4. the release: SHA256SUMS; the OTA file of each kind is the app of the site and has a good signature (the check of
      the board, fw_sign.py); the full image holds the same files at their offsets; the store zip is the store of the
      site;
@@ -52,6 +53,9 @@ import store_index  # noqa: E402
 import fw_sign  # noqa: E402
 
 PAGES = ('index.html', 'install.html', 'store.html', 'licences.html')
+# the limits of GitHub Pages: one file, and the whole site (the store must leave room for the other files)
+PAGES_FILE = 100 * 1000 * 1000
+PAGES_SITE = 900 * 1000 * 1000
 LINK_RX = re.compile(r'''(?:src|href)\s*=\s*"([^"]+)"''')
 # (an import or export statement at the start of a line: "import x from '...'", "import '...'", "export ... from")
 IMPORT_RX = re.compile(r'''^import\b[^;'"()]*?['"]([^'"]+)['"]|^export\b[^;'"(){}=]*?\bfrom\s*['"]([^'"]+)['"]''',
@@ -276,6 +280,17 @@ def check_store(site, chk, pub, mirror, node):
         return None
     chk.ok('the store: %d apps, %d packages, the signatures of the key %s' % (len(idx['apps']), n,
                                                                             store_index.key_id(pub)))
+    # the data packs (check_store checked the size and the SHA-256 of each file) and the limits of GitHub Pages
+    big = [(p['name'], f['path'], f['size']) for p in idx.get('packs', []) for f in p['files'] if f['size'] > PAGES_FILE]
+    for name, path, size in big:
+        chk.fault('the pack %s: %s has %d bytes (GitHub Pages: 100 MB at most for a file)' % (name, path, size))
+    total = sum(v['size'] for a in idx['apps'] for e in a['kinds'].values()
+                for v in list(e['files'].values()) + [e['zip']]) + sum(p['size'] for p in idx.get('packs', []))
+    if total > PAGES_SITE:
+        chk.fault('the store has %d bytes: a GitHub Pages site has about 1 GB at most' % total)
+    if idx.get('packs'):
+        chk.ok('the store: %s; the store has %.1f MB of the 1 GB of a GitHub Pages site'
+               % (store_index.packs_text(idx), total / 1e6))
     if node:
         with tempfile.TemporaryDirectory() as d:
             ip, sp = os.path.join(d, 'index.json'), os.path.join(d, 'index.sig')

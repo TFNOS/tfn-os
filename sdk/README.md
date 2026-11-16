@@ -58,6 +58,7 @@ The app opens on the board in a few seconds. Change the code and run the same co
 | `tools/store_conf.py` | The store setup of the tools: the URL of the manager (`TFN_MANAGER`) and the signer of the store key. |
 | `tools/store_data.py` | Sends the data pack of an app (the files for the SD card) to the store of the manager. |
 | `tools/store_index.py` | The static store (a web host with no server code): signs the packages and a JSON index (`make`), and checks a store as a person who does not trust the host (`verify`). [docs/store.md](docs/store.md) section 7. |
+| `tools/store_pack.py` | The data packs of the static store (the big SD card files of an app, `apps/<x>/pack.json`): `make` writes them for `store_index.py make --packs`. [docs/store.md](docs/store.md) section 7.1. |
 | `tools/release_pack.py`, `tools/release_check.py` | The files of a public GitHub release (`.github/workflows/release.yml`), and the check of a release and its web site as a stranger sees them (`.github/workflows/release-check.yml`). |
 | `tools/release_cfg.py` | The public keys (`main/tfn_release_keys.h`) and the OTA mode of a public release build: ENFORCE with the OTA key of the release, REPORT in a dry run (`.github/workflows/release.yml`). |
 | `tools/sd_usb.py` | Reads the files of a board (the card, `/data`) over the USB console. |
