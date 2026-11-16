@@ -215,8 +215,10 @@ def test_c(tmp):
             write(os.path.join(d, 'tfn_local.h'), '#pragma once\n#define TFN_OTA_PUBKEY1_BYTES %s\n' % R.c_bytes(KEY_B))
         want = KEY_B if local else KEY_A
         src = ('#define CONFIG_TFN_OTA_SIG_%s 1\n#include "tfn_defaults.h"\n%s\n' % (mode, block) +
+               # (the second byte comes from the list, not from k1: GCC does not accept k1[1] as a constant)
                ('static const unsigned char k1[] = {TFN_OTA_PUBKEY1_BYTES};\n'
-                '_Static_assert(sizeof(k1) == 65 && k1[1] == 0x%s, "the key of slot 1");\n'
+                '#define SECOND_(a, b, ...) b\n#define SECOND(...) SECOND_(__VA_ARGS__)\n'
+                '_Static_assert(sizeof(k1) == 65 && SECOND(TFN_OTA_PUBKEY1_BYTES) == 0x%s, "the key of slot 1");\n'
                 'const unsigned char *keep = k1;\n' % want[2:4] if keys else 'int keep;\n'))
         write(os.path.join(d, 't.c'), src)
         r = subprocess.run([cc, '-fsyntax-only', '-Wall', '-Werror', '-I', d, os.path.join(d, 't.c')],
