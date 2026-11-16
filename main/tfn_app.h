@@ -102,7 +102,7 @@ int tfn_policy_ver(void);  // the permission policy now (0: the default of the b
 bool tfn_policy_blob(const char *b, size_t n, char *msg, int len);
 void tfn_policy_reset(void);            // (tests) the default policy of the build again
 void tfn_policy_log(const char *name);  // the console "apps policy [<name>]"
-// The developer mode (SETUP): app files without the signature of the manager can run.
+// The developer mode (SETUP): app files without the signature of a trusted store can run.
 bool tfn_dev_mode(void);
 // INSTALL TO of STORE (the store key st_place: 0 = CARD, the default; 1 = BOARD): true = a new app goes to the card when a card is in and has room. The board STORE
 // and the keeper of the manager (/api/apps "inst") obey it.

@@ -248,7 +248,7 @@ static bool install_entry(const tfn_entry_t *e, const char *tmp, int place, char
         return false;
     }
     if (e->state == TFN_BAD_SIG) {
-        snprintf(msg, len, "%s has no signature of the manager (the developer mode is off)", e->id);
+        snprintf(msg, len, "%s has no good signature of a trusted store (the developer mode is off)", e->id);
         return false;
     }
     if (e->state == TFN_BAD_ABI) {

@@ -86,7 +86,7 @@ The app opens on the board in a few seconds. Change the code and run the same co
   board links the name only for an app whose manifest has the class. The operator of the manager changes the classes in
   the tab PERMISSIONS, with no firmware (a signed policy that the boards take).
 - The store gives an app only to a board whose firmware has the ABI revision of the app (`rev=` in the manifest).
-- A board runs an app file only with the signature of the manager, or in the developer mode. A developer can also
+- A board runs an app file only with the signature of a trusted store, or in the developer mode. A developer can also
   sign with an own key (`--dev-key`): the board shows such an app as NOT REVIEWED until the store signs it, or until
   the board owner trusts the key as `test` in SETUP > TRUSTED PUBLISHERS ([docs/store.md](docs/store.md), section 6).
 - An app on the SD card is installed: put the package folder at `/apps/<id>/` of the card (manifest.txt, app.elf,

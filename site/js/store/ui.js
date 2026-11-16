@@ -496,10 +496,16 @@ function card(app, entry, wide) {
   return li;
 }
 
+// the apps that come first, in this order (the first two of the list get the wide cards); the others follow: the
+// games with a preview, the other games, then the tools, each by name
+const FIRST = ['cubby', 'wood', 'murano', 'gummy', 'kart', 'summer', 'coil', 'dirt25', 'deep', 'blvd', 'seasons'];
+
 function rows() {
   const list = appsFor(state.index, state.kind).filter((r) => state.group === 'all' || groupOf(r.app) === state.group);
-  // the games with a preview first, then the other games, then the tools
-  const rank = (r) => (groupOf(r.app) === 'games' ? 0 : 2) + (mediaOf(r.app) ? 0 : 1);
+  const rank = (r) => {
+    const i = FIRST.indexOf(r.app.id);
+    return i >= 0 ? i : FIRST.length + (groupOf(r.app) === 'games' ? 0 : 2) + (mediaOf(r.app) ? 0 : 1);
+  };
   return list.sort((x, y) => rank(x) - rank(y) || x.app.name.localeCompare(y.app.name));
 }
 

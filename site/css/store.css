@@ -362,6 +362,13 @@
   color: var(--bad);
 }
 
+.gallery .loading {
+  grid-column: 1 / -1;
+  padding: 40px 0;
+  color: var(--ink-2);
+  text-align: center;
+}
+
 /* the window of one app */
 .app-dlg {
   width: min(920px, calc(100vw - 24px));

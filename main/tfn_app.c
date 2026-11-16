@@ -5,7 +5,7 @@
 //   app.elf        the app for this board kind: an ELF shared object (sdk/tools/mk_app.py), from an app source of
 //                  main/ without a change
 //   icon.bin       the menu icon: frames that the host drew with the draw_icon() of the app (no code load for the menu)
-//   sig            the ECDSA P-256 signature of the manager (the private key stays on the manager server) over manifest.txt
+//   sig            the ECDSA P-256 signature of the store (the private key stays with the store) over manifest.txt
 // The manifest has the SHA-256 of app.elf and icon.bin, so the signature covers all files.
 //
 // The menu gets a menu item (an app_t "stub") for each app that can run: its name, its flags and an icon function.
@@ -1216,7 +1216,7 @@ bool tfn_policy_blob(const char *b, size_t n, char *msg, int len)
     const char *t = b + 6 + 129;
     size_t tn = n - 6 - 129;
     if (!tfa_sig_ok((const uint8_t *)t, tn, sig, 64)) {
-        snprintf(msg, len, "the signature of the manager is not right");
+        snprintf(msg, len, "the signature of the store is not right");
         return false;
     }
     char *z = heap_caps_malloc(tn + 1, MALLOC_CAP_SPIRAM);
