@@ -58,11 +58,11 @@ function showShot(screen, name) {
     requestAnimationFrame(() => {
       next.classList.remove('off');
     });
+    // (only the pictures before this one go: with fast clicks a newer picture is already there, and the timer of
+    // each picture removed all the others, so two timers removed both pictures and the screen was black)
     setTimeout(() => {
-      for (const old of screen.querySelectorAll('img')) {
-        if (old !== next) {
-          old.remove();
-        }
+      while (next.isConnected && next.previousElementSibling) {
+        next.previousElementSibling.remove();
       }
     }, 800);
   };
