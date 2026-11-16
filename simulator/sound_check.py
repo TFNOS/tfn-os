@@ -93,6 +93,11 @@ def run(dll, rounds=2, verbose=False):
         fail("the checks of main/audio.c: %s" % ("no result" if n < 0 else "%d failed" % n))
     notes.append("audio.c %d of %d" % (sum(1 for ln in lines if ln.startswith("ok")), len(lines)))
 
+    # 2. to 4. need ECHO KEYLLER: the public tree (export/export_public.py) does not have the app
+    if not os.path.isdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "apps", "echo_keyller")):
+        notes.append("no %s in this tree: the steps of the app are not done" % APP)
+        return fails, notes
+
     # 2. and 3. ECHO KEYLLER leaves while its sound plays
     done = 0
     for hook in (True, False):

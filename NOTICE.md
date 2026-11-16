@@ -12,6 +12,14 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 - **Licence:** the [SIL Open Font License 1.1](docs/licenses/Inter-OFL.txt). The glyph data in
   `libs/interfont/stocks_font.inc` is under the same licence.
 
+## The fonts of STANDBY
+
+- **File:** `libs/interfont/sb_fonts.inc` (the glyph bitmaps, made by `libs/interfont/tools/export_inter.py` from the
+  font file Inter).
+- **Source:** [Inter](https://github.com/rsms/inter), Copyright 2020 The Inter Project Authors.
+- **Licence:** the [SIL Open Font License 1.1](docs/licenses/Inter-OFL.txt). The glyph data in
+  `libs/interfont/sb_fonts.inc` is under the same licence.
+
 ## The BMI270 configuration file
 
 - **File:** `third_party/bmi270/bmi270_config.c`: the configuration data of the Bosch Sensortec BMI270 IMU.
