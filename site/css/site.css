@@ -160,6 +160,11 @@ p {
   max-width: 62ch;
 }
 
+/* the hidden attribute wins over a display of a class (the test bar of the install page has display: flex) */
+[hidden] {
+  display: none !important;
+}
+
 .skip {
   position: absolute;
   left: -9999px;
