@@ -71,6 +71,8 @@ SDDL_NAMES = {'S-1-1-0': 'Everyone', 'S-1-5-11': 'Authenticated Users', 'S-1-5-3
               'S-1-5-4': 'INTERACTIVE', 'S-1-5-7': 'ANONYMOUS LOGON', 'S-1-5-32-546': 'Guests'}
 # OWNER RIGHTS and CREATOR OWNER (the account that makes a file) are not other accounts
 KEEP_SIDS = (SYSTEM_SID, ADMINS_SID, 'S-1-3-4', 'S-1-3-0')
+# the built-in Administrator account of the computer (SDDL "LA"; its SID ends with -500) is an administrator too
+ADMIN_ACCOUNT_RX = re.compile(r'^(LA|S-1-5-21-\d+-\d+-\d+-500)$')
 NO_WINDOW = getattr(subprocess, 'CREATE_NO_WINDOW', 0)   # the creationflags of a program (0 on Linux and macOS)
 ACE_RX = re.compile(r'\(([^;()]*);([^;()]*);([^;()]*);([^;()]*);([^;()]*);([^;()]*)\)')
 
@@ -539,7 +541,7 @@ def rights(path):
     keep = set(KEEP_SIDS) | ({me} if me else set())
     others, own = [], []
     for kind, flags, sid in aces(path):
-        if kind not in ('A', 'OA') or sid in keep:
+        if kind not in ('A', 'OA') or sid in keep or ADMIN_ACCOUNT_RX.match(sid):
             continue
         name = SDDL_NAMES.get(sid, sid)
         if name not in others:

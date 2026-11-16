@@ -1,0 +1,262 @@
+{
+ "clock": {
+  "anim": "clock.webp",
+  "poster": "clock.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 6.0,
+  "extra": [
+   {
+    "file": "clock-round.webp",
+    "w": 466,
+    "h": 466,
+    "board": "am175"
+   }
+  ]
+ },
+ "dice": {
+  "anim": "dice.webp",
+  "poster": "dice.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "i2c": {
+  "anim": "i2c.webp",
+  "poster": "i2c.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 6.0,
+  "extra": []
+ },
+ "level": {
+  "anim": "level.webp",
+  "poster": "level.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "midictl": {
+  "anim": "midictl.webp",
+  "poster": "midictl.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "mqtt": {
+  "anim": "mqtt.webp",
+  "poster": "mqtt.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.62,
+  "extra": []
+ },
+ "serial": {
+  "anim": "serial.webp",
+  "poster": "serial.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "simon": {
+  "anim": "simon.webp",
+  "poster": "simon.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "stack": {
+  "anim": "stack.webp",
+  "poster": "stack.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "rot": 90,
+  "extra": []
+ },
+ "touchlab": {
+  "anim": "touchlab.webp",
+  "poster": "touchlab.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "weather": {
+  "anim": "weather.webp",
+  "poster": "weather.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "cubby": {
+  "anim": "cubby.webp",
+  "poster": "cubby.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 4.0,
+  "extra": []
+ },
+ "gummy": {
+  "anim": "gummy.webp",
+  "poster": "gummy.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 14,
+  "secs": 4.0,
+  "extra": []
+ },
+ "murano": {
+  "anim": "murano.webp",
+  "poster": "murano.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 13,
+  "secs": 3.54,
+  "extra": []
+ },
+ "wood": {
+  "anim": "wood.webp",
+  "poster": "wood.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.5,
+  "extra": []
+ },
+ "dirt25": {
+  "anim": "dirt25.webp",
+  "poster": "dirt25.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 4.0,
+  "extra": []
+ },
+ "kart": {
+  "anim": "kart.webp",
+  "poster": "kart.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 4.0,
+  "extra": []
+ },
+ "coil": {
+  "anim": "coil.webp",
+  "poster": "coil.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 3.38,
+  "extra": []
+ },
+ "summer": {
+  "anim": "summer.webp",
+  "poster": "summer.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "deep": {
+  "anim": "deep.webp",
+  "poster": "deep.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "blvd": {
+  "anim": "blvd.webp",
+  "poster": "blvd.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 14,
+  "secs": 4.0,
+  "extra": []
+ },
+ "seasons": {
+  "anim": "seasons.webp",
+  "poster": "seasons.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "glass": {
+  "anim": "glass.webp",
+  "poster": "glass.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 14,
+  "secs": 4.0,
+  "extra": []
+ },
+ "orbital": {
+  "anim": "orbital.webp",
+  "poster": "orbital.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "chess": {
+  "anim": "chess.webp",
+  "poster": "chess.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "backgammon": {
+  "anim": "backgammon.webp",
+  "poster": "backgammon.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "checkers": {
+  "anim": "checkers.webp",
+  "poster": "checkers.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "extra": []
+ },
+ "sea": {
+  "anim": "sea.webp",
+  "poster": "sea.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 4.0,
+  "extra": []
+ }
+}
