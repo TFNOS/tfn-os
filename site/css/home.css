@@ -129,6 +129,15 @@
   opacity: 1;
 }
 
+/* the hero: the video of the games comes over its poster when it plays */
+.dev-screen[data-hero] video {
+  opacity: 0;
+}
+
+.dev-screen[data-hero] video.on {
+  opacity: 1;
+}
+
 /* the games: six real screens with a name and one line each */
 .games {
   list-style: none;

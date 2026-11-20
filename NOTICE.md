@@ -302,7 +302,9 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 
 ## The previews of the store page
 
-- **Files:** `site/media/apps/` (an animated WebP and a JPEG picture of each app of the store, and `media.json`).
+- **Files:** `site/media/apps/` (a short video and a JPEG picture of each app of the store, and `media.json`), and
+  `site/media/hero.mp4` (parts of these videos one after the other) and `site/img/screens/` (the screens of the start
+  page).
 - **Source:** the frames of the apps themselves, made in the desktop simulator of TFN OS (the code of this repo,
   its pictures and its sounds; no third-party picture).
 - **Licence:** the licence of each app (the files of this repo).

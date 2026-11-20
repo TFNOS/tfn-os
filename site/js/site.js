@@ -72,6 +72,27 @@ export function addClip(box, src) {
   });
 }
 
+// The hero screen (data-hero="<the mp4 file>"): the video of the games plays in a loop over its poster. No video with
+// "reduce motion" or "save data": the poster stays.
+function initHero() {
+  const box = document.querySelector('[data-hero]');
+  const m = (q) => window.matchMedia(q).matches;
+  const saveData = navigator.connection && navigator.connection.saveData;
+  if (!box || m('(prefers-reduced-motion: reduce)') || saveData) {
+    return;
+  }
+  const video = document.createElement('video');
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.autoplay = true;
+  video.setAttribute('aria-hidden', 'true');
+  video.src = box.dataset.hero;
+  video.addEventListener('playing', () => video.classList.add('on'));
+  box.appendChild(video);
+  video.play().catch(() => {});
+}
+
 function initClips() {
   if (!clipsOk()) {
     return;
@@ -116,5 +137,6 @@ function initTrailer() {
 }
 
 initTheme();
+initHero();
 initClips();
 initTrailer();
