@@ -1,0 +1,316 @@
+/* The trust map (trust.html): one tab for each setup; a setup = a sequence diagram (the parts across the top, a line
+   down from each, time goes down, each step one straight arrow) and the keys of that setup. js/trust.js draws it.
+   The colours of the keys: blue official, violet pool, grey developer; green = the board accepts, red = refused. */
+:root {
+  --tm-off: #1a6fe0;
+  --tm-pool: #8a3fd9;
+  --tm-dev: #5d6675;
+  --tm-pass: #1a7f37;
+  --tm-fail: #cf2a1e;
+  --tm-hand: #a87400;
+  --tm-band: #eaeef3;
+  --tm-edge: #b4bcc8;
+  --tm-top: 61px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --tm-off: #6aa8ff;
+    --tm-pool: #c08bff;
+    --tm-dev: #a3adbd;
+    --tm-pass: #4cc76a;
+    --tm-fail: #ff7b70;
+    --tm-hand: #e3b341;
+    --tm-band: #1d2531;
+    --tm-edge: #46505f;
+  }
+}
+
+:root[data-theme='dark'] {
+  --tm-off: #6aa8ff;
+  --tm-pool: #c08bff;
+  --tm-dev: #a3adbd;
+  --tm-pass: #4cc76a;
+  --tm-fail: #ff7b70;
+  --tm-hand: #e3b341;
+  --tm-band: #1d2531;
+  --tm-edge: #46505f;
+}
+
+.tm-top {
+  padding-block: 36px 56px;
+}
+
+.tm-h1 {
+  font: 800 clamp(1.9rem, 4vw, 2.6rem) / 1.12 var(--font-d);
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+
+.tm-lead {
+  max-width: 76ch;
+  color: var(--ink-2);
+  font-size: 1.06rem;
+  margin: 0;
+}
+
+.tm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  margin: 16px 0 0;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+.tm-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tm-legend i,
+.tm-tag i,
+.tm-tabs .sw {
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+}
+
+.tm-c-off { background: var(--tm-off); }
+.tm-c-pool { background: var(--tm-pool); }
+.tm-c-dev { background: var(--tm-dev); }
+.tm-c-pass { background: var(--tm-pass); }
+.tm-c-fail { background: var(--tm-fail); }
+.tm-c-hand { background: var(--tm-hand); }
+.tm-c-all { background: linear-gradient(135deg, var(--tm-off), var(--tm-pool), var(--tm-pass)); }
+
+.tm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 26px 0 0;
+  border-bottom: 2px solid var(--tm-edge);
+}
+
+.tm-tabs button {
+  font: 600 1.02rem var(--font-b);
+  color: var(--ink-2);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 12px 18px 10px;
+  border-bottom: 4px solid transparent;
+  margin-bottom: -2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tm-tabs button:hover,
+.tm-tabs button[aria-selected='true'] {
+  color: var(--ink);
+}
+
+.tm-tabs button[aria-selected='true'].t-off { border-bottom-color: var(--tm-off); }
+.tm-tabs button[aria-selected='true'].t-pool { border-bottom-color: var(--tm-pool); }
+.tm-tabs button[aria-selected='true'].t-dev { border-bottom-color: var(--tm-dev); }
+.tm-tabs button[aria-selected='true'].t-all { border-bottom-color: var(--ink); }
+
+.tm-tabs button:focus-visible {
+  outline: 3px solid var(--tm-off);
+  outline-offset: -3px;
+  border-radius: 6px;
+}
+
+.tm-panel {
+  padding-top: 24px;
+}
+
+.tm-panel h2 {
+  font: 700 1.55rem / 1.25 var(--font-d);
+  margin: 0 0 6px;
+  text-wrap: balance;
+}
+
+.tm-panel .intro {
+  max-width: 80ch;
+  color: var(--ink-2);
+  margin: 0 0 18px;
+}
+
+.tm-panel h3 {
+  font: 700 1.1rem var(--font-b);
+  margin: 30px 0 12px;
+}
+
+/* the diagram: the names of the parts stay under the top bar of the site while the steps scroll */
+.tm-dia {
+  background: var(--raised);
+  border: 1px solid var(--tm-edge);
+  border-radius: 12px;
+}
+
+.tm-dia svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.tm-head {
+  position: sticky;
+  top: var(--tm-top);
+  z-index: 4;
+  background: var(--raised);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.35);
+}
+
+.tm svg text { font-family: var(--font-b); fill: var(--ink); }
+.tm svg .pn { font: 700 18px var(--font-b); }
+.tm svg .ps { font: 500 14.5px var(--font-b); fill: var(--ink-2); }
+.tm svg .ml { font: 500 16px var(--font-b); paint-order: stroke; stroke: var(--raised); stroke-width: 7px; stroke-linejoin: round; }
+.tm svg .ml.ret { fill: var(--ink-2); }
+.tm svg .bt { font: 700 16px var(--font-b); }
+.tm svg .bl { font: 400 16px var(--font-b); }
+.tm svg .bl.red { fill: var(--tm-fail); }
+.tm svg .ph { font: 700 15px var(--font-b); letter-spacing: 0.08em; }
+.tm svg .life { stroke: var(--tm-edge); stroke-width: 2; stroke-dasharray: 6 6; }
+.tm svg .phase { fill: var(--tm-band); }
+.tm svg .msg { stroke: var(--ink); stroke-width: 2.2; fill: none; }
+.tm svg .msg.ret { stroke-dasharray: 7 6; stroke: var(--ink-2); }
+.tm svg .dot { fill: var(--ink); }
+.tm svg .dot.ret { fill: var(--ink-2); }
+.tm svg .ahf { fill: var(--ink); }
+.tm svg .ahr { fill: var(--ink-2); }
+.tm svg .head { fill: var(--raised); stroke-width: 2.6; }
+.tm svg .box { stroke-width: 2.4; fill: var(--raised); stroke: var(--tm-edge); }
+
+/* the colours by role: the head of a part, a box, a text (k-<role>) */
+.tm svg .k-off { stroke: var(--tm-off); }
+.tm svg .k-pool { stroke: var(--tm-pool); }
+.tm svg .k-dev { stroke: var(--tm-dev); }
+.tm svg .k-pass { stroke: var(--tm-pass); }
+.tm svg .k-hand { stroke: var(--tm-hand); }
+.tm svg .f-off { fill: var(--tm-off); }
+.tm svg .f-pool { fill: var(--tm-pool); }
+.tm svg .f-dev { fill: var(--tm-dev); }
+.tm svg .f-pass { fill: var(--tm-pass); }
+.tm svg .f-hand { fill: var(--tm-hand); }
+.tm svg .f-fail { fill: var(--tm-fail); }
+.tm svg .box.k-off { fill: color-mix(in srgb, var(--tm-off) 13%, var(--raised)); }
+.tm svg .box.k-pool { fill: color-mix(in srgb, var(--tm-pool) 13%, var(--raised)); }
+.tm svg .box.k-dev { fill: color-mix(in srgb, var(--tm-dev) 13%, var(--raised)); }
+.tm svg .box.k-pass { fill: color-mix(in srgb, var(--tm-pass) 8%, var(--raised)); }
+.tm svg .box.k-hand { fill: color-mix(in srgb, var(--tm-hand) 10%, var(--raised)); }
+.tm svg .keyicon { fill: none; stroke-width: 2.4; stroke-linecap: round; }
+
+/* the keys */
+.tm-keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 14px;
+}
+
+.tm-kc {
+  background: var(--raised);
+  border: 1px solid var(--tm-edge);
+  border-left-width: 6px;
+  border-radius: 10px;
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+.tm-kc.k-off { border-left-color: var(--tm-off); }
+.tm-kc.k-pool { border-left-color: var(--tm-pool); }
+.tm-kc.k-dev { border-left-color: var(--tm-dev); }
+
+.tm-kc h4 {
+  margin: 0 0 8px;
+  font: 700 1.05rem var(--font-b);
+}
+
+.tm-kc.k-off h4 { color: var(--tm-off); }
+.tm-kc.k-pool h4 { color: var(--tm-pool); }
+.tm-kc.k-dev h4 { color: var(--tm-dev); }
+
+.tm-kc dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  font-size: 0.95rem;
+}
+
+.tm-kc dt { color: var(--ink-2); }
+.tm-kc dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.tm-say {
+  margin-top: 18px;
+  border-left: 4px solid var(--tm-edge);
+  padding: 6px 0 6px 16px;
+  max-width: 82ch;
+}
+
+/* the summary tables */
+.tm-tbl {
+  overflow-x: auto;
+  background: var(--raised);
+  border: 1px solid var(--tm-edge);
+  border-radius: 12px;
+}
+
+.tm-tbl table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+  font-size: 1rem;
+}
+
+.tm-tbl th,
+.tm-tbl td {
+  text-align: left;
+  vertical-align: middle;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tm-band);
+}
+
+.tm-tbl th {
+  font: 700 0.85rem var(--font-b);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: var(--tm-band);
+}
+
+.tm-tbl tr:last-child td { border-bottom: 0; }
+
+.tm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.tm-y, .tm-n, .tm-q {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.tm-y { color: var(--tm-pass); }
+.tm-n { color: var(--tm-fail); }
+.tm-q { color: var(--tm-hand); }
+.tm-y::before { content: '\2713'; font-weight: 800; }
+.tm-n::before { content: '\2715'; font-weight: 800; }
+.tm-q::before { content: '!'; font-weight: 800; }
+
+@media (max-width: 600px) {
+  .tm-tabs button {
+    padding: 10px 12px 8px;
+    font-size: 0.95rem;
+  }
+}

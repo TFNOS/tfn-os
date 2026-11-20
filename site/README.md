@@ -16,6 +16,9 @@ open licence, game data, your WiFi or home addresses).
 |---|---|
 | `index.html`, `css/site.css`, `css/home.css`, `js/site.js`, `js/theme.js` | the start page (`css/site.css`: the shared part of all pages; `css/home.css`: the start page only) |
 | `install.html`, `css/install.css`, `js/flasher/` | the web flasher |
+| `how.html`, `css/how.css` | how it works: the signatures, the pools, the pool manager, the play by radio |
+| `trust.html`, `css/trust.css`, `js/trust.js` | the trust map: sequence diagrams of the install and the signatures (a public user, a pool with its own apps, a developer) |
+| `thanks.html`, `css/thanks.css` | the thanks page: each project that TFN OS uses, its authors and what it does |
 | `store.html`, `css/store.css`, `js/store/` | the store page: a gallery of the apps of each board kind, from `store/index.json` (signed by a key of `STORE_KEYS` in `js/store/core.js`), with the previews of `media/apps/media.json` and the small icons of `media/apps/icons.json` (each one a lossless WebP column of the frames of an `icon.bin`; the key is the SHA-256 of that `icon.bin` in the signed index), and the install over USB (`js/store/usb.js`: Web Serial to the console of TFN OS: `sdusb put` of each file with a CRC check, then `apps commit`; the board checks the signature) |
 | `js/boards.js` | the board kinds: chip, flash size, USB IDs, picture |
 | `vendor/esptool-js-0.7.0/` | esptool-js 0.7.0 (`bundle.js` of the npm package, Apache 2.0, with its LICENSE) |
