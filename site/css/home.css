@@ -579,7 +579,7 @@
   }
 }
 
-/* the feature grid after the hero (made by a tool in the private repo): 3 groups of cards, an icon in its own colour
+/* the feature grid after the hero: 3 groups of cards, an icon in its own colour
    on each card (9 colours of a rainbow), the apps that do it, and a tag (in the release, on our test boards, an option) */
 :root {
   --fc1: #e5484d; --fc2: #f76b15; --fc3: #d29b00; --fc4: #30a46c; --fc5: #12a594;
