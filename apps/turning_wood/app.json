@@ -10,6 +10,13 @@
   "app_wood.c",
   "tw_sfx.c"
  ],
+ "kinds": [
+  "lcd349",
+  "cores3",
+  "am18",
+  "am175",
+  "watcher"
+ ],
  "idf": "all",
  "store": {
   "en": "A painted adventure in Grandma's magic wood. Find the three Season Stones, turn the whole wood to the season that each place needs, and solve 13 puzzles. A beginner mode with a journal, a map and hints. English and Hebrew. Needs an SD card (12 MB).",

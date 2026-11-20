@@ -43,7 +43,7 @@ concurrency:
   cancel-in-progress: false
 env:
   # the kinds of a public release: the boards with a web install (site/js/boards.js "web: true")
-  KINDS: lcd349,cores3,am18,am175,watcher
+  KINDS: lcd349,cores3,am18,am175,watcher,tab5
   DRY: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
 
 jobs:
@@ -149,7 +149,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        kind: [lcd349, cores3, am18, am175, watcher]
+        kind: [lcd349, cores3, am18, am175, watcher, tab5]
     defaults:
       run:
         shell: bash

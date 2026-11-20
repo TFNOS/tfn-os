@@ -55,7 +55,7 @@
         <figcaption>Seven of the games on the Touch-LCD-3.49, a board about 10 cm long: THE TURNING WOOD, CUBBY, DIRT KINGS, FOUR SEASONS, INK KARTS, DEEP CURRENT and MURANO.</figcaption>
       </figure>
     </div>
-    <p class="runs-on">It runs on the Waveshare <a href="#board-lcd349">Touch-LCD-3.49</a>, <a href="#board-am175">AMOLED-1.75C</a> and <a href="#board-am18">AMOLED-1.8</a>, the M5Stack <a href="#board-cores3">CoreS3</a> and the Seeed Studio <a href="#board-watcher">SenseCAP Watcher</a>.</p>
+    <p class="runs-on">It runs on the Waveshare <a href="#board-lcd349">Touch-LCD-3.49</a>, <a href="#board-am175">AMOLED-1.75C</a> and <a href="#board-am18">AMOLED-1.8</a>, the M5Stack <a href="#board-cores3">CoreS3</a> and <a href="#board-tab5">Tab5</a>, and the Seeed Studio <a href="#board-watcher">SenseCAP Watcher</a>.</p>
   </div>
 </section>
 
@@ -174,7 +174,7 @@
   <div class="wrap">
     <div class="chapter-head">
       <h2 id="boards-h">The boards</h2>
-      <p>Each app has a layout for each screen shape. The install page writes TFN OS to the first five boards. New to these boards? Start with the Touch-LCD-3.49: TFN OS started on it, and it has each part that the games use.</p>
+      <p>Each app has a layout for each screen shape. The install page writes TFN OS to all six boards. New to these boards? Start with the Touch-LCD-3.49: TFN OS started on it, and it has each part that the games use.</p>
     </div>
     <div class="shelf" aria-label="The six boards, drawn to the same scale">
       <figure class="dev dev-lcd349"><div class="dev-body"><div class="dev-screen"><img src="img/screens/dev_lcd349.webp" width="640" height="172" loading="lazy" decoding="async" alt="THE TURNING WOOD: a winter tree with a small door in its trunk, in the snow."></div></div><figcaption><b>Touch-LCD-3.49</b>640 x 172</figcaption></figure>
@@ -222,11 +222,11 @@
         <p class="b-note">Turn the wheel to choose, push to open, hold to go back. With no motion sensor, the tilt games read the wheel. The install replaces the Seeed firmware; the page can save a copy first.</p>
         <p class="b-buy"><a href="https://www.seeedstudio.com/SenseCAP-Watcher-W1-A-p-5979.html" target="_blank" rel="noopener">Seeed Studio</a></p>
       </article>
-      <article class="board-row later" id="board-tab5">
+      <article class="board-row" id="board-tab5">
         <h3>Tab5 <span>M5Stack</span></h3>
         <p class="b-screen">5 in, 1280 x 720. ESP32-P4, 16 MB flash.</p>
         <p class="b-has">Motion sensor, microphones, SD card, the M5Stack keyboard.</p>
-        <p class="b-note">TFN OS runs on the Tab5 next to a second system, under a boot menu. The web install cannot do that yet: an install guide comes later.</p>
+        <p class="b-note">The apps draw a 360 x 640 frame, and the board shows it 2 x 2 on the 5 inch screen. The flash keeps a free slot for a boot menu and a second system.</p>
         <p class="b-buy"><a href="https://shop.m5stack.com/products/m5stack-tab5-iot-development-kit-esp32-p4" target="_blank" rel="noopener">M5Stack</a></p>
       </article>
     </div>

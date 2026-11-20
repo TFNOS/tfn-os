@@ -12,6 +12,9 @@ The checks:
   - the bootloader says the flash size of the build (flasher_args.json);
   - the partition table gives the partitions of the CSV file of the kind (boards.json "partition_table");
   - the offsets of the build are the offsets of the table, and the otadata image is blank (all 0xFF);
+  - a table with a factory slot (the Tab5: the slot of a boot menu): the build gives the factory offset to the app,
+    but the app goes into ota_0, and the otadata selects ota_0 (a blank otadata starts the factory slot, and on a new
+    board that slot still has the old firmware of the maker);
   - --app (the app with the signature trailer of sdk/tools/fw_sign.py): it starts with the app image of the build.
 "index" writes <out>/index.json with each <out>/<kind>/manifest.json.
 Python 3.9 or later, the standard library only.
@@ -22,6 +25,7 @@ import json
 import os
 import struct
 import sys
+import zlib
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +41,15 @@ APP_DESC_MAGIC = 0xABCD5432
 
 class ManifestError(Exception):
     pass
+
+
+def otadata_slot0(size):
+    """An otadata image that starts ota_0: the first entry (esp_ota_select_entry_t: ota_seq 1, seq_label, ota_state
+    UNDEFINED, crc = the CRC-32 of ota_seq as the bootloader computes it), all other bytes 0xFF."""
+    seq = struct.pack('<I', 1)
+    crc = zlib.crc32(seq, 0xFFFFFFFF) & 0xFFFFFFFF
+    entry = seq + b'\xff' * 20 + struct.pack('<I', 0xFFFFFFFF) + struct.pack('<I', crc)
+    return entry + b'\xff' * (size - len(entry))
 
 
 def sha256(data):
@@ -123,10 +136,14 @@ def build_files(kind, build, version, app_file=''):
         raise ManifestError('%s: the partition table is not %s' % (kind, b['partition_table']))
     ota = [r for r in want if r[1] == 1 and r[2] == 0][0]
     app0 = [r for r in want if r[1] == 0 and r[2] == 0x10][0]
-    if offs['ota_data_initial.bin'] != ota[3] or offs[image] != app0[3] or len(otadata) != ota[4]:
+    factory = [r for r in want if r[1] == 0 and r[2] == 0x00]
+    app_offs = (app0[3],) + ((factory[0][3],) if factory else ())
+    if offs['ota_data_initial.bin'] != ota[3] or offs[image] not in app_offs or len(otadata) != ota[4]:
         raise ManifestError('%s: the offsets of the build are not the offsets of the table' % kind)
     if set(otadata) != {0xFF}:
         raise ManifestError('%s: the otadata image is not blank' % kind)
+    if factory:
+        otadata = otadata_slot0(len(otadata))
     if len(app) > app0[4]:
         raise ManifestError('%s: the app (%d bytes) is bigger than its slot (%d bytes)' % (kind, len(app), app0[4]))
     files = [

@@ -154,8 +154,8 @@
     "tab5": {
       "name": "M5Stack Tab5",
       "chip": "esp32p4",
-      "release": false,
-      "manager_release": true,
+      "release": true,
+      "manager_release": false,
       "kconfig_target": "CONFIG_TFN_TARGET_TAB5",
       "sdkconfig_defaults": ["sdkconfig.defaults", "sdkconfig.defaults.tab5"],
       "dev_sdkconfig": "sdkconfig.tab5",

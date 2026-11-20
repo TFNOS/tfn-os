@@ -69,7 +69,7 @@ export const BOARDS = [
     usb: [{ vid: ESPRESSIF_VID, pid: 0x1001 }],
     screen: '1280 x 720',
     shot: 'img/screens/board_tab5.webp',
-    web: false,
+    web: true,
   },
 ];
 

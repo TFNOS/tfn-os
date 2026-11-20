@@ -34,7 +34,7 @@ One source tree builds TFN OS for six board kinds. `boards/<kind>/board_caps.h` 
 | `am18` | Waveshare ESP32-S3-Touch-AMOLED-1.8 | ESP32-S3 | 368 x 448 AMOLED |
 | `am175` | Waveshare ESP32-S3-Touch-AMOLED-1.75C | ESP32-S3 | 466 x 466 round AMOLED |
 | `watcher` | Seeed SenseCAP Watcher | ESP32-S3 | 412 x 412 round, a wheel |
-| `tab5` | M5Stack Tab5 | ESP32-P4 | 720 x 1280 (DEV builds) |
+| `tab5` | M5Stack Tab5 | ESP32-P4 | 720 x 1280 |
 
 [docs/headers.md](docs/headers.md) gives the extension connectors of each board. To add a board kind, read
 [docs/board_guide.md](docs/board_guide.md).

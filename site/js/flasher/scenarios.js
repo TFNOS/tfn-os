@@ -63,9 +63,9 @@ export const SCENARIOS = {
     expect: { kind: 'watcher', candidates: ['watcher'], canUpdate: false, install: INSTALL4 },
   },
   'rom-p4': {
-    label: 'No TFN OS: ESP32-P4 (the Tab5): no web install yet',
+    label: 'No TFN OS: ESP32-P4 (the Tab5)',
     console: null, usb: NATIVE, rom: P4_16, table: null,
-    expect: { kind: 'tab5', candidates: ['tab5'], canUpdate: false, noWebInstall: true },
+    expect: { kind: 'tab5', candidates: ['tab5'], canUpdate: false, install: INSTALL4 },
   },
   'rom-esp32': {
     label: 'An ESP32 (not S3): no TFN OS board',
