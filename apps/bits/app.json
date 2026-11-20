@@ -4,6 +4,7 @@
  "sym": "app_bits",
  "group": "UTIL",
  "emoji": "💾",
+ "icon": "icon.png",
  "srcs": [
   "app_bits.c"
  ],

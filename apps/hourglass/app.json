@@ -4,6 +4,7 @@
  "sym": "app_hourglass",
  "group": "UTIL",
  "emoji": "⏳",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_hourglass.c"

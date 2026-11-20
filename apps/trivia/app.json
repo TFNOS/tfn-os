@@ -4,6 +4,7 @@
  "sym": "app_trivia",
  "group": "GAMES",
  "emoji": "❓",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_trivia.c",

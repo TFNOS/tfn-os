@@ -4,6 +4,7 @@
  "sym": "app_chessclock",
  "group": "UTIL",
  "emoji": "⏱️",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_chessclock.c"

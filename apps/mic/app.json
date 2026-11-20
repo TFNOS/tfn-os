@@ -4,6 +4,7 @@
  "sym": "app_mic",
  "group": "UTIL",
  "emoji": "🎙️",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_mic.c"

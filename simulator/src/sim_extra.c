@@ -29,6 +29,7 @@ void tfn_icon_cache_free(void) {}   // (no icon files of installed apps here)
 void tfn_icon_ask(bool on) { (void)on; }   // (the icon reader: no icon files here)
 bool tfn_icon_missed(void) { return false; }
 void tfn_icon_want(const app_t *a) { (void)a; }
+void tfn_icon_moving(void) {}
 // the ears (tfn_listen.h): no ears here (no TALK watcher)
 #include "tfn_listen.h"
 bool listen_offer(const listen_ops_t *ops) { (void)ops; return false; }

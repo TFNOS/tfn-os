@@ -4,6 +4,7 @@
  "sym": "app_hebcal",
  "group": "UTIL",
  "emoji": "🕎",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_hebcal.c"

@@ -4,6 +4,7 @@
  "sym": "app_morse",
  "group": "UTIL",
  "emoji": "📡",
+ "icon": "icon.png",
  "srcs": [
   "app_morse.c"
  ],

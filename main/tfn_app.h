@@ -128,6 +128,9 @@ void tfn_icon_plain(const char *name, int x, int y, int s);
 void tfn_icon_ask(bool on);
 bool tfn_icon_missed(void);
 void tfn_icon_want(const app_t *a);
+// The menu calls tfn_icon_moving() in each frame while its row moves (a finger or a glide): the icons show their
+// first frame until 0.4 s after the last call, then they animate again (a calm slide, and less work in each frame).
+void tfn_icon_moving(void);
 // The decoded frames of the icons (a slot for each icon that shows; about 16 KB of PSRAM each) go: an app that is not
 // the menu opens, or the icons of the STORE go.
 void tfn_icon_cache_free(void);

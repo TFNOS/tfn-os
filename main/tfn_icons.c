@@ -1,5 +1,6 @@
 // TFN OS: the icons: the icon files of the apps, their decode, the menu stub of each app, the prefetch task of the Tab5 (main/tfn_app.c has the rest; tfn_app_priv.h).
 #include "tfn_app_priv.h"
+#include "uikit.h"
 
 static const char *TAG = "tfn";
 
@@ -180,8 +181,16 @@ bool tfn_icon_ok(const uint8_t *b, size_t len)
            rd16(b + 10) <= 255 && len >= 12u + 2u * rd16(b + 10);
 }
 
-// (the Tab5: true = the icon shows its first frame; icon_draw sets it: one icon of the menu animates at a time)
+// (true = the icon shows its first frame; icon_draw sets it: on the Tab5 one icon of the menu animates at a time, on
+// the other boards no icon animates while the row moves)
 static bool s_icon_still;
+static uint32_t s_move_ms;  // (the last frame in which the row of the menu moved: tfn_icon_moving)
+#define ICON_CALM_MS 400    // (the icons start to animate this long after the row stops)
+
+void tfn_icon_moving(void)
+{
+    s_move_ms = (uint32_t)(esp_timer_get_time() / 1000);
+}
 
 bool tfn_icon_draw(const uint8_t *b, size_t blen, int x, int y, int s)
 {
@@ -217,6 +226,17 @@ bool tfn_icon_draw(const uint8_t *b, size_t blen, int x, int y, int s)
     }
     return true;
 }
+
+#if TFA_ICON_ASK
+// a tile while its picture comes (the still picture of the card or the icon file): the shape of an icon in a calm
+// colour, with no letter (a letter for a moment looked like a fault in a slide of the menu)
+static void icon_wait_tile(int x, int y, int s)
+{
+    const int m = s / 10, w = s - 2 * m, r = s / 6;
+    ui_rrect_a(x + m, y + m, w, w, r, rgb(58, 64, 86), 255);
+    ui_rrect_a(x + m + 2, y + m + 2, w - 4, w - 4, r - 2 > 0 ? r - 2 : 0, rgb(42, 47, 64), 255);
+}
+#endif
 
 void tfn_icon_plain(const char *name, int x, int y, int s)
 {
@@ -441,7 +461,49 @@ static void thumbs_load(void)
     ESP_LOGI(TAG, "%d still icon pictures from the card", got);
 }
 
-// the pictures in the file (a new file, then a rename: a stop in the write keeps the old file)
+// the entries of the old file: the id, the key and the place of the pixels of each one (the save copies a picture that
+// is not in memory from there: before, a save with only a part of the pictures in memory, after a load with little
+// PSRAM or a change of the apps, dropped the others, and the file got smaller at each save: 157 -> 6 on a 3.49)
+typedef struct {
+    char id[24];
+    char key[THUMB_KEY];
+    long at;
+} thumb_old_t;
+static int thumbs_old_index(FILE *old, thumb_old_t **out)
+{
+    *out = NULL;
+    uint32_t h[3];
+    if (!old || fread(h, 4, 3, old) != 3 || memcmp(h, "TFT1", 4) || h[2] != TH || h[1] > 1024) {
+        return 0;
+    }
+    thumb_old_t *v = heap_caps_malloc((h[1] ? h[1] : 1) * sizeof *v, MALLOC_CAP_SPIRAM);
+    int n = 0;
+    for (uint32_t i = 0; v && i < h[1]; i++) {
+        if (fread(v[n].id, 1, 24, old) != 24 || fread(v[n].key, 1, THUMB_KEY, old) != THUMB_KEY) {
+            break;
+        }
+        v[n].id[23] = 0;
+        v[n].at = ftell(old);
+        n++;
+        if (fseek(old, TH * TH * 2, SEEK_CUR)) {
+            break;
+        }
+    }
+    *out = v;
+    return n;
+}
+// the picture of id + key from the old file into buf; false: not there
+static bool thumbs_old_get(FILE *old, const thumb_old_t *v, int n, const char *id, const char *key, uint16_t *buf)
+{
+    for (int i = 0; i < n; i++) {
+        if (!strcmp(v[i].id, id) && !memcmp(v[i].key, key, THUMB_KEY)) {
+            return !fseek(old, v[i].at, SEEK_SET) && fread(buf, 2, TH * TH, old) == TH * TH;
+        }
+    }
+    return false;
+}
+// the pictures in the file (a new file, then a rename: a stop in the write keeps the old file): the pictures in memory,
+// and the pictures of the old file for the apps that have none in memory (the same id and key)
 static void thumbs_save(void)
 {
     s_thumbs_dirty = false;
@@ -455,30 +517,48 @@ static void thumbs_save(void)
         heap_caps_free(buf);
         return;
     }
+    FILE *old = fopen(THUMB_FILE, "rb");
+    thumb_old_t *ov = NULL;
+    const int on = thumbs_old_index(old, &ov);
     uint32_t h[3] = {0, 0, TH};
     memcpy(h, "TFT1", 4);
     bool ok = fwrite(h, 4, 3, f) == 3;
+    unsigned kept = 0;
     for (int k = 0; k < TFN_MAX && ok; k++) {
         char id[24] = {0}, key[THUMB_KEY] = {0};
-        bool have = false;
+        bool have = false, app = false;
         LOCK();
-        if (gen == s_thumb_gen && k < tfa_n && s_thumb[k]) {
-            memcpy(buf, s_thumb[k], TH * TH * 2);
+        if (gen == s_thumb_gen && k < tfa_n) {
             memcpy(id, tfa_e[k].id, sizeof id);  // (both 24 bytes, the id ends with a 0)
             id[23] = 0;
             memcpy(key, tfa_e[k].elf_sha, THUMB_KEY);
-            have = true;
+            app = true;
+            if (s_thumb[k]) {
+                memcpy(buf, s_thumb[k], TH * TH * 2);
+                have = true;
+            }
         }
         UNLOCK();
+        if (app && !have && on > 0 && thumbs_old_get(old, ov, on, id, key, buf)) {
+            have = true;
+            kept++;
+        }
         if (have) {
             ok = fwrite(id, 1, 24, f) == 24 && fwrite(key, 1, THUMB_KEY, f) == THUMB_KEY &&
                  fwrite(buf, 2, TH * TH, f) == TH * TH;
             h[1]++;
         }
     }
+    if (old) {
+        fclose(old);
+    }
+    heap_caps_free(ov);
     ok = ok && !fseek(f, 0, SEEK_SET) && fwrite(h, 4, 3, f) == 3;
     ok = !fclose(f) && ok;
     heap_caps_free(buf);
+    if (kept) {
+        ESP_LOGI(TAG, "%u still icon pictures kept from the old file", kept);
+    }
     if (ok && gen == s_thumb_gen) {
         unlink(THUMB_FILE);
         ok = !rename(THUMB_FILE ".new", THUMB_FILE);
@@ -753,7 +833,7 @@ static void icon_draw(int k, int x, int y, int s)
 #if TFA_ICON_ASK
     if (!tfa_icon[k] && !tfa_icon_bad[k] && icon_ask(k, true)) {
         if (!thumb_draw(k, x, y, s)) {
-            tfn_icon_plain(tfa_e[k].name, x, y, s);
+            icon_wait_tile(x, y, s);  // (the picture comes in a moment: a calm tile, not a letter)
         }
         return;
     }
@@ -821,6 +901,8 @@ static void icon_draw(int k, int x, int y, int s)
         turn_end = now + ICON_TURN_MS;
     }
     s_icon_still = k != turn;
+#else
+    s_icon_still = (uint32_t)(now - s_move_ms) < ICON_CALM_MS;
 #endif
     if (!tfn_icon_draw(tfa_icon[k], tfa_icon_len[k], x, y, s)) {
         tfn_icon_plain(tfa_e[k].name, x, y, s);

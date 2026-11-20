@@ -4,6 +4,7 @@
  "sym": "app_sdr",
  "group": "UTIL",
  "emoji": "📶",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_sdr.c"

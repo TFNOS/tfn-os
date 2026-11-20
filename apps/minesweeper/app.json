@@ -4,6 +4,7 @@
  "sym": "app_mines",
  "group": "GAMES",
  "emoji": "💣",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_mines.c",

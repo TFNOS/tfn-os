@@ -4,6 +4,7 @@
  "sym": "app_hop",
  "group": "GAMES",
  "emoji": "🦘",
+ "icon": "icon.png",
  "srcs": [
   "app_hop.c"
  ],

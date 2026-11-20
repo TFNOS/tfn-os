@@ -4,6 +4,7 @@
  "sym": "app_rfdec",
  "group": "UTIL",
  "emoji": "📟",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_rfdec.c"

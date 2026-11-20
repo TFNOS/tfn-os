@@ -4,6 +4,7 @@
  "sym": "app_metro",
  "group": "UTIL",
  "emoji": "🥁",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_metro.c"

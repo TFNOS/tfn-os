@@ -4,6 +4,7 @@
  "sym": "app_sky",
  "group": "UTIL",
  "emoji": "🌌",
+ "icon": "icon.png",
  "srcs": [
   "app_sky.c",
   "sky_data.c"

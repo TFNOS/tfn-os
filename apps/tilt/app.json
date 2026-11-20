@@ -4,6 +4,7 @@
  "sym": "app_tilt",
  "group": "GAMES",
  "emoji": "⚖️",
+ "icon": "icon.png",
  "srcs": [
   "app_tilt.c"
  ],

@@ -4,6 +4,7 @@
  "sym": "app_ohm",
  "group": "UTIL",
  "emoji": "🔌",
+ "icon": "icon.png",
  "srcs": [
   "app_ohm.c"
  ],

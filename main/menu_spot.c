@@ -841,6 +841,7 @@ void men_spot_update(int64_t now, float dt)
     static int64_t s_still_t;
     if (men_touch || fabsf(men_pos - (float)men_sel) > 0.004f) {
         s_still_t = now;
+        tfn_icon_moving();  // (the icons show their first frame while the row moves)
     } else if (now - s_still_t > 150 && men_level < 0 && men_bg_key >= 0 && rooms_n() < room_max()) {
         int best = -1;
         for (int i = 0; i < men_n_items; i++) {

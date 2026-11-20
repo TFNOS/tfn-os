@@ -4,6 +4,7 @@
  "sym": "app_ringseq",
  "group": "UTIL",
  "emoji": "🎶",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_ringseq.c"

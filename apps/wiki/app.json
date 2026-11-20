@@ -4,6 +4,7 @@
  "sym": "app_wiki",
  "group": "UTIL",
  "emoji": "📖",
+ "icon": "icon.png",
  "new": true,
  "srcs": [
   "app_wiki.c",

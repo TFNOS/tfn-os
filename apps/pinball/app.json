@@ -4,6 +4,7 @@
  "sym": "app_pinball",
  "group": "GAMES",
  "emoji": "🕹️",
+ "icon": "icon.png",
  "srcs": [
   "app_pinball.c"
  ],
