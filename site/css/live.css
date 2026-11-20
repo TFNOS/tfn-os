@@ -1,0 +1,321 @@
+/* The livelier parts of the front page (index.html, after home.css): the key words of the hero in colour, the hero
+   board that tilts after the mouse (js/home.js), the six boards under the hero with screens that change, a ribbon of
+   the animated app icons, dim tilted boards behind the page, the boards at the bottom as outlines, and the titles
+   of the feature groups. All motion stops with "reduce motion". */
+
+.hl {
+  font-weight: 800;
+  font-size: 1.1em;
+}
+
+.hl-1 { color: var(--fc1); }
+.hl-2 { color: var(--fc6); }
+.hl-3 { color: var(--fc4); }
+.hl-4 { color: var(--fc8); }
+
+.home-hero .release {
+  margin-bottom: 10px;
+}
+
+/* a tighter hero, so that the six boards show on the first screen of a laptop */
+.home-hero {
+  padding-top: clamp(22px, 3.5vw, 44px);
+}
+
+.home-hero h1 {
+  margin-bottom: clamp(16px, 2.2vw, 26px);
+}
+
+.hero-art figcaption {
+  margin-top: 10px;
+}
+
+/* the hero board: js/home.js sets --rx and --ry */
+.hero-art[data-tilt] {
+  perspective: 900px;
+}
+
+.hero-art[data-tilt] .dev {
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.35s ease-out;
+}
+
+/* the six boards under the hero, at one scale (the sum of the case widths is 423 mm) */
+.top-shelf {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: clamp(26px, 3.5vw, 40px);
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  container-type: inline-size;
+}
+
+.top-shelf .dev {
+  --mm: calc((100cqw - 90px) / 423);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-shelf figcaption {
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.top-shelf figcaption a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.top-shelf figcaption a:hover {
+  color: var(--ink);
+}
+
+.cyc img {
+  opacity: 0;
+  animation: cyc 9s infinite;
+  /* (negative delays: each cycle runs already at the load, so no screen starts empty) */
+  animation-delay: calc(var(--i, 0) * 3s - var(--d, 0s) - 1s);
+}
+
+.cyc img:nth-child(1) { --i: 0; }
+.cyc img:nth-child(2) { --i: 1; }
+.cyc img:nth-child(3) { --i: 2; }
+.top-shelf .dev:nth-child(2) { --d: 0.5s; }
+.top-shelf .dev:nth-child(3) { --d: 1s; }
+.top-shelf .dev:nth-child(4) { --d: 1.5s; }
+.top-shelf .dev:nth-child(5) { --d: 2s; }
+.top-shelf .dev:nth-child(6) { --d: 2.5s; }
+
+@keyframes cyc {
+  0% { opacity: 0; }
+  5% { opacity: 1; }
+  39% { opacity: 1; }
+  44% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@media (max-width: 760px) {
+  .top-shelf {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px 22px;
+  }
+
+  .top-shelf .dev {
+    --mm: 1.55px;
+  }
+}
+
+/* the ribbon of the animated app icons (each icon file is a column of 16 frames) */
+.ribbon {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--raised) 70%, transparent);
+}
+
+.ribbon-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--ink);
+  position: relative;
+}
+
+.ribbon-track {
+  display: flex;
+  gap: 22px;
+  padding: 14px 0;
+  width: max-content;
+  animation: ribbon 70s linear infinite;
+}
+
+.ribbon-link:hover .ribbon-track,
+.ribbon-link:focus-visible .ribbon-track {
+  animation-play-state: paused;
+}
+
+.ribbon-label {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 8px 16px 8px 48px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  background: linear-gradient(90deg, transparent, var(--paper) 35%);
+  white-space: nowrap;
+}
+
+.ri {
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 14px;
+  flex: none;
+}
+
+.ri img {
+  display: block;
+  width: 56px;
+  height: 896px;
+  max-width: none;
+  animation: ri 2s steps(16) infinite;
+}
+
+@keyframes ri {
+  to { transform: translateY(-896px); }
+}
+
+@keyframes ribbon {
+  to { transform: translateX(-50%); }
+}
+
+/* the dim boards behind the page */
+.decor {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.09;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .decor { opacity: 0.13; }
+}
+
+:root[data-theme='dark'] .decor { opacity: 0.13; }
+
+.decor .dev {
+  position: absolute;
+  --mm: 2.6px;
+  animation: drift 26s ease-in-out infinite alternate;
+}
+
+.decor .d1 { left: -190px; top: 14%; rotate: -11deg; }
+.decor .d2 { right: -110px; top: 9%; rotate: 9deg; animation-delay: -6s; }
+.decor .d3 { left: -230px; top: 56%; rotate: 7deg; --mm: 2.2px; animation-delay: -12s; }
+.decor .d4 { right: -100px; top: 50%; rotate: -8deg; animation-delay: -3s; }
+.decor .d5 { right: 6%; bottom: -110px; rotate: 13deg; animation-delay: -9s; }
+.decor .d6 { left: 6%; bottom: -100px; rotate: -6deg; animation-delay: -15s; }
+
+@keyframes drift {
+  to { translate: 0 -26px; }
+}
+
+@media (max-width: 760px) {
+  .decor { display: none; }
+}
+
+/* the boards at the bottom: outlines only */
+.shelf-sil .dev-body {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--ink-2);
+}
+
+.shelf-sil .dev-body::after {
+  background: var(--ink-2);
+}
+
+.shelf-sil .dev-screen {
+  background: color-mix(in srgb, var(--ink-2) 10%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--ink-2);
+}
+
+/* the title of the feature grid: the rainbow of the cards */
+#features-h {
+  width: fit-content;
+  background: linear-gradient(90deg, var(--fc1), var(--fc3) 30%, var(--fc4) 50%, var(--fc6) 70%, var(--fc8));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* the titles of the feature groups: bigger, in colours of their own */
+.feat .feat-group {
+  font: 800 clamp(1.35rem, 2.4vw, 1.7rem) / 1.2 var(--font-d);
+  letter-spacing: 0.01em;
+  text-transform: none;
+  margin: 40px 0 16px;
+  width: fit-content;
+  background: linear-gradient(90deg, var(--g1), var(--g2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.feat .fg-1 { --g1: var(--fc1); --g2: var(--fc3); }
+.feat .fg-2 { --g1: var(--fc5); --g2: var(--fc7); }
+.feat .fg-3 { --g1: var(--fc8); --g2: var(--fc9); }
+
+.feat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.feat-card:hover .feat-ico svg {
+  animation: wiggle 0.5s ease;
+}
+
+@keyframes wiggle {
+  30% { transform: rotate(-8deg); }
+  60% { transform: rotate(6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cyc img,
+  .ri img,
+  .ribbon-track,
+  .decor .dev,
+  .feat-card:hover .feat-ico svg {
+    animation: none;
+  }
+
+  .cyc img:nth-child(1) { opacity: 1; }
+  .hero-art[data-tilt] .dev { transform: none; }
+  .feat-card:hover { transform: none; }
+}
+
+/* less margin on the front page: a wider column, a smaller gutter, smaller gaps between the parts */
+:root:has(.home-hero) {
+  --wrap: 1360px;
+  --gutter: clamp(14px, 2.6vw, 28px);
+}
+
+.chapter {
+  padding: clamp(36px, 4.5vw, 64px) 0;
+}
+
+.chapter-head {
+  margin-bottom: clamp(16px, 2vw, 24px);
+}
+
+.feat .feat-group {
+  margin: 28px 0 12px;
+}
+
+.feat-grid {
+  gap: 12px;
+}
+
+.top-shelf .dev {
+  --mm: min(calc((100cqw - 90px) / 423), 2.5px);
+}
+
+/* the board of the hero keeps its size on a wide screen (then the six boards stay on the first screen) */
+.hero-art {
+  max-width: 640px;
+  justify-self: end;
+  width: 100%;
+}

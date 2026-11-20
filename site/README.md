@@ -14,7 +14,7 @@ open licence, game data, your WiFi or home addresses).
 
 | Path | What it is |
 |---|---|
-| `index.html`, `css/site.css`, `css/home.css`, `js/site.js`, `js/theme.js` | the start page (`css/site.css`: the shared part of all pages; `css/home.css`: the start page only) |
+| `index.html`, `css/site.css`, `css/home.css`, `css/live.css`, `js/site.js`, `js/theme.js`, `js/home.js` | the start page (`css/site.css`: the shared part of all pages; `css/home.css`: the start page only) |
 | `install.html`, `css/install.css`, `js/flasher/` | the web flasher |
 | `how.html`, `css/how.css` | how it works: the signatures, the pools, the pool manager, the play by radio |
 | `trust.html`, `css/trust.css`, `js/trust.js` | the trust map: sequence diagrams of the install and the signatures (a public user, a pool with its own apps, a developer) |
