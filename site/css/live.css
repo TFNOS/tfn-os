@@ -319,3 +319,56 @@
   justify-self: end;
   width: 100%;
 }
+
+/* each feature card has one colour (fk-N): its title, its technical terms and a soft tint with a faint dot grid of a
+   circuit board in its corner; the text keeps the colour of the page */
+.fk-1 { --k: var(--fc1); }
+.fk-2 { --k: var(--fc2); }
+.fk-3 { --k: var(--fc3); }
+.fk-4 { --k: var(--fc4); }
+.fk-5 { --k: var(--fc5); }
+.fk-6 { --k: var(--fc6); }
+.fk-7 { --k: var(--fc7); }
+.fk-8 { --k: var(--fc8); }
+.fk-9 { --k: var(--fc9); }
+
+.feat-card[class*='fk-'] {
+  --kt: color-mix(in srgb, var(--k) 82%, var(--ink));
+  border-color: color-mix(in srgb, var(--k) 28%, var(--line));
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--k) 30%, transparent) 1.2px, transparent 1.6px) top right / 14px 14px no-repeat,
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--k) 16%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--k) 7%, var(--raised)), var(--raised) 70%);
+}
+
+.feat-card[class*='fk-']::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 92px;
+  height: 64px;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--k) 38%, transparent) 1.3px, transparent 1.8px);
+  background-size: 12px 12px;
+  mask-image: linear-gradient(225deg, #000 20%, transparent 85%);
+  pointer-events: none;
+}
+
+.feat-card {
+  position: relative;
+}
+
+.feat-card[class*='fk-'] h4 {
+  color: var(--kt);
+}
+
+.feat-card .bz {
+  color: var(--kt);
+  font-weight: 800;
+}
+
+.feat-card[class*='fk-']:hover {
+  border-color: color-mix(in srgb, var(--k) 55%, var(--line));
+}
+
+.hl-5 { color: var(--fc2); }

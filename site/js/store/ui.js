@@ -26,8 +26,20 @@ const state = {
 
 // ---------- the files ----------
 
+// the response of a request that js/store/early.js started at the load of the page (one time), else null
+async function takeEarly(url) {
+  const early = window.tfnStoreEarly;
+  const p = early && early[url];
+  if (!p) {
+    return null;
+  }
+  delete early[url];
+  const r = await p;
+  return r && r.ok ? r : null;
+}
+
 async function fetchBytes(url) {
-  const r = await fetch(url, { cache: 'no-store' });
+  const r = (await takeEarly(url)) || (await fetch(url, { cache: 'no-store' }));
   if (!r.ok) {
     throw new Error('The site could not give ' + url.split('?')[0] + ' (HTTP ' + r.status + ').');
   }
@@ -46,7 +58,7 @@ async function fetchCached(url) {
 
 async function fetchJson(url) {
   try {
-    const r = await fetch(url, { cache: 'no-cache' });
+    const r = (await takeEarly(url)) || (await fetch(url, { cache: 'no-cache' }));
     return r.ok ? await r.json() : {};
   } catch (e) {
     return {};
