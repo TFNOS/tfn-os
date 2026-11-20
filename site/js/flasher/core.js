@@ -120,8 +120,9 @@ export function buildPlan(manifest, mode, board) {
       errors.push(writes[i - 1].name + ' and ' + writes[i].name + ' overlap');
     }
   }
-  if (!writes.some((f) => f.name === 'app' && f.offset === APP_OFFSET)) {
-    errors.push('the plan has no app at 0x10000');
+  const appAt = board.appOffset || APP_OFFSET;
+  if (!writes.some((f) => f.name === 'app' && f.offset === appAt)) {
+    errors.push('the plan has no app at ' + hex(appAt));
   }
   if (mode === 'install' && !writes.some((f) => f.name === 'bootloader')) {
     errors.push('the install plan has no bootloader');

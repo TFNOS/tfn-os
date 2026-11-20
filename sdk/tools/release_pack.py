@@ -10,7 +10,7 @@ folder of store_index.py. A key is a PEM file (private or public), a file with t
 the public values go out. A PEM file needs the package "cryptography" or the openssl program (store_index.parse_pub).
 The release gets:
   tfn-os-V-<kind>.bin        the app with the OTA signature (the update file of a board, and the app of the site)
-  tfn-os-V-<kind>-full.bin   bootloader + partition table + app + blank otadata in one image: write it at 0x0
+  tfn-os-V-<kind>-full.bin   bootloader + partition table + app + otadata in one image: write it at 0x0
   tfn-store-V.zip            the store (the folder store/ of the site)
   tfn-sdk-V.zip              the SDK package
   tfn-keys.json              the public keys and their key IDs (the store key, the OTA release key, the backup key)

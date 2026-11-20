@@ -39,6 +39,7 @@ import io
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import tempfile
@@ -47,6 +48,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -348,14 +350,21 @@ def read_sums(folder, chk):
     return sums
 
 
+def otadata_slot0(size):
+    """The otadata that starts ota_0 (site/tools/fw_manifest.py otadata_slot0: a table with a factory slot)."""
+    seq = struct.pack('<I', 1)
+    entry = seq + b'\xff' * 20 + struct.pack('<II', 0xFFFFFFFF, zlib.crc32(seq, 0xFFFFFFFF) & 0xFFFFFFFF)
+    return entry + b'\xff' * (size - len(entry))
+
+
 def check_full(full, man):
     """The faults of a full image (esptool merge_bin) against the files of the manifest."""
     out = []
     for f in man['files']:
         part = full[f['offset']:f['offset'] + f['size']]
         if f['name'] == 'otadata':
-            if any(b != 0xFF for b in part):
-                out.append('the otadata region is not blank')
+            if part != b'\xff' * len(part) and part != otadata_slot0(len(part)):
+                out.append('the otadata region is not blank (or the start of ota_0)')
         elif hashlib.sha256(part).hexdigest() != f['sha256']:
             out.append('%s at 0x%x is not the file of the site' % (f['name'], f['offset']))
     return out

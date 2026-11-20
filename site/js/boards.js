@@ -70,6 +70,9 @@ export const BOARDS = [
     screen: '1280 x 720',
     shot: 'img/screens/board_tab5.webp',
     web: true,
+    // (the table of the Tab5 keeps the first slot for a boot menu: TFN OS is in ota_0, after the otadata)
+    appOffset: 0x120000,
+    otadataOffset: 0x110000,
   },
 ];
 

@@ -15,6 +15,7 @@ function otaLine(kind, version) {
 
 const INSTALL4 = ['bootloader@0x000000', 'partition-table@0x008000', 'app@0x010000', 'otadata@0x710000'];
 const UPDATE2 = ['app@0x010000', 'otadata@0x710000'];
+const INSTALL_TAB5 = ['bootloader@0x000000', 'partition-table@0x008000', 'otadata@0x110000', 'app@0x120000'];
 
 export const SCENARIOS = {
   'tfn-lcd349': {
@@ -65,7 +66,7 @@ export const SCENARIOS = {
   'rom-p4': {
     label: 'No TFN OS: ESP32-P4 (the Tab5)',
     console: null, usb: NATIVE, rom: P4_16, table: null,
-    expect: { kind: 'tab5', candidates: ['tab5'], canUpdate: false, install: INSTALL4 },
+    expect: { kind: 'tab5', candidates: ['tab5'], canUpdate: false, install: INSTALL_TAB5 },
   },
   'rom-esp32': {
     label: 'An ESP32 (not S3): no TFN OS board',

@@ -19,7 +19,15 @@ export async function makeFixtures() {
   const manifests = {};
   for (const b of BOARDS.filter((x) => x.web)) {
     const files = [];
-    for (const f of LAYOUT) {
+    for (const f0 of LAYOUT) {
+      // (a board with its own app and otadata places: the Tab5)
+      const f = { ...f0 };
+      if (f.name === 'app' && b.appOffset) {
+        f.offset = b.appOffset;
+      }
+      if (f.name === 'otadata' && b.otadataOffset) {
+        f.offset = b.otadataOffset;
+      }
       const data = new Uint8Array(f.size).fill(f.fill);
       data[1] = b.kind.length;
       const entry = { name: f.name, path: f.path, offset: f.offset, size: f.size, modes: f.modes };

@@ -62,7 +62,8 @@ def keygen(path):
 
 
 def image(kind, version, size_code, seed, app=True, body=9000):
-    """A small ESP-IDF image of the ESP32-S3: an app (the app description and the board tag) or a bootloader."""
+    """A small ESP-IDF image for the chip of the kind: an app (the app description and the board tag) or a
+    bootloader."""
     rnd = random.Random(seed)
     desc = bytearray(256)
     if app:
@@ -75,7 +76,7 @@ def image(kind, version, size_code, seed, app=True, body=9000):
     head = bytearray(24)
     head[0], head[1], head[2], head[3] = 0xE9, 2, 2, (size_code << 4) | 0xF
     struct.pack_into('<I', head, 4, 0x40380000)
-    struct.pack_into('<H', head, 12, 9)
+    struct.pack_into('<H', head, 12, fw_manifest.CHIPS[fw_manifest.board(kind)['chip']][1])
     head[23] = 1
     img = bytes(head) + struct.pack('<II', 0x3C000020, len(desc)) + bytes(desc)
     img += struct.pack('<II', 0x3C001000, len(data)) + bytes(data)
