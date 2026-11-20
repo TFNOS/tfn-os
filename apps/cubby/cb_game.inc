@@ -11,10 +11,13 @@
 // comes also COYOTE s after an edge, and from a press JBUF s before the landing. On the ground the treads stay as they
 // were (a turn first; a light push only turns the robot: the aim of a cube).
 
-#define G_ACC      22.0f
-#define V_HOP      7.7f   // a hop: up 1.35 units (onto a step of 1)
-#define V_BOOST    7.76f  // the big jump: the push at 0.18 s of a held jump (up 2.4 units in all)
-#define V_SPRING   14.2f  // the spring cube: up 4.6 units
+#define G_ACC    22.0f
+#define V_HOP    7.7f   // a hop: up 1.35 units (onto a step of 1)
+#define V_BOOST  7.76f  // the big jump: the push at 0.18 s of a held jump (up 2.4 units in all)
+#define V_SPRING 14.2f  // the spring cube: up 4.6 units
+#define V_DJ                                                                                                           \
+    7.7f    // the double jump: a second press in the air, a hop more (at the top of a hop: up 2.5 in
+            // all, onto a step of 2; at the top of the big jump: up 3.5, onto a step of 3; never 4)
 #define RUN_MAX    3.6f
 #define R_BOX      0.34f
 #define CLIMB      0.30f
@@ -36,7 +39,7 @@ enum {
     A_SPLASH,
     A_BOOT
 };
-static const float A_LEN[] = {0, 1.15f, 0.42f, 0.42f, 0.55f, 2.2f, 1.4f, 2.0f};
+static const float A_LEN[] = {0, 1.15f, 0.5f, 0.42f, 0.55f, 2.2f, 1.4f, 2.0f};
 
 typedef struct {
     v3 p, v, p0;      // the place (the ground under the treads), the speed, the place of the last step
@@ -57,6 +60,7 @@ typedef struct {
     bool jump_held;
     bool big;  // this jump is a big jump (the slow time at its top)
     bool slow_used;
+    bool dj_used;  // the double jump of this time in the air is used
     float land_v;
     float idle_t;
     float bonk_t;
@@ -86,6 +90,17 @@ typedef struct {
 } fall_t;
 #define NFALL 4
 static fall_t s_fall[NFALL];
+// the cube that the robot throws to a cell (round 3: an animation of the throw): an arc from over the head
+// to the cell, one turn in the air; it lands in the stack (or as a balloon cube) at the end
+typedef struct {
+    bool on;
+    int kind, i, j;
+    v3 a, b;    // from, to (the middle of the cube)
+    float yaw;  // the facing of the robot at the throw
+    float t, dur, top;
+} toss_t;
+static toss_t s_toss;
+#define TOSS_AT 0.14f         // (the time in A_PLACE when the cube leaves the hands)
 static float s_coil[GX][GZ];  // the spring on the top of a cell: 1 = free, less = pressed
 static float s_pop[GX][GZ];   // the time since the top cube of the cell came (its pop)
 
@@ -113,8 +128,11 @@ static float s_rt;                 // the real time (seconds)
 static float s_acc;                // the time not yet stepped
 static float s_slow, s_slow_left;  // the slow time: 0..1 (the blend), the real seconds left
 static float s_shake;
-static float s_win_t;   // the time since the third SUNDROP (-1: not yet)
-static float s_hint_t;  // the real time of play (the control hints fade)
+static float s_win_t;        // the time since the last SUNDROP (-1: not yet)
+static int s_drop_name;      // the SUNDROP of the name on the screen (-1: none)
+static float s_drop_name_t;  // the real time since that SUNDROP
+static float s_mech_move;    // a machine moves now: 0..1 (near)
+static float s_hint_t;       // the real time of play (the control hints fade)
 
 // the friend on a second board (cb_net.inc): the events of the world that my robot makes, the friend robot on a
 // balloon cube, its push
@@ -129,6 +147,10 @@ enum {
 };
 static void net_event(int type, int a, int b, int c, float y);
 static bool net_friend_on_float(int k);
+static void life_reset(void);
+static void life_step(float dt);
+static bool net_friend_on_cell(int i, int j, float t);
+static bool net_friend_in_mech(const mech_t *q);
 static void net_push(void);
 // the music (app_cubby.c): a jingle, then the island loop again
 static void music_jingle(int j, int ms);
@@ -370,8 +392,8 @@ static bool place_ok(int i, int j, float *top)
     if (box_on_cell(P.p.x, P.p.z, i, j) && t + 1 > P.p.y + CLIMB) {
         return false;
     }
-    if (i >= 17 && i <= 18 && j >= 16 && j <= 17) {
-        return false;  // (not on the lighthouse)
+    if (s_cf[i][j] & CF_NOPLACE) {
+        return false;  // (not on the crates, the tower, a gate)
     }
     *top = t;
     return true;
@@ -380,7 +402,7 @@ static bool place_ok(int i, int j, float *top)
 static int pile_near(void)
 {
     v3 f = fwd_of(P.yaw);
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NPILE; k++) {
         float dx = s_pile[k].x - P.p.x, dz = s_pile[k].z - P.p.z;
         float d = fsqrt(dx * dx + dz * dz);
         if (d > 1.45f || absf(s_pile[k].y - P.p.y) > 0.6f) {
@@ -635,19 +657,25 @@ static void act_step(float dt)
         }
         break;
     case A_PLACE:
-        if (CROSS(0.2f)) {
+        if (CROSS(TOSS_AT)) {
+            // the throw: the cube leaves the hands over the head and flies to its cell
             int i = P.act_cell_i, j = P.act_cell_j;
             float top;
-            if (place_ok(i, j, &top)) {
-                if (P.act_kind == CB_FLOAT) {
-                    float_new(i, j, top, false);
-                    fx(FX_CLUNK, 70, 1.4f);
-                } else if (top < P.p.y - 0.05f) {
-                    cube_drop(P.act_kind, i, j, P.p.y + 0.1f);
-                } else {
-                    stack_add(i, j, P.act_kind);
-                }
+            if (place_ok(i, j, &top) && !s_toss.on) {
+                v3 f = fwd_of(P.yaw);
+                s_toss = (toss_t){true,
+                                  P.act_kind,
+                                  i,
+                                  j,
+                                  V3(P.p.x + f.x * 0.1f, P.p.y + 1.55f, P.p.z + f.z * 0.1f),
+                                  V3(i + 0.5f, top + 0.5f, j + 0.5f),
+                                  P.yaw,
+                                  0,
+                                  0,
+                                  top};
+                s_toss.dur = 0.26f + 0.04f * clampf(P.p.y + 1.0f - top, 0, 3);
                 P.carry = 0;
+                fx(FX_STEAM, 45, 1.7f);
             } else {
                 fx(FX_NO, 55, 1);
             }
@@ -890,6 +918,7 @@ static void jump_start(v3 want, float mag)
     P.jbuf = 0;
     P.big = false;
     P.slow_used = false;
+    P.dj_used = false;
     P.on_float = -1;
     air_from_run();
     if (mag > 0.05f) {
@@ -902,8 +931,110 @@ static void jump_start(v3 want, float mag)
     R.squash = 1.18f;
     fx(FX_HOP, 70, 1.0f);
 }
+// the double jump: a new push up from the air, the stick sets the direction again; a puff under the treads
+static void double_jump(v3 want, float mag)
+{
+    P.v.y = V_DJ;
+    P.dj_used = true;
+    P.jbuf = 0;
+    P.jump_t = -1;
+    if (mag > 0.3f) {
+        float to = RUN_MAX * mag, ux = want.x / mag, uz = want.z / mag;
+        P.avx += (ux * to - P.avx) * 0.75f;
+        P.avz += (uz * to - P.avz) * 0.75f;
+    }
+    R.squash = 1.26f;
+    for (int n = 0; n < 8; n++) {
+        float a = TAU_F * n / 8;
+        part_add(V3(P.p.x + fcos(a) * 0.25f, P.p.y + 0.05f, P.p.z + fsin(a) * 0.25f),
+                 V3(fcos(a) * 1.8f, -0.6f, fsin(a) * 1.8f), 0.45f, 0.11f, PT_STEAM, 0xFFFFFF);
+    }
+    fx(FX_HOP, 75, 1.32f);
+    fx(FX_STEAM, 40, 1.5f);
+}
+// the robot is in a cube or a balloon cube (round 3: the cubes that stuck to the robot: a cube that fell,
+// or a balloon cube that came down, into a cell that the box of the robot covers; then each move hits it): up onto
+// it when it is low, else out to the nearest free place
+static void unstick(void)
+{
+    if (P.act == A_SPLASH || !box_hits(P.p.x, P.p.z, P.p.y, P.ground)) {
+        return;
+    }
+    float top = floor_at(P.p.x, P.p.z, P.p.y + 1.2f, NULL);
+    if (top > P.p.y && !box_hits(P.p.x, P.p.z, top, P.ground)) {
+        P.p.y = top;
+        ESP_LOGI(TAG, "CUBBY: the robot was in a cube: up onto it (%.1f %.1f %.1f)", (double)P.p.x, (double)P.p.y,
+                 (double)P.p.z);
+        return;
+    }
+    for (int r = 1; r <= 12; r++) {
+        for (int a = 0; a < 16; a++) {
+            float x = P.p.x + fcos(a * (TAU_F / 16)) * r * 0.1f, z = P.p.z + fsin(a * (TAU_F / 16)) * r * 0.1f;
+            float y = floor_at(x, z, P.p.y + CLIMB, NULL);
+            if (y > P.p.y - 1.5f && !box_hits(x, z, y, P.ground)) {
+                ESP_LOGI(TAG, "CUBBY: the robot was in a cube: out to (%.1f %.1f)", (double)x, (double)z);
+                P.p = V3(x, y, z);
+                P.p0 = P.p;
+                return;
+            }
+        }
+    }
+}
+// (a part of player_step: inline, so the machine code is the same; the size check of tests/style)
+static inline __attribute__((always_inline)) void player_pick(void)
+{
+    // the SUNDROPS and the sparks
+    v3 mid = V3(P.p.x, P.p.y + 0.6f, P.p.z);
+    for (int k = 0; k < NDROP; k++) {
+        drop_t *d = &s_drop[k];
+        if (d->got) {
+            continue;
+        }
+        if (vlen(vsub(d->p, mid)) < 0.85f) {
+            d->got = true;
+            d->t = 0;
+            s_ndrops++;
+            net_event(NE_DROP_GOT, 0, 0, k, 0);
+            fx(FX_DROP, 100, 1.0f);
+            for (int n = 0; n < 24; n++) {
+                part_add(d->p, V3(frs() * 3, frand() * 3, frs() * 3), 1.2f, 0.09f, PT_CONF,
+                         n & 1 ? 0xFFD23A : 0xFFFFFF);
+            }
+            if (P.ground) {
+                act_start(A_CHEER);
+            } else {
+                P.act = A_NONE;
+            }
+            R.flash = 0.8f;
+            s_drop_name = k;
+            s_drop_name_t = 0;
+            if (s_ndrops == NDROP) {
+                s_win_t = 0;
+            }
+            music_jingle(s_ndrops == NDROP ? CBM_J_WIN : CBM_J_SUNDROP,
+                         s_ndrops == NDROP ? CB_J_WIN_MS : CB_J_SUNDROP_MS);
+        }
+    }
+    for (int k = 0; k < NSPARK; k++) {
+        drop_t *d = &s_spark[k];
+        if (d->got) {
+            continue;
+        }
+        if (vlen(vsub(d->p, mid)) < 0.7f) {
+            d->got = true;
+            s_nsparks++;
+            net_event(NE_SPARK_GOT, 0, 0, k, 0);
+            fx(FX_SPARK, 80, 1.0f + 0.03f * s_nsparks);
+            for (int n = 0; n < 8; n++) {
+                part_add(d->p, V3(frs() * 1.5f, frand() * 1.5f, frs() * 1.5f), 0.5f, 0.06f, PT_STAR, 0xFFD23A);
+            }
+        }
+    }
+}
+
 static void player_step(float dt)
 {
+    unstick();
     P.p0 = P.p;
     P.yaw0 = P.yaw;
     bool busy = P.act == A_SCOOP || P.act == A_PLACE || P.act == A_PICK || P.act == A_SPLASH || P.act == A_BOOT ||
@@ -922,6 +1053,13 @@ static void player_step(float dt)
     }
     if (P.jbuf > 0 && P.act == A_NONE && (P.ground || (P.air_t < COYOTE && P.jump_t < 0 && P.v.y <= 0))) {
         jump_start(want, mag);
+    }
+    // the double jump: a press in the air (not just over the ground: there the press waits for the landing)
+    if (P.jbuf > 0 && !P.ground && !P.dj_used && P.act == A_NONE && P.air_t > 0.06f) {
+        float fy = floor_at(P.p.x, P.p.z, P.p.y + 0.02f, NULL);
+        if (P.v.y > 0 || P.p.y - fy > 0.55f) {
+            double_jump(want, mag);
+        }
     }
     float want_speed = 0;
     if (mag > 0.05f) {
@@ -1041,9 +1179,11 @@ static void player_step(float dt)
             P.land_v = -vy0;
             P.p.y = fy;
             P.ground = true;
+            P.dj_used = false;
             P.on_float = fl;
-            // (the treads go on with the part of the speed over the ground along the facing)
-            P.speed = clampf(P.avx * f.x + P.avz * f.z, 0, RUN_MAX);
+            // (the treads go on with the part of the speed over the ground along the facing; on a balloon cube they
+            // stop: it is soft, and a robot that rolls on falls off its one cell)
+            P.speed = fl >= 0 ? 0 : clampf(P.avx * f.x + P.avz * f.z, 0, RUN_MAX);
             P.avx = P.avz = 0;
             P.v.x = P.v.z = 0;
             P.jump_t = -1;
@@ -1070,6 +1210,7 @@ static void player_step(float dt)
                 air_from_run();
                 P.big = true;
                 P.slow_used = false;
+                P.dj_used = false;
                 P.jump_t = 1;
                 R.squash = 1.35f;
                 fx(FX_SPRING, 95, 1.0f);
@@ -1117,52 +1258,63 @@ static void player_step(float dt)
     // the safe place: on the ground of the island (not on a balloon cube)
     if (P.ground && P.on_float < 0 && P.act != A_SPLASH) {
         int i = ifloor(P.p.x), j = ifloor(P.p.z);
-        if (cell_in(i, j) && !cell_water(i, j)) {
+        if (cell_in(i, j) && !cell_water(i, j) && !(s_cf[i][j] & CF_NOSAFE) && !s_mc[i][j]) {
             P.safe = P.p;
             P.safe_yaw = P.yaw;
         }
     }
-    // the SUNDROPS and the sparks
-    v3 mid = V3(P.p.x, P.p.y + 0.6f, P.p.z);
-    for (int k = 0; k < 3; k++) {
-        drop_t *d = &s_drop[k];
-        if (d->got) {
-            continue;
+    player_pick();
+}
+// the robot box (feet at y) is on the cell (i, j) with the top t
+static bool robot_on(float x, float y, float z, int i, int j, float t)
+{
+    return absf(y - t) < 0.12f && !(i + 1 <= x - R_BOX || i >= x + R_BOX || j + 1 <= z - R_BOX || j >= z + R_BOX);
+}
+// the robot box at (x, z) is in the cells of a machine
+static bool robot_in_mech(const mech_t *q, float x, float z)
+{
+    return !(q->i1 + 1 <= x - R_BOX || q->i0 >= x + R_BOX || q->j1 + 1 <= z - R_BOX || q->j0 >= z + R_BOX);
+}
+// the plates (a cube, my robot or the friend robot on it; a balloon cube is too light) and the machines
+static void mechs_step(float dt)
+{
+    for (int p = 0; p < NPLATE; p++) {
+        plate_t *pl = &s_plate[p];
+        int i = pl->i, j = pl->j;
+        float t = s_H[i][j];
+        bool on =
+                s_nstk[i][j] > 0 || (P.ground && robot_on(P.p.x, P.p.y, P.p.z, i, j, t)) || net_friend_on_cell(i, j, t);
+        if (on != pl->on) {
+            fx(on ? FX_CLUNK : FX_BEEP, on ? 70 : 40, on ? 1.5f : 0.8f);
+            if (on) {
+                dust_burst(V3(i + 0.5f, t, j + 0.5f), 5, 0.8f);
+            }
         }
-        if (vlen(vsub(d->p, mid)) < 0.85f) {
-            d->got = true;
-            d->t = 0;
-            s_ndrops++;
-            net_event(NE_DROP_GOT, 0, 0, k, 0);
-            fx(FX_DROP, 100, 1.0f);
-            for (int n = 0; n < 24; n++) {
-                part_add(d->p, V3(frs() * 3, frand() * 3, frs() * 3), 1.2f, 0.09f, PT_CONF,
-                         n & 1 ? 0xFFD23A : 0xFFFFFF);
-            }
-            if (P.ground) {
-                act_start(A_CHEER);
-            } else {
-                P.act = A_NONE;
-            }
-            R.flash = 0.8f;
-            if (s_ndrops == 3) {
-                s_win_t = 0;
-            }
-            music_jingle(s_ndrops == 3 ? CBM_J_WIN : CBM_J_SUNDROP, s_ndrops == 3 ? CB_J_WIN_MS : CB_J_SUNDROP_MS);
-        }
+        pl->on = on;
+        pl->push = approach(pl->push, on ? 1.0f : 0.0f, dt * 8);
     }
-    for (int k = 0; k < NSPARK; k++) {
-        drop_t *d = &s_spark[k];
-        if (d->got) {
+    s_mech_move = 0;
+    for (int m = 0; m < NMECH; m++) {
+        mech_t *q = &s_mech[m];
+        bool open = true;
+        for (int k = 0; k < q->np; k++) {
+            open &= s_plate[q->pl[k]].on;
+        }
+        q->open = open;
+        float to = open ? q->ho : q->hc;
+        // (a gate or a door does not close on a robot in it: it waits)
+        if (!open && q->kind != MK_BRIDGE && q->h < to && (robot_in_mech(q, P.p.x, P.p.z) || net_friend_in_mech(q))) {
             continue;
         }
-        if (vlen(vsub(d->p, mid)) < 0.7f) {
-            d->got = true;
-            s_nsparks++;
-            net_event(NE_SPARK_GOT, 0, 0, k, 0);
-            fx(FX_SPARK, 80, 1.0f + 0.03f * s_nsparks);
-            for (int n = 0; n < 8; n++) {
-                part_add(d->p, V3(frs() * 1.5f, frand() * 1.5f, frs() * 1.5f), 0.5f, 0.06f, PT_STAR, 0xFFD23A);
+        float h0 = q->h;
+        q->h = approach(q->h, to, q->speed * dt);
+        if (q->h != h0) {
+            float cx = (q->i0 + q->i1 + 1) * 0.5f, cz = (q->j0 + q->j1 + 1) * 0.5f;
+            float d = fsqrt((cx - P.p.x) * (cx - P.p.x) + (cz - P.p.z) * (cz - P.p.z));
+            s_mech_move = FMAX(s_mech_move, clampf(1 - d / 22.0f, 0, 1));
+            if (q->h == to) {
+                fx(FX_CLUNK, (int)(40 + 50 * clampf(1 - d / 22.0f, 0, 1)), 0.6f);
+                s_shake = FMAX(s_shake, d < 8 ? 0.15f : 0);
             }
         }
     }
@@ -1196,8 +1348,13 @@ static void things_step(float dt)
                 f->y = approach(f->y, f->base + 5.0f, 1.6f * dt);
             } else {
                 f->t += dt;
+                bool under = !(f->i + 1 <= P.p.x - R_BOX || f->i >= P.p.x + R_BOX || f->j + 1 <= P.p.z - R_BOX ||
+                               f->j >= P.p.z + R_BOX) &&
+                             P.p.y + 1.15f <= f->y + 0.05f;
                 if (f->t > 2.5f) {
-                    f->y = approach(f->y, f->base, 0.9f * dt);
+                    float ny = approach(f->y, f->base, 0.9f * dt);
+                    // (not down into the robot under it: it waits over the head)
+                    f->y = under && ny < P.p.y + 1.15f ? FMAX(f->y, P.p.y + 1.15f) : ny;
                 }
             }
         }
@@ -1228,7 +1385,25 @@ static void things_step(float dt)
             }
         }
     }
-    for (int k = 0; k < 3; k++) {
+    mechs_step(dt);
+    life_step(dt);
+    if (s_toss.on) {
+        s_toss.t += dt;
+        if (s_toss.t >= s_toss.dur) {
+            toss_t *q = &s_toss;
+            q->on = false;
+            int i = q->i, j = q->j;
+            if (q->kind == CB_FLOAT) {
+                if (!cell_water(i, j) && float_at(i, j) < 0) {
+                    float_new(i, j, cell_top(i, j), false);
+                    fx(FX_CLUNK, 70, 1.4f);
+                }
+            } else if (cell_in(i, j) && !cell_water(i, j)) {
+                stack_add(i, j, q->kind);
+            }
+        }
+    }
+    for (int k = 0; k < NPILE; k++) {
         pile_t *pl = &s_pile[k];
         if (pl->pulse > 0) {
             pl->pulse = approach(pl->pulse, 0, dt * 0.7f);
@@ -1253,6 +1428,20 @@ static void things_step(float dt)
 
 // ---------------------------------------------------------------- the rig: the moves of the parts (real dt + game dt)
 static float s_blink_t, s_look_t, s_look_yaw, s_look_pitch;
+// the blink: about each 3 s, and two blinks sometimes (0 .. 1; a part of rig_step, inline)
+static inline __attribute__((always_inline)) float rig_blink(float dt)
+{
+    s_blink_t -= dt;
+    float blink = 0;
+    if (s_blink_t < 0.12f && s_blink_t > 0) {
+        blink = 1 - absf(s_blink_t - 0.06f) / 0.06f;
+    }
+    if (s_blink_t <= 0) {
+        s_blink_t = 2.0f + frand() * 3.0f;
+    }
+    return blink;
+}
+
 static void rig_step(float dt)
 {
     float t = s_t;
@@ -1277,7 +1466,7 @@ static void rig_step(float dt)
     v3 head = V3(P.p.x, P.p.y + 1.2f, P.p.z);
     float best = 5.5f;
     v3 look = vadd(head, vadd(vmul(f, 3), V3(0, -0.6f, 0)));
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NDROP; k++) {
         if (s_drop[k].got) {
             continue;
         }
@@ -1288,7 +1477,7 @@ static void rig_step(float dt)
             look = s_drop[k].p;
         }
     }
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NPILE; k++) {
         v3 pp = V3(s_pile[k].x, s_pile[k].y + 0.3f, s_pile[k].z);
         v3 d = vsub(pp, head);
         float l = vlen(d);
@@ -1364,9 +1553,11 @@ static void rig_step(float dt)
         break;
     }
     case A_PLACE: {
-        float k1 = smooth01(at / 0.18f) * (1 - smooth01((at - 0.25f) / 0.15f));
-        al = ar = 2.9f - 1.5f * k1 - (at > 0.2f ? 0.4f * smooth01((at - 0.2f) / 0.2f) : 0);
-        hp = 0.35f;
+        // the throw: the arms go back over the head (the wind-up), swing forward at TOSS_AT, then come down
+        float wind = smooth01(at / TOSS_AT), sw = smooth01((at - TOSS_AT) / 0.1f), dn = smooth01((at - 0.3f) / 0.2f);
+        al = ar = at < TOSS_AT ? 2.9f + 0.35f * wind : 3.25f - 2.0f * sw - 1.0f * dn;
+        cl = at < TOSS_AT ? 0.75f : 0.2f;
+        hp = at < TOSS_AT ? -0.15f : 0.35f;
         hy = 0;
         break;
     }
@@ -1418,15 +1609,7 @@ static void rig_step(float dt)
     default:
         break;
     }
-    // the blink: about each 3 s, and two blinks sometimes
-    s_blink_t -= dt;
-    float blink = 0;
-    if (s_blink_t < 0.12f && s_blink_t > 0) {
-        blink = 1 - absf(s_blink_t - 0.06f) / 0.06f;
-    }
-    if (s_blink_t <= 0) {
-        s_blink_t = 2.0f + frand() * 3.0f;
-    }
+    float blink = rig_blink(dt);
     float k = clampf(dt * 12, 0, 1), kf = clampf(dt * 20, 0, 1);
     R.head_yaw += (hy - R.head_yaw) * k;
     R.head_pitch += (hp - R.head_pitch) * k;
@@ -1493,11 +1676,12 @@ static void camera_step(float rdt, bool title)
     }
     if (title) {
         // the title: a slow flight round the island
-        float a = s_rt * 0.12f;
-        at = V3(13 + fsin(a * 0.7f) * 2, 2.5f, 11);
-        yaw = a + 2.2f;
-        dist = 19;
-        pitch = 0.42f;
+        // (round 3: over the beach and the crates, the island behind in the haze: a big island costs much)
+        float a = s_rt * 0.11f;
+        at = V3(22 + fsin(a) * 4, 2.0f, 10.5f);
+        yaw = fsin(a * 0.8f) * 0.75f;
+        dist = 15;
+        pitch = 0.30f;
         fpx *= 1.05f;
     }
     v3 dir = V3(fsin(yaw) * fcos(pitch), -fsin(pitch), fcos(yaw) * fcos(pitch));
@@ -1556,8 +1740,8 @@ static void game_reset(void)
 {
     world_grid();
     memset(&P, 0, sizeof P);
-    P.p = V3(10.0f, 0, 3.5f);
-    P.yaw = PI_F * 0.5f;
+    P.p = V3(START_X, 0, START_Z);
+    P.yaw = 0;
     P.p0 = P.p;
     P.yaw0 = P.yaw;
     P.ground = true;
@@ -1574,6 +1758,8 @@ static void game_reset(void)
     R.arm_l = R.arm_r = 0.25f;
     memset(s_flo, 0, sizeof s_flo);
     memset(s_fall, 0, sizeof s_fall);
+    memset(&s_toss, 0, sizeof s_toss);
+    life_reset();
     memset(s_part, 0, sizeof s_part);
     for (int i = 0; i < GX; i++) {
         for (int j = 0; j < GZ; j++) {
@@ -1581,13 +1767,14 @@ static void game_reset(void)
             s_pop[i][j] = 1;
         }
     }
-    s_drop[0] = (drop_t){V3(16.5f, 3.75f, 3.5f), false, 0};
-    s_drop[1] = (drop_t){V3(10.0f, 7.75f, 13.0f), false, 0};
-    s_drop[2] = (drop_t){V3(18.0f, LH_TOP + 0.75f, 15.95f), false, 0};
+    for (int k = 0; k < NDROP; k++) {
+        s_drop[k] = (drop_t){V3(DROP_XYZ[k][0], DROP_XYZ[k][1], DROP_XYZ[k][2]), false, 0};
+    }
+    s_drop_name = -1;
     for (int k = 0; k < NSPARK; k++) {
         s_spark[k] = (drop_t){V3(SPARK_XYZ[k][0], SPARK_XYZ[k][1], SPARK_XYZ[k][2]), false, 0};
     }
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NPILE; k++) {
         int i = (int)s_pile[k].x, j = (int)s_pile[k].z;
         s_pile[k].y = cell_in(i, j) ? s_H[i][j] : 0;
         s_pile[k].pulse = 0;
@@ -1660,18 +1847,29 @@ static void play_update(float rdt, bool title)
     if (s_win_t >= 0) {
         s_win_t += rdt;
     }
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NDROP; k++) {
         if (s_drop[k].got) {
             s_drop[k].t += rdt;
         }
     }
-    s_wtime = s_t;
-    // the motor hum of the treads
-    if (s_sound && !title) {
-        float sp = absf(P.speed) + absf(P.spin) * 0.3f;
-        int vol = P.ground ? (int)clampf(sp * 5, 0, 18) : 0;
-        audio_drone(0, 55 + sp * 18, vol, W_TRI);
-    } else {
-        audio_drone(0, 0, 0, W_TRI);
+    if (s_drop_name >= 0) {
+        s_drop_name_t += rdt;
     }
+    s_wtime = s_t;
+    // the motor and the treads (cb_motor.inc): the pitch and the volume with the speed of the treads; in the air the
+    // treads turn free (a higher pitch, softer, no cleats); the slow time lowers the pitch
+    if (s_sound && !title && P.act != A_SPLASH) {
+        float sp = absf(P.speed) + absf(P.spin) * 0.3f;
+        float k = clampf(sp / RUN_MAX, 0, 1.2f);
+        float rate = (0.8f + 0.95f * k + (P.ground ? 0 : 0.3f)) * (1 - 0.35f * s_slow);
+        s_mot_rate = rate;
+        s_mot_vol = k < 0.04f ? 0 : (P.ground ? 14 + 22 * k : 9 + 8 * k);
+        s_mot_cps = P.ground ? sp * 6.5f : 0;
+    } else {
+        s_mot_vol = 0;
+        s_mot_cps = 0;
+    }
+    motor_frame(esp_timer_get_time());
+    // the rumble of a gate, a door or the bridge that moves (louder near)
+    audio_drone(1, 140, s_sound && !title ? (int)(s_mech_move * 16) : 0, W_NOISE);
 }

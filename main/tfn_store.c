@@ -469,6 +469,32 @@ static uint8_t *mgr_icon(const char *id, size_t *len)
     return (uint8_t *)(fit ? fit : s.buf);
 }
 
+bool tfn_store_get_file(const char *mgr_path, const char *static_rel, uint8_t **buf, size_t *n, size_t max, char *msg,
+                        int len)
+{
+    msg[0] = 0;
+    if (tfn_sstore_active()) {
+        return tfn_sstore_get(static_rel, buf, n, max, msg, len);
+    }
+    *buf = heap_caps_malloc(max + 1, MALLOC_CAP_SPIRAM);
+    *n = 0;
+    if (!*buf) {
+        snprintf(msg, len, "no memory");
+        return false;
+    }
+    sink_t s = {.buf = (char *)*buf, .max = (int)max + 1};
+    if (mgr_get(mgr_path, &s, msg, len) < 0 || s.got > (int64_t)max) {
+        if (!msg[0]) {
+            snprintf(msg, len, "A FILE OF THE STORE IS TOO BIG");
+        }
+        free(*buf);
+        *buf = NULL;
+        return false;
+    }
+    *n = (size_t)s.len;
+    return true;
+}
+
 // ---------------------------------------------------------------- the source of the store
 int tfn_store_catalog(tfn_cat_t *out, int max, char *msg, int len)
 {

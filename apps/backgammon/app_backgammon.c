@@ -51,6 +51,7 @@ static const tune_note_t BG_OPEN[] = {
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #ifdef ESP_PLATFORM
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -1278,6 +1279,23 @@ static void throw_dice(void)
         e->rest = false;
     }
 }
+// the opening dice become the dice of the first move: they lie at rest, side by side, on the half of the side to move
+// (the moves draw s_die: with no throw before them, the two dice were at 0, 0, out of the board in the corner)
+static void dice_rest_open(void)
+{
+    const int s = die_s();
+    const bool right = (B.side == 0) != view_flip();
+    const float hx = right ? OX + G_.fr + 6 * G_.pw + G_.barw + 3 * G_.pw : OX + G_.fr + 3 * G_.pw;
+    for (int i = 0; i < 2; i++) {
+        die_t *e = &s_die[i];
+        memset(e, 0, sizeof *e);
+        e->x = hx - s * 0.7f + i * s * 1.4f;
+        e->y = OY + G_.h / 2.0f;
+        e->a = i ? 0.12f : -0.1f;
+        e->face = B.d[i];
+        e->rest = true;
+    }
+}
 static void roll(int d1, int d2, bool send)
 {
     B.d[0] = d1;
@@ -1790,7 +1808,7 @@ static void drag_input(const input_event_t *ev)
         snd_bad();
     }
 }
-static void input(const input_event_t *ev)
+static void input_ev(const input_event_t *ev)
 {
     drag_input(ev);
     if (ev->kind != IN_TAP) {
@@ -1807,6 +1825,17 @@ static void input(const input_event_t *ev)
     }
     if (B.g >= G_OPEN && ev->x >= OX && ev->y >= OY && ev->y < OY + G_.h) {
         tap_board(ev->x, ev->y);
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title, the roll and the end acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    input_ev(ev);
+    if (slow && (B.g == G_TITLE || B.g == G_ROLL || B.g == G_OVER)) {
+        input_ev(&tap);
     }
 }
 
@@ -1921,8 +1950,8 @@ static void enter(int64_t now)
     if (s_snd) {
         JPLAY(BG_OPEN);  // (the opening obeys SOUND OFF)
     }
-    B.level = (int)store_get("bg_lvl", 1) % 3;
-    s_skin = (int)store_get("bg_skin", 0) % 3;
+    B.level = (int)(store_get("bg_lvl", 1) % 3);
+    s_skin = (int)(store_get("bg_skin", 0) % 3);
     s_hints = store_get("bg_hint", 0) == 0;
     s_shake_on = store_get("bg_shake", 0) == 0;
     s_seed = (uint32_t)now * 2654435761u ^ esp_random();
@@ -2055,6 +2084,7 @@ static void update(int64_t now)
                          ? (B.mode == MODE_TWO ? T("WHITE STARTS", "הלבנים מתחילים") : T("YOU START", "אתם מתחילים"))
                          : (B.mode == MODE_TWO ? T("BLACK STARTS", "השחורים מתחילים") : T("THEY START", "הם מתחילים")),
                  1.6f);
+            dice_rest_open();
             begin_moves();
         }
         break;

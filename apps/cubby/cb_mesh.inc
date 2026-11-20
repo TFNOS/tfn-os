@@ -17,15 +17,18 @@ static v3 L_SUN;
 #define GND_R 0.86f
 #define GND_G 0.54f
 #define GND_B 0.40f
-// THE RADIANT LOOK: the strength of the sun, of the ambient light (sky + ground) and of the colour in the grade
-#define SUN_K     1.14f
-#define AMB_K     0.40f
-#define GRADE_SAT 1.50f
-#define SEA_Y     (-0.35f)
+// THE SOFT LOOK (round 3; round 2 was RADIANT: 1.14, 0.40, 1.50 = "yelling at you"): the strength of the sun, of
+// the ambient light (sky + ground) and of the colour in the grade
+#define SUN_K     1.04f
+#define AMB_K     0.47f
+#define GRADE_SAT 1.08f         // (the island)
+#define HOT_SAT   1.55f         // (the robot and the things of the player: radiant, as in round 2)
+static float s_gsat = HOT_SAT;  // (the grade now: GRADE_SAT while the island is made)
+#define SEA_Y (-0.35f)
 // the haze colour of the far distance (the colour of the sky at the horizon)
-#define HAZE_R 168.0f
-#define HAZE_G 214.0f
-#define HAZE_B 255.0f
+#define HAZE_R 186.0f
+#define HAZE_G 208.0f
+#define HAZE_B 226.0f
 
 enum {
     MT_MATTE,
@@ -103,9 +106,9 @@ static void light_rgb(const float *a, v3 n, float ao, int mat, const v3 *v, floa
     }
     // the grade: a little more colour, and a soft top so the light keeps its hue
     float l = r * 0.3f + g * 0.55f + b * 0.15f;
-    r = l + (r - l) * GRADE_SAT;
-    g = l + (g - l) * GRADE_SAT;
-    b = l + (b - l) * GRADE_SAT;
+    r = l + (r - l) * s_gsat;
+    g = l + (g - l) * s_gsat;
+    b = l + (b - l) * s_gsat;
     r = r < 0 ? 0 : r * frcp(1 + r * 0.18f) * 1.18f;
     g = g < 0 ? 0 : g * frcp(1 + g * 0.18f) * 1.18f;
     b = b < 0 ? 0 : b * frcp(1 + b * 0.18f) * 1.18f;
@@ -179,9 +182,9 @@ static inline void light_fast(const float *a, float nl, float ny, float nv, floa
         b += ny * 0.16f;
     }
     float l = r * 0.3f + g * 0.55f + b * 0.15f;
-    r = l + (r - l) * GRADE_SAT;
-    g = l + (g - l) * GRADE_SAT;
-    b = l + (b - l) * GRADE_SAT;
+    r = l + (r - l) * s_gsat;
+    g = l + (g - l) * s_gsat;
+    b = l + (b - l) * s_gsat;
     o[0] = TONE[clampi((int)(r * 128), 0, 383)];
     o[1] = TONE[clampi((int)(g * 128), 0, 383)];
     o[2] = TONE[clampi((int)(b * 128), 0, 383)];
@@ -597,10 +600,11 @@ typedef struct {
 } slab_look_t;
 // a terrace: a rounded rectangle (x0, z0)-(x1, z1) with the corner radius rc, the top at y1, the wall down to y0, a
 // soft lip (the bevel b). The top has rings toward the middle (for the colour of the ground in patches)
+static bool s_slab_coarse;  // (the build: prim_slab makes the far version: one band, no rings)
 static void prim_slab(float x0, float z0, float x1, float z1, float rc, float y0, float y1, const slab_look_t *lk)
 {
     const float b = 0.16f;
-    const int K = 2;  // the steps of a corner arc
+    const int K = (rc < 0.4f || s_slab_coarse) ? 1 : 2;  // the steps of a corner arc (a small corner: one)
     float ctop[3], ctop2[3], clip_[3], chi[3], clo[3], cband[3], col[3];
     col3(ctop, lk->top);
     col3(ctop2, lk->top2);
@@ -620,18 +624,17 @@ static void prim_slab(float x0, float z0, float x1, float z1, float rc, float y0
     }
     // the outline at the inset t: the points of a rounded rectangle, counter-clockwise from above (+y)
     // (x to the east, z to the north; seen from above with z up the page, counter-clockwise = E, N, W, S)
-    int nsx = (int)((w - 2 * rc) / 2.2f) + 1, nsz = (int)((d - 2 * rc) / 2.2f) + 1;
+    // (a big terrace: longer edges; the outline does not change the physics, only the look)
+    float seg = s_slab_coarse ? 6.0f : (w > 20 || d > 20) ? 6.0f : 2.2f;
+    int nsx = (int)((w - 2 * rc) / seg) + 1, nsz = (int)((d - 2 * rc) / seg) + 1;
     int n = 0;
-    float ox[64], oz[64], onx[64], onz[64];
-    if (n > 64) {
-        n = 64;
-    }
+    float ox[128], oz[128], onx[128], onz[128];
     {
         int k = 0;
         float cx[4] = {x1 - rc, x1 - rc, x0 + rc, x0 + rc}, cz[4] = {z0 + rc, z1 - rc, z1 - rc, z0 + rc};
         float a0[4] = {-PI_F * 0.5f, 0, PI_F * 0.5f, PI_F};
-        for (int c = 0; c < 4 && k < 64; c++) {
-            for (int i = 0; i <= K && k < 64; i++) {
+        for (int c = 0; c < 4 && k < 128; c++) {
+            for (int i = 0; i <= K && k < 128; i++) {
                 float a = a0[c] + PI_F * 0.5f * i / K;
                 onx[k] = fcos(a);
                 onz[k] = fsin(a);
@@ -641,7 +644,7 @@ static void prim_slab(float x0, float z0, float x1, float z1, float rc, float y0
             }
             // the straight edge after the corner c (c 0: the east edge going north, 1: the north edge going west ...)
             int ns = (c & 1) ? nsx : nsz;
-            for (int i = 1; i < ns && k < 64; i++) {
+            for (int i = 1; i < ns && k < 128; i++) {
                 float t = (float)i / ns;
                 int c2 = (c + 1) & 3;
                 float ex0 = cx[c] + onx[k - 1] * rc, ez0 = cz[c] + onz[k - 1] * rc;
@@ -658,7 +661,9 @@ static void prim_slab(float x0, float z0, float x1, float z1, float rc, float y0
     }
     // the wall: bands of about 1.3 units from the lip down to y0 (the colours of rock layers)
     float wy1 = y1 - b;
-    int nb = (int)((wy1 - y0) / 1.3f) + 1;
+    int nb = (s_slab_coarse || wy1 - y0 > 8)
+                     ? 1
+                     : (int)((wy1 - y0) / (wy1 - y0 > 6 ? 2.4f : 1.3f)) + 1;  // (a tall wall: one band)
     if (wy1 - y0 < 0.05f) {
         nb = 0;
     }
@@ -701,7 +706,7 @@ static void prim_slab(float x0, float z0, float x1, float z1, float rc, float y0
         mb_q(lipo + i, lipo + i + 1, lipi + i + 1, lipi + i);
     }
     // the top: rings toward the middle, each 1.4 units in; then a fan
-    float inset = b, maxin = (w < d ? w : d) * 0.5f - 0.2f;
+    float inset = b, maxin = s_slab_coarse ? 0 : (w < d ? w : d) * 0.5f - 0.2f;
     int prev = s_bnv;
     for (int i = 0; i <= n; i++) {
         int j = i % n;
@@ -711,7 +716,7 @@ static void prim_slab(float x0, float z0, float x1, float z1, float rc, float y0
         mb_v(V3(px, y1, pz), V3(0, 1, 0), col, 1);
     }
     for (;;) {
-        float nin = inset + 1.8f;
+        float nin = inset + (maxin > 8 ? 7.0f : 1.8f);  // (a big top: wider rings)
         if (nin > maxin) {
             break;
         }
@@ -761,9 +766,16 @@ typedef struct {
 enum {
     LOD_FINE,
     LOD_COARSE,
-    LOD_ALL
+    LOD_ALL,
+    LOD_WFINE,   // (a wall or a small terrace near the eye: WLOD_D)
+    LOD_WCOARSE  // (the same far: one band, no rings)
 };
-#define LOD_D 12.0f           // (the fine props nearer than this to the eye, the coarse ones farther)
+#define WLOD_D  22.0f
+#define FAR_D   33.0f         // (the chunks of the world farther than this are not drawn: the haze hides them)
+#define THING_D 26.0f         // (the far piles, plates and sparks: not drawn farther than this)
+#define RING_D  24.0f         // (the shallow water and the foam of the coast: not drawn farther than this)
+#define PROP_D  27.0f         // (the far props: not drawn farther than this)
+#define LOD_D   12.0f         // (the fine props nearer than this to the eye, the coarse ones farther)
 static int s_blod;            // (the build: 0 the fine props, 1 the coarse props)
 static int s_wlod = LOD_ALL;  // (the build: the level of the chunks that world_add makes now)
 enum {
@@ -771,13 +783,13 @@ enum {
     CK_FOAM,
     CK_SHELF
 };
-#define WMAXV 9000
-#define WMAXT 14000
-#define WMAXC 320
+#define WMAXV 26000
+#define WMAXT 38000
+#define WMAXC 900
 // the cells of the world: WCN x WCN cells of WCELL units from (-WCELL0, -WCELL0) (the sea round the island too)
 #define WCELL  5.0f
 #define WCELL0 8.0f
-#define WCN    10
+#define WCN    16
 static wv_t *s_wv;
 static tri_t *s_wt;
 static chunk_t s_ch[WMAXC];
@@ -1017,12 +1029,13 @@ enum {
 // the haze of the distance on a colour (o: 0..255 a channel)
 static inline void haze(float dist, float *o)
 {
-    float k = (dist - 24.0f) * (1.0f / 120.0f);
+    // (round 3: the island is big; the haze is strong toward FAR_D, where the chunks of the world end)
+    float k = (dist - 13.0f) * (1.0f / 21.0f);
     if (k <= 0) {
         return;
     }
-    if (k > 0.55f) {
-        k = 0.55f;
+    if (k > 0.88f) {
+        k = 0.88f;
     }
     o[0] += (HAZE_R - o[0]) * k;
     o[1] += (HAZE_G - o[1]) * k;

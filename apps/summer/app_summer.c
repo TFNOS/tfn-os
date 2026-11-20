@@ -35,6 +35,7 @@
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "midi_bg/midi_bg.h"
 #include "sc_music.h"
 #include "tfsfx/tfsfx.h"

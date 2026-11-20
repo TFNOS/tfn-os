@@ -11,7 +11,10 @@
 #   CC=<compiler>   the compiler (default clang). For a cache: CC="ccache clang".
 #   JOBS=<n>        compile each source to an object in obj_<board>/ with n compilers at the same time, then link.
 #                   With no JOBS: one compiler call for each board.
-#   FRAMES="349 s3 wt"  the boards to build (default all three).
+#   FRAMES="349 s3 wt"  the boards to build (default these three). More frames: a175 (fuzza175.exe), t5
+#                   (fuzzt5.exe) and am18 (fuzzam18.exe), for example FRAMES="a175 t5 am18".
+#   NOMEM=1         allocation failures (nomem.c, common/host_compat.h): run with FUZZ_NOMEM_NTH=<n> (the n-th big
+#                   allocation fails) or FUZZ_NOMEM=<per mille>, and FUZZ_ONLY=<app name>. The default build has none.
 cd "$(dirname "$0")"
 CC="${CC:-clang}"
 FRAMES="${FRAMES:-349 s3 wt}"
@@ -27,6 +30,7 @@ $PY $M/apps_gen.py --host $G --prefix $M/ $W || exit 1
 LIST="$(cat $G/srcs.txt)"
 [ -n "$NO_SRC" ] && LIST="$(echo $LIST | tr ' ' '\n' | grep -v -E "/($NO_SRC)\.(c|cc)\$" | tr '\n' ' ')"   # (the sources are in main/, libs/<m>/, apps/<app>/)
 SRC="fuzz.c stubs.c common/miniz.c $LIST"
+[ -n "$NOMEM" ] && SRC="nomem.c $SRC" && F="$F -DHOST_NOMEM"
 F="$F $(cat $G/flags.txt) -DBK_HOST_DIR=\"../../main/books\""
 I="$(cat $G/incs.txt)"   # the source folders (main/, libs/<m>/, apps/<app>/), after the board folder
 
@@ -61,7 +65,12 @@ for b in $FRAMES; do
     s3) build_frame s3 fuzzs3.exe || exit 1 ;;
     # the round Watcher (the round apps get the 412 x 412 frame and the wheel)
     wt) build_frame wt fuzzwt.exe || exit 1 ;;
-    *) echo "unknown board $b (349, s3, wt)"; exit 1 ;;
+    # more frames (not in the default list): the round AMOLED-1.75C (the 466 x 466 frame of APP_ROUND_HI, no wheel),
+    # the Tab5 (the tablet UI) and the AMOLED-1.8
+    a175) build_frame a175 fuzza175.exe || exit 1 ;;
+    t5) build_frame t5 fuzzt5.exe || exit 1 ;;
+    am18) build_frame am18 fuzzam18.exe || exit 1 ;;
+    *) echo "unknown board $b (349, s3, wt, a175, t5, am18)"; exit 1 ;;
     esac
 done
 echo built

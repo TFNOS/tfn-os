@@ -5,7 +5,8 @@
 #include <stdint.h>
 #include "app.h"
 
-#define TFN_MAX 160     // the most installed apps (the store has 99+)
+// the most installed apps (about 22 bytes of internal RAM for each place: the menu tables)
+#define TFN_MAX 256
 int tfn_dropped(void);  // the apps of the last scan that had no place in the list (0 = all are listed)
 #define TFN_DATA_DIR "/data/apps"
 #define TFN_CARD_DIR "/sdcard/apps"
@@ -119,13 +120,14 @@ int tfn_group_of(const app_t *a);
 bool tfn_icon_ok(const uint8_t *b, size_t len);
 bool tfn_icon_draw(const uint8_t *b, size_t len, int x, int y, int s);
 void tfn_icon_plain(const char *name, int x, int y, int s);
-#if BOARD_UI_GRID
-// The grid menu (BOARD_UI_GRID): with tfn_icon_ask(true), an app icon whose file is not in memory does not read the
-// card in the draw: a low task reads it, and the icon draws a plain tile now. tfn_icon_missed() = an icon drew a plain
-// tile for that reason since the last call (the call clears it, and frees the old icon files that the task read).
+// The menus: with tfn_icon_ask(true), an app icon whose file is not in memory does not read the card in the draw: a low
+// task reads it, and the icon draws a plain tile now. tfn_icon_missed() = an icon drew a plain tile for that reason
+// since the last call (the call clears it, and frees the old icon files that the task read). tfn_icon_want(a) asks the
+// task for the icon of a menu item before it comes into view (a read ahead of a scroll). The Tab5 (32 MB PSRAM) reads
+// all icons at the start: there these do nothing.
 void tfn_icon_ask(bool on);
 bool tfn_icon_missed(void);
-#endif
+void tfn_icon_want(const app_t *a);
 // The decoded frames of the icons (a slot for each icon that shows; about 16 KB of PSRAM each) go: an app that is not
 // the menu opens, or the icons of the STORE go.
 void tfn_icon_cache_free(void);

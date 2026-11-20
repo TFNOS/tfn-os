@@ -23,6 +23,7 @@
 #include "esp_heap_caps.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "midi_bg/midi_bg.h"
 #include "bv_music.h"
 #include "bv_art.h"
@@ -2656,14 +2657,14 @@ static void enter(int64_t now)
     s_music = (int)store_get("bv_music", 1);
     s_snd = store_get("bv_snd", 1) != 0;
     s_speed = (int)store_get("bv_speed", 0);
-    s_my_look = (int)store_get("bv_look", 0) % NLOOK;
+    s_my_look = (int)(store_get("bv_look", 0) % NLOOK);
     s_map_board = (int)store_get("bv_mapv", 1) != 0;
     s_setup_n = (int)store_get("bv_n", 4);
     if (s_setup_n < 2 || s_setup_n > MAXP) {
         s_setup_n = 4;
     }
     s_setup_lvl = store_get("bv_lvl", 1) != 0;  // (the bots and the length of the game: saved too)
-    s_setup_mode = (int)store_get("bv_mode", MODE_FULL) % 3;
+    s_setup_mode = (int)(store_get("bv_mode", MODE_FULL) % 3);
     if (!s_sky) {
         s_sky = heap_caps_malloc((size_t)SKY_W * SKY_H * 2, MALLOC_CAP_SPIRAM);
     }
@@ -2786,7 +2787,7 @@ static void render(int64_t now)
         break;
     }
 }
-static void input(const input_event_t *ev)
+static void input_ev(const input_event_t *ev)
 {
     if (ev->kind == IN_DOWN) {
         s_press_x = ev->x;
@@ -2849,6 +2850,17 @@ static void input(const input_event_t *ev)
         }
         break;
     }
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on each screen (the game has no holds) acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    input_ev(ev);
+    if (slow) {
+        input_ev(&tap);
     }
 }
 static bool awake(void)

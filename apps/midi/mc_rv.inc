@@ -88,6 +88,11 @@ static void rvm_clip_bottom(int y)
 {
     gfx_clip_bottom(rvm_y(y));
 }
+#undef gfx_text_width  // (the app maps these names to the anti-aliased text first: the functions above use it)
+#undef gfx_text
+#undef gfx_text_center_in
+#undef gfx_text_center
+#undef gfx_clip_bottom
 #define gfx_fill_rect      rvm_fill_rect
 #define gfx_frame_rect     rvm_frame_rect
 #define gfx_fill_circle    rvm_fill_circle

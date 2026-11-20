@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+// One file of the store of this board into PSRAM: the manager (mgr_path: "/api/store/...") or the static store
+// (static_rel: a path under its URL). *buf: free it with free. max = the biggest size. False: msg has the fault.
+bool tfn_store_get_file(const char *mgr_path, const char *static_rel, uint8_t **buf, size_t *n, size_t max, char *msg,
+                        int len);
 // The apps of one catalog (an app after the last place
 // is not in the list, with no message, so the limit must stay above the number of store packages). The users keep the catalog in PSRAM.
 #define TFN_CAT_MAX 192

@@ -26,12 +26,19 @@
 //
 // The files of the SD card (the manager tab APPS & SIGN). All need tok=<the token> once a token is set.
 // path = a path in the card, URL-encoded, with a / at the start ("/" = the root of the card).
-//   GET  /api/fs?op=ls&path=/dir           {"ok":true,"path":"/dir","total":kb,"free":kb,"items":[{"n":"x","d":0|1,
+//   GET  /api/fs?op=ls&path=/dir           {"ok":true,"parts":1,"path":"/dir","total":kb,"free":kb,"items":[{"n":"x","d":0|1,
 //                                          "s":bytes,"t":time},...]} (t: the file time as seconds; the board has no
 //                                          time zone, so it is the clock time of the place where the file was written)
 //   GET  /api/fs?op=get&path=/dir/file     the bytes of the file
 //   POST /api/fs?op=put&path=/dir/file&t=  body = the file; it goes to <file>.part first, then to its name; the
 //                                          folders of the path are made; t = the file time (0: no change)
+//        &at=<offset>&total=<size>         a part of a big file (a data pack): it goes to the end of <file>.part (at
+//                                          must be the size of <file>.part now: else a refusal), and the last part
+//                                          (at + body = total) gives the file its name. The answer has "at": the size
+//                                          of <file>.part after the request (total after the last part). Between two
+//                                          parts the web task answers the other requests (one put of 148 MB held it
+//                                          about 11 min); after a break the client goes on at "at". "parts":1 in the
+//                                          answer of op=ls: the board takes the parts
 //   POST /api/fs?op=rm&path=/x             a file, or a folder with all its content
 //   POST /api/fs?op=mkdir&path=/dir        a folder (and the folders above it)
 // A change in /apps makes the board read its installed apps again.
@@ -978,7 +985,9 @@ static esp_err_t form_post(httpd_req_t *req)
 }
 
 // ---------------------------------------------------------------- the files of the SD card (/api/fs)
-#define FS_ROOT "/sdcard"
+#ifndef FS_ROOT
+#define FS_ROOT "/sdcard"  // (the unit test gives its own folder)
+#endif
 #define FS_PATH 200
 
 static int hexv(char c)
@@ -1043,7 +1052,7 @@ static void fs_ls(httpd_req_t *req, const char *full)
     board_sd_info(&tot, &fr);
     head(req);
     char line[200];
-    snprintf(line, sizeof line, "{\"ok\":true,\"total\":%lu,\"free\":%lu,\"path\":", (unsigned long)tot,
+    snprintf(line, sizeof line, "{\"ok\":true,\"parts\":1,\"total\":%lu,\"free\":%lu,\"path\":", (unsigned long)tot,
              (unsigned long)fr);
     httpd_resp_send_chunk(req, line, HTTPD_RESP_USE_STRLEN);
     web_json_str(req, full[sizeof FS_ROOT - 1] ? full + sizeof FS_ROOT - 1 : "/");
@@ -1115,13 +1124,45 @@ static void fs_mkdirs(const char *full, bool last)
     }
 }
 
-static bool fs_put(httpd_req_t *req, const char *full, const char *q, char *msg, int len)
+// the size of a file (0: no file)
+static long long fs_size(const char *path)
 {
-    char part[FS_PATH + 24], tv[24] = "";
+    struct stat st;
+    return stat(path, &st) == 0 ? (long long)st.st_size : 0;
+}
+
+// the body that a refused request did not read (else the client gets no answer)
+static void fs_drain(httpd_req_t *req, char *buf, size_t cap)
+{
+    size_t got = 0;
+    while (buf && got < req->content_len) {
+        const int r = httpd_req_recv(req, buf, cap);
+        if (r <= 0) {
+            break;
+        }
+        got += (size_t)r;
+    }
+}
+
+// op=put: the body -> the file full, or a part of it (at=, total=: see the head of the file). *at = the size of
+// "<full>.part" after the request (a part), or the size of the file (the last part, a whole file)
+static bool fs_put(httpd_req_t *req, const char *full, const char *q, char *msg, int len, long long *at)
+{
+    char part[FS_PATH + 24], tv[24] = "", av[24] = "", nv[24] = "";
     snprintf(part, sizeof part, "%s.part", full);
     fs_mkdirs(full, false);
-    FILE *f = fopen(part, "wb");
+    const bool parts = httpd_query_key_value(q, "total", nv, sizeof nv) == ESP_OK;
+    httpd_query_key_value(q, "at", av, sizeof av);
+    const long long from = parts ? atoll(av) : 0, total = parts ? atoll(nv) : (long long)req->content_len;
     char *buf = heap_caps_malloc(8192, MALLOC_CAP_SPIRAM);
+    if (parts && (from < 0 || from != (from ? fs_size(part) : 0) || from + (long long)req->content_len > total)) {
+        fs_drain(req, buf, 8192);
+        free(buf);
+        *at = fs_size(part);
+        snprintf(msg, len, "the part file has %lld bytes: send at=%lld (of %lld)", *at, *at, total);
+        return false;
+    }
+    FILE *f = fopen(part, from ? "ab" : "wb");
     size_t got = 0;
     int64_t t0 = esp_timer_get_time();
     int waits = 0;
@@ -1138,11 +1179,20 @@ static bool fs_put(httpd_req_t *req, const char *full, const char *q, char *msg,
     bool closed = f && fclose(f) == 0;
     free(buf);
     if (!closed || got != req->content_len) {
-        unlink(part);
+        if (parts) {
+            *at = fs_size(part);  // (the bytes that came stay: the client goes on from here)
+        } else {
+            unlink(part);
+        }
         snprintf(msg, len,
                  f ? "the file did not come complete (%u of %u bytes), or the card is full" : "cannot write the file",
                  (unsigned)got, (unsigned)req->content_len);
         return false;
+    }
+    if (parts && from + (long long)got < total) {
+        *at = from + (long long)got;
+        snprintf(msg, len, "a part: %lld of %lld bytes", *at, total);
+        return true;
     }
     unlink(full);
     if (rename(part, full)) {
@@ -1157,6 +1207,7 @@ static bool fs_put(httpd_req_t *req, const char *full, const char *q, char *msg,
         utime(full, &u);
     }
     long long ms = (esp_timer_get_time() - t0) / 1000;
+    *at = total;
     snprintf(msg, len, "%u bytes in %lld ms (%lld KB/s)", (unsigned)got, ms, ms ? (long long)got / ms : 0);
     return true;
 }
@@ -1197,6 +1248,7 @@ static esp_err_t fs_api(httpd_req_t *req)
     static char q[3 * FS_PATH + 160];  // (the web server runs one request at a time)
     char op[8] = "", tok[40] = "", full[FS_PATH + 16], msg[160] = "";
     bool ok = false, post = req->method == HTTP_POST;
+    long long at = -1;  // (a put sets it)
     q[0] = 0;
     httpd_req_get_url_query_str(req, q, sizeof q);
     httpd_query_key_value(q, "op", op, sizeof op);
@@ -1224,7 +1276,7 @@ static esp_err_t fs_api(httpd_req_t *req)
     }
     if (post && !strcmp(op, "put") && !root) {
         s_fs_put_on = true;  // (a big file, for example a data pack of the store: the WiFi keeps full power)
-        ok = fs_put(req, full, q, msg, sizeof msg);
+        ok = fs_put(req, full, q, msg, sizeof msg, &at);
         s_fs_put_on = false;
     } else if (post && !strcmp(op, "rm") && !root) {
         ok = fs_rm(full, 0);
@@ -1242,7 +1294,17 @@ static esp_err_t fs_api(httpd_req_t *req)
         tfn_rescan();  // (the installed apps of the card changed)
     }
     ESP_LOGI(TAG, "fs %s %s: %s", op, full, msg);
-    answer(req, ok, msg);
+    if (at < 0) {
+        answer(req, ok, msg);
+        return ESP_OK;
+    }
+    char o[80];  // (a put: the answer has the size of the file, or of its part file)
+    snprintf(o, sizeof o, "{\"ok\":%s,\"at\":%lld,\"msg\":\"", ok ? "true" : "false", at);
+    head(req);
+    httpd_resp_sendstr_chunk(req, o);
+    httpd_resp_sendstr_chunk(req, msg);  // (the messages of fs_put have no quote and no backslash)
+    httpd_resp_sendstr_chunk(req, "\"}");
+    httpd_resp_sendstr_chunk(req, NULL);
     return ESP_OK;
 }
 

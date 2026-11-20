@@ -935,6 +935,11 @@ bool input_key_pop(int *key, int *mods)
     return got;
 }
 
+bool input_pending(void)
+{
+    return uxQueueMessagesWaiting(s_queue) > 0;
+}
+
 void input_flush(void)
 {
     xQueueReset(s_queue);

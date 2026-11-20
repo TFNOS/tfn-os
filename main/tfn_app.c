@@ -17,6 +17,8 @@
 // (NVS); two such resets with no clean close in between stop the app (TFN_STOPPED). The safe mode: the BOOT key of the
 // 3.49 held at start: no installed app loads.
 #include "tfn_app_priv.h"
+#include "tfn_speech.h"
+#include "tfn_listen.h"
 #define N_BUILTIN_MAX 128  // (the most built-in app names in /api/apps)
 
 static const char *TAG = "tfn";
@@ -293,11 +295,16 @@ bool tfa_on_watch_task(void)
 {
     return tfa_wtask && xTaskGetCurrentTaskHandle() == tfa_wtask;
 }
-// the set of what the caller holds: a watcher on the watch task, else the open app file
+// the set of what the caller holds: a watcher on the watch task, the voice module on the speech task (tfn_speech.c),
+// else the open app file
 static own_t *own_now(void)
 {
     if (tfa_wcur >= 0 && tfa_on_watch_task()) {
         return &tfa_w[tfa_wcur].own;
+    }
+    int sw;
+    if (tfa_speech_task_now(&sw) || tfa_listen_task_now(&sw)) {
+        return &tfa_w[sw].own;
     }
     return tfa_owner >= 0 ? &tfa_own[tfa_owner] : NULL;
 }
@@ -489,6 +496,10 @@ static int tfn_fclose(FILE *f)
 }
 static void own_task(TaskHandle_t t)
 {
+    int w;
+    if (tfa_speech_task_now(&w) || tfa_listen_task_now(&w)) {
+        return;  // (the worker of a module: not a task of the app on the screen; close() ends it)
+    }
     if (t && tfa_owner >= 0) {
         for (int i = 0; i < OWN_TASKS; i++) {
             if (!tfa_own[tfa_owner].tasks[i]) {
@@ -823,6 +834,39 @@ void tfa_sha256_hex(const uint8_t *d, size_t n, char hex[65])
     for (int i = 0; i < 32; i++) {
         sprintf(hex + i * 2, "%02x", h[i]);
     }
+}
+
+bool tfa_sha256_file(const char *path, size_t max, char hex[65])
+{
+    struct stat st;
+    if (stat(path, &st) != 0 || (size_t)st.st_size > max) {
+        return false;
+    }
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        return false;
+    }
+    uint8_t small[512];
+    uint8_t *big = heap_caps_malloc(8192, MALLOC_CAP_SPIRAM);
+    uint8_t *buf = big ? big : small;
+    const size_t cap = big ? 8192 : sizeof small;
+    psa_hash_operation_t op = PSA_HASH_OPERATION_INIT;
+    bool ok = psa_crypto_init() == PSA_SUCCESS && psa_hash_setup(&op, PSA_ALG_SHA_256) == PSA_SUCCESS;
+    size_t r;
+    while (ok && (r = fread(buf, 1, cap, f)) > 0) {
+        ok = psa_hash_update(&op, buf, r) == PSA_SUCCESS;
+    }
+    ok = ok && !ferror(f);
+    fclose(f);
+    free(big);
+    uint8_t h[32];
+    size_t ol = 0;
+    ok = ok && psa_hash_finish(&op, h, sizeof h, &ol) == PSA_SUCCESS && ol == 32;
+    psa_hash_abort(&op);
+    for (int i = 0; ok && i < 32; i++) {
+        sprintf(hex + i * 2, "%02x", h[i]);
+    }
+    return ok;
 }
 
 // the signatures that were good already (a rescan after each install must not check all apps again: an ECDSA

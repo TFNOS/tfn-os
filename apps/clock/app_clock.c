@@ -401,7 +401,7 @@ static void sw_load(void)
     s_sw0 = store_get("ck_sw0", 0);
     s_sw_acc = store_get("ck_swa", 0);
     s_nlap = (int)store_get("ck_swn", 0);
-    if (s_nlap > LAPS) {
+    if (s_nlap < 0 || s_nlap > LAPS) {
         s_nlap = LAPS;
     }
     char k[8];

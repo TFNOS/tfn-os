@@ -201,8 +201,9 @@ typedef struct {
     int16_t noise;
     const int16_t *smp;
     uint32_t smp_len;
-    uint32_t smp_pos;  // 16.16
-    uint32_t smp_inc;  // 16.16
+    uint32_t smp_idx;   // the sample (a full 32-bit index: a clip can be longer than 65536 samples = 2.7 s)
+    uint32_t smp_frac;  // the part between smp_idx and the next sample, 0..65535
+    uint32_t smp_inc;   // 16.16
     bool smp_loop;
 } voice_t;
 
@@ -657,7 +658,7 @@ static void voice_block(voice_t *v, int32_t *mix, int n)
     }
     uint32_t pos = v->pos, prog = v->prog, phase = v->phase;
     int32_t lp_y = v->lp_y, hp_y = v->hp_y;
-    uint32_t smp_pos = v->smp_pos;
+    uint32_t smp_idx = v->smp_idx, smp_frac = v->smp_frac;
     int16_t noise = v->noise;
     const uint32_t len = v->len, prog_step = v->prog_step, inc0 = v->inc0;
     const int64_t dinc = (int64_t)v->inc1 - (int64_t)v->inc0;
@@ -695,18 +696,19 @@ static void voice_block(voice_t *v, int32_t *mix, int n)
 
         int32_t smp;
         if (wave == W_SAMPLE) {
-            uint32_t k = smp_pos >> 16;
-            if (k + 1 >= v->smp_len) {
+            if (smp_idx + 1 >= v->smp_len) {
                 if (!v->smp_loop) {
                     v->on = false;
                     break;
                 }
-                smp_pos = 0;
-                k = 0;
+                smp_idx = 0;
+                smp_frac = 0;
             }
-            int32_t a = v->smp[k], b = v->smp[k + 1];
-            smp = a + (((b - a) * (int32_t)(smp_pos & 0xFFFF)) >> 16);
-            smp_pos += v->smp_inc;
+            int32_t a = v->smp[smp_idx], b = v->smp[smp_idx + 1];
+            smp = a + (((b - a) * (int32_t)smp_frac) >> 16);
+            smp_frac += v->smp_inc;
+            smp_idx += smp_frac >> 16;
+            smp_frac &= 0xFFFF;
         } else {
             smp = osc(wave, phase, old, &noise);
         }
@@ -727,7 +729,8 @@ static void voice_block(voice_t *v, int32_t *mix, int n)
     v->phase = phase;
     v->lp_y = lp_y;
     v->hp_y = hp_y;
-    v->smp_pos = smp_pos;
+    v->smp_idx = smp_idx;
+    v->smp_frac = smp_frac;
     v->noise = noise;
 }
 

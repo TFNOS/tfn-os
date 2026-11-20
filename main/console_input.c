@@ -88,11 +88,16 @@ void con_finger(char *cmd)
 void con_key(char *cmd)
 {
     // tests: the BOOT key of the 3.49 down for ms ("key 80"; main.c: a press for an app with app_t.key, else a
-    // hold of 700 ms opens CHAT)
-    extern int64_t g_vkey_until_ms;
+    // hold of 700 ms opens CHAT); "key pwr 80": the PWR key (main_keys.c)
+    extern int64_t g_vkey_until_ms, g_vpwr_until_ms;
     char *a = strtok(NULL, " \t\r\n");
-    g_vkey_until_ms = esp_timer_get_time() / 1000 + (a ? atoi(a) : 80);
-    ESP_LOGI(TAG, "key down for %d ms", a ? atoi(a) : 80);
+    const bool pwr = a && !strcmp(a, "pwr");
+    if (pwr) {
+        a = strtok(NULL, " \t\r\n");
+    }
+    const int ms = a ? atoi(a) : 80;
+    *(pwr ? &g_vpwr_until_ms : &g_vkey_until_ms) = esp_timer_get_time() / 1000 + ms;
+    ESP_LOGI(TAG, "%s key down for %d ms", pwr ? "PWR" : "BOOT", ms);
 }
 
 // "finger2", "fmove2"
@@ -360,11 +365,13 @@ void con_touches(char *cmd)
     ESP_LOGI(TAG, "touches: %d points at most", most);
 }
 
-// "tap", "ltap"
+// "tap", "ltap"; "ldown" / "lup": only the finger down / up at logical x y (a hold of a button: a test of a
+// hold-to-talk key with a voice from a speaker)
 void con_tap(char *cmd)
 {
     // a tap at physical x y, or (ltap) at logical x y in the orientation now (tests from the PC)
     bool logical = cmd[0] == 'l';
+    const int only = !strcmp(cmd, "ldown") ? IN_DOWN : !strcmp(cmd, "lup") ? IN_UP : -1;
     char *a = strtok(NULL, " \t\r\n"), *b = strtok(NULL, " \t\r\n");
     static char pa[12], pb[12];
     if (a && b && logical) {
@@ -382,6 +389,11 @@ void con_tap(char *cmd)
         u.kind = IN_UP;
         tp.kind = IN_TAP;
         u.t_ms = tp.t_ms = t + 50;
+        if (only >= 0) {
+            d.kind = (input_kind_t)only;
+            input_inject(&d);
+            return;
+        }
         input_inject(&d);
         input_inject(&u);
         input_inject(&tp);

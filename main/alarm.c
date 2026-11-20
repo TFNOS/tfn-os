@@ -24,6 +24,9 @@
 #include "power.h"
 #include "tz.h"
 #include "tfn_app.h"
+#include "settings.h"
+#include "standby_priv.h"
+#include "tfn_speech.h"
 #include "driver/i2c_master.h"
 
 static const char *TAG = "alarm";
@@ -422,8 +425,193 @@ static bool timers_run(void)
     return false;
 }
 
+// ---------------------------------------------------------------- SPEAK AT AN ALARM
+// A board with the voice (tfn_speech.h, the app VOICE): about 100 s before a ring the voice makes its text into a file
+// on the card (the voice is slower than real time: about 10 s for a text), for example "Good morning. It is seven
+// thirty. Gym. Clear, twenty four degrees."; the ring plays it after its first tone, and again each 30 s.
+#define VO_LEAD_S 100
+#define VO_N      (ALARM_MAX + TIMER_MAX)
+#define VO_TEXT   200
+#define VO_REPEAT 30000
+static int64_t s_vo_said;  // ms of the last voice of this ring (0 = not yet)
+
+bool alarm_voice_on(void)
+{
+#if BOARD_TTS
+    return store_get("sp_alarm", 0) != 0;
+#else
+    return false;
+#endif
+}
+
+void alarm_voice_set(bool on)
+{
+    store_set("sp_alarm", on ? 1 : 0);
+}
+
+#if BOARD_TTS
+static char s_vo_text[VO_N][VO_TEXT];
+static int64_t s_vo_for[VO_N];  // an alarm: the epoch s of the ring of the made text; a timer: its end (ms)
+
+static void words(int n, char *o, int max)
+{
+    static const char *const ONES[] = {"zero",     "one",     "two",     "three",     "four",     "five",    "six",
+                                       "seven",    "eight",   "nine",    "ten",       "eleven",   "twelve",  "thirteen",
+                                       "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"};
+    static const char *const TENS[] = {"",      "",      "twenty",  "thirty", "forty",
+                                       "fifty", "sixty", "seventy", "eighty", "ninety"};
+    const char *neg = n < 0 ? "minus " : "";
+    n = n < 0 ? -n : n;
+    n = n > 99 ? 99 : n;
+    if (n < 20) {
+        snprintf(o, (size_t)max, "%s%s", neg, ONES[n]);
+    } else {
+        snprintf(o, (size_t)max, "%s%s%s%s", neg, TENS[n / 10], n % 10 ? " " : "", n % 10 ? ONES[n % 10] : "");
+    }
+}
+
+static void vo_path(int k, char *o, int max)
+{
+    snprintf(o, (size_t)max, "/sdcard/voice/ring%d.tvc", k);
+}
+
+// the text of alarm i that rings at the local minute hm (0 .. 1439)
+static void vo_alarm_text(int i, int hm, char *o, int max)
+{
+    const int hour = hm / 60, min = hm % 60;
+    const char *g = hour >= 4 && hour < 12    ? "Good morning"
+                    : hour >= 12 && hour < 17 ? "Good afternoon"
+                    : hour >= 17 && hour < 22 ? "Good evening"
+                                              : "Hello";
+    char h[24], m[32], d[24];
+    words(hour % 12 ? hour % 12 : 12, h, sizeof h);
+    if (!min) {
+        snprintf(m, sizeof m, "o'clock");
+    } else if (min < 10) {
+        words(min, d, sizeof d);
+        snprintf(m, sizeof m, "oh %s", d);
+    } else {
+        words(min, m, sizeof m);
+    }
+    int k = snprintf(o, (size_t)max, "%s. It is %s %s.", g, h, m);
+    if (s_al[i].label[0] && k < max) {
+        k += snprintf(o + k, (size_t)(max - k), " %s.", s_al[i].label);
+    }
+    const sbw_t *w = sb_wx();
+    if (w && w->at && time(NULL) - w->at < 6 * 3600 && k < max) {
+        words((int)(w->t + (w->t < 0 ? -0.5f : 0.5f)), d, sizeof d);
+        snprintf(o + k, (size_t)(max - k), " %s, %s degrees.", sb_cond(w->code, false), d);
+    }
+}
+
+// the text of timer j at its end
+static void vo_timer_text(int j, char *o, int max)
+{
+    const int mins = (int)(s_tm[j].len_s / 60), secs = (int)(s_tm[j].len_s % 60);
+    char a[24], b[24], len[96];
+    if (mins >= 60) {
+        words(mins / 60, a, sizeof a);
+        words(mins % 60, b, sizeof b);
+        snprintf(len, sizeof len, "%s hour%s%s%s%s", a, mins / 60 > 1 ? "s" : "", mins % 60 ? " and " : "",
+                 mins % 60 ? b : "", mins % 60 ? (mins % 60 > 1 ? " minutes" : " minute") : "");
+    } else if (mins) {
+        words(mins, a, sizeof a);
+        snprintf(len, sizeof len, "%s minute%s", a, mins > 1 ? "s" : "");
+    } else {
+        words(secs, a, sizeof a);
+        snprintf(len, sizeof len, "%s seconds", a);
+    }
+    const int k = snprintf(o, (size_t)max, "Your timer of %s is done.", len);
+    if (s_tm[j].label[0] && k < max) {
+        snprintf(o + k, (size_t)(max - k), " %s.", s_tm[j].label);
+    }
+}
+
+// ask the voice for the text of ring slot k (when = its ring); with s_lock
+static void vo_make(int k, int64_t when, const char *text)
+{
+    char path[48];
+    vo_path(k, path, sizeof path);
+    if (speech_make(text, path)) {
+        snprintf(s_vo_text[k], VO_TEXT, "%s", text);
+        s_vo_for[k] = when;
+        ESP_LOGI(TAG, "the voice of ring %d: %s", k, text);
+    }
+}
+
+// alarm i rings in d s (at the local time lt + d); with s_lock
+static void vo_alarm_ahead(int i, int64_t now, int64_t lt, int64_t d)
+{
+    if (d <= 0 || d > VO_LEAD_S || s_vo_for[i] == now + d || !alarm_voice_on() || !speech_ready()) {
+        return;
+    }
+    char t[VO_TEXT];
+    vo_alarm_text(i, (int)((lt + d) % 86400 / 60), t, sizeof t);
+    vo_make(i, now + d, t);
+}
+
+// timer j ends in left ms; with s_lock
+static void vo_timer_ahead(int j, int64_t left)
+{
+    const int k = ALARM_MAX + j;
+    if (left > VO_LEAD_S * 1000 || left < 12000 || s_tm[j].len_s < 30 || s_vo_for[k] == s_tm[j].end_ms ||
+        !alarm_voice_on() || !speech_ready()) {
+        return;
+    }
+    char t[VO_TEXT];
+    vo_timer_text(j, t, sizeof t);
+    vo_make(k, s_tm[j].end_ms, t);
+}
+
+// the ring of slot k: play its voice (after the first tone, then each 30 s); true = it plays now
+static bool vo_ring(int k, int64_t t, int64_t el)
+{
+    if (k < 0 || k >= VO_N || el < 2600 || (s_vo_said && t - s_vo_said < VO_REPEAT) || !s_vo_for[k] ||
+        !alarm_voice_on()) {
+        return false;
+    }
+    const int64_t now = time(NULL);
+    const bool fresh = k >= ALARM_MAX ? s_vo_for[k] == s_tm[k - ALARM_MAX].end_ms
+                                      : now - s_vo_for[k] < 180 && s_vo_for[k] - now < 180;
+    char path[48];
+    vo_path(k, path, sizeof path);
+    if (!fresh || !speech_file_ok(path, s_vo_text[k])) {
+        return false;
+    }
+    const int ms = speech_play_file(path);
+    if (ms <= 0) {
+        return false;
+    }
+    s_vo_said = t;
+    s_ring_last = t + ms + 500 - 2500;  // (the next tone 0.5 s after the voice)
+    ESP_LOGI(TAG, "ring %d: the voice (%d ms)", k, ms);
+    return true;
+}
+#else
+static void vo_alarm_ahead(int i, int64_t now, int64_t lt, int64_t d)
+{
+    (void)i;
+    (void)now;
+    (void)lt;
+    (void)d;
+}
+static void vo_timer_ahead(int j, int64_t left)
+{
+    (void)j;
+    (void)left;
+}
+static bool vo_ring(int k, int64_t t, int64_t el)
+{
+    (void)k;
+    (void)t;
+    (void)el;
+    return false;
+}
+#endif
+
 static void ring(int i)
 {
+    s_vo_said = 0;
     s_ring = i;
     s_ring_t0 = tfn_now_ms();
     s_ring_last = 0;
@@ -506,6 +694,7 @@ static void task(void *arg)
                 if (d >= 0 && d < 120) {
                     wait = 1000;
                 }
+                vo_alarm_ahead(i, now, lt, d);
             }
             xSemaphoreGive(s_lock);
             power_alarm_hold(hold || timers_run());
@@ -525,6 +714,9 @@ static void task(void *arg)
                 } else if (x->end_ms - t < 15000) {
                     wait = 250;  // (near the end: look each 250 ms)
                 }
+                if (x->state == TIMER_RUN) {
+                    vo_timer_ahead(i, x->end_ms - t);
+                }
             }
             xSemaphoreGive(s_lock);
             if (!clock_time_ok()) {
@@ -535,6 +727,8 @@ static void task(void *arg)
             const int64_t t = tfn_now_ms(), el = t - s_ring_t0;
             if (el > 10 * 60 * 1000) {  // (10 minutes: the alarm stops by itself)
                 alarm_stop();
+            } else if (vo_ring(s_ring, t, el)) {
+                app_screen_wake();
             } else if (!s_ring_last || t - s_ring_last >= 2500) {
                 const bool tm = s_ring >= ALARM_MAX;
                 const int vol = tm ? s_tm[s_ring - ALARM_MAX].vol : s_al[s_ring].vol;

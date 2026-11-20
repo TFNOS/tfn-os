@@ -264,7 +264,9 @@ static void mu_end(void)
 {
     ESP_LOGI(TAG, "music: %d late blocks", s_mu_under);
     s_mu_quit = true;
-    for (int i = 0; i < 100 && s_mu_alive; i++) {
+    // (no time limit: the task reads the file into the buffers below until the end of its step, and a read of the
+    // card can take more than 1 s; a step always ends)
+    while (s_mu_alive) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     if (s_mu_task && !s_mu_alive) {

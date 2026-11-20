@@ -1,0 +1,13 @@
+# TFN COMPANION: the firmware of a companion (an ESP32, ESP32-S3, ESP32-C3 or ESP32-C6 with no screen).
+# Build: idf.py -B ../build_dev/companion_<target> set-target <target> build (README.md)
+cmake_minimum_required(VERSION 3.16)
+# the version of the image = CC_FW of main/comp_core.h (TFN OS reads it from the file before an update by radio)
+file(STRINGS main/comp_core.h CC_FW_LINE REGEX "^#define CC_FW ")
+string(REGEX MATCH "[0-9]+" PROJECT_VER "${CC_FW_LINE}")
+if(NOT PROJECT_VER)
+    message(FATAL_ERROR "no version: the line #define CC_FW <n> of main/comp_core.h")
+endif()
+# (a change of comp_core.h configures again: the version of the image follows CC_FW)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_LIST_DIR}/main/comp_core.h)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(tfn_companion)

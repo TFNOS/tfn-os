@@ -1,4 +1,5 @@
 // NOTIFICATIONS (notify.h): the list of the notices, the rules, the banner and the center.
+#include "tfn_speech.h"
 #include "notify.h"
 #include "tfn/theme.h"
 #include "tfn_extras.h"
@@ -315,6 +316,9 @@ uint32_t notify_post_ex(const char *app, const char *title, const char *text, co
         s_new_cnt++;
         if (notify_wake(app) && !dnd_now()) {
             app_screen_wake();
+        }
+        if (strcmp(app, NT_SYSTEM) && !dnd_now()) {
+            speech_notice(app, title, text);  // (READ NOTICES ALOUD: tfn_speech.h)
         }
     }
     ESP_LOGI(TAG, "%s: %s", app, title ? title : "");

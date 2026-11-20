@@ -39,6 +39,7 @@
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "tfsfx/tfsfx.h"
 #include "cb_sfx.h"
 #include "cb_music.h"
@@ -72,7 +73,9 @@ static int64_t s_pf[2][16];
 #include "cb_mesh.inc"
 #include "cb_world.inc"
 #include "cb_robot.inc"
+#include "cb_motor.inc"
 #include "cb_game.inc"
+#include "cb_life.inc"
 #include "cb_hud.inc"
 
 enum {
@@ -136,8 +139,8 @@ static int8_t SINT[256];
 // the colour of the sea at a distance: turquoise near the island, a deep blue farther, the haze at the horizon
 static void sea_colour(float dist, float *o)
 {
-    static const float K[][4] = {
-            {0, 24, 232, 214}, {9, 0, 182, 240}, {28, 6, 118, 236}, {70, 40, 112, 232}, {170, 168, 214, 255}};
+    static const float K[][4] = {{0, 70, 190, 182},   {9, 44, 148, 192},   {22, 52, 120, 172},
+                                 {40, 118, 158, 194}, {70, 176, 200, 222}, {170, 186, 208, 226}};
     int n = (int)(sizeof K / sizeof K[0]);
     if (dist <= K[0][0]) {
         o[0] = K[0][1];
@@ -161,11 +164,11 @@ static void sea_colour(float dist, float *o)
 // the sky by the height of the view ray (the sine of its angle): a warm haze at the horizon, a vivid blue up high
 static void sky_colour(float e, float *o)
 {
-    static const float K[][4] = {{-0.02f, 255, 218, 178},
-                                 {0.03f, 255, 206, 168},
-                                 {0.09f, 168, 214, 255},
-                                 {0.24f, 84, 168, 255},
-                                 {0.55f, 30, 108, 250}};
+    static const float K[][4] = {{-0.02f, 240, 222, 196},
+                                 {0.03f, 236, 214, 190},
+                                 {0.09f, 186, 208, 226},
+                                 {0.24f, 120, 168, 214},
+                                 {0.55f, 72, 124, 196}};
     int n = (int)(sizeof K / sizeof K[0]);
     if (e <= K[0][0]) {
         o[0] = K[0][1];
@@ -214,6 +217,7 @@ typedef struct {
 typedef struct {
     float x, y, r;
     int cr, cg, cb, a;
+    bool tint;  // (the colour mixes toward cr, cg, cb; else it adds)
 } sglow_t;
 #define NSKY 48
 // the sky and the sea of a frame (two sets: the build set s_bg, the draw set s_bgd): the rows, the colours of the
@@ -232,7 +236,58 @@ static void sky_glow(float x, float y, float r, int cr, int cg, int cb, int a)
     if (s_bg->nsky >= NSKY || x + r / KXF < 0 || x - r / KXF > VW || y + r < 0 || y - r > VH) {
         return;
     }
-    s_bg->sky[s_bg->nsky++] = (sglow_t){x, y, r, cr, cg, cb, a};
+    s_bg->sky[s_bg->nsky++] = (sglow_t){x, y, r, cr, cg, cb, a, false};
+}
+// a glow of the sunset: the sky and the sea under it mix toward the colour (an added light on the bright haze of the
+// horizon gives only white)
+static void sky_tint(float x, float y, float r, int cr, int cg, int cb, int a)
+{
+    int n = s_bg->nsky;
+    sky_glow(x, y, r, cr, cg, cb, a);
+    if (s_bg->nsky > n) {
+        s_bg->sky[n].tint = true;
+    }
+}
+// the tint of a tile: only the px that nothing covers (z 0); the weight a (1 - d^2 / r^2)
+static void tint_add(tile_t *t, const sglow_t *g)
+{
+    float rx = g->r * (1.0f / KXF);
+    if (g->x + rx < t->x0 || g->x - rx >= t->x1 || g->y + g->r < t->y0 || g->y - g->r >= t->y1) {
+        return;
+    }
+    float ir2 = frcp(g->r * g->r);
+    int ya = clampi((int)(g->y - g->r), t->y0, t->y1), yb = clampi((int)(g->y + g->r) + 1, t->y0, t->y1);
+    int tr = g->cr >> 3, tg = g->cg >> 2, tb = g->cb >> 3;
+    for (int y = ya; y < yb; y++) {
+        float dy = y + 0.5f - g->y, q0 = 1 - dy * dy * ir2;
+        if (q0 <= 0) {
+            continue;
+        }
+        float hw = fsqrt(q0) * rx;
+        int xa = clampi((int)(g->x - hw), t->x0, t->x1), xb = clampi((int)(g->x + hw) + 1, t->x0, t->x1);
+        if (xa >= xb) {
+            continue;
+        }
+        // (q = 1 - d^2 / r^2 in 16.16, by its first and second steps along the row, as glow_add; the weight a q^2)
+        float dx0 = (xa + 0.5f - g->x) * KXF;
+        int32_t q = (int32_t)((q0 - dx0 * dx0 * ir2) * 65536.0f),
+                dq = (int32_t)(-(2 * dx0 * KXF + KXF * KXF) * ir2 * 65536.0f),
+                ddq = (int32_t)(-2.0f * KXF * KXF * ir2 * 65536.0f);
+        uint16_t *h = tile_px(t, xa, y);
+        for (int x = xa; x < xb; x++, h += 2, q += dq, dq += ddq) {
+            if (h[1] != 0 || q <= 0) {
+                continue;
+            }
+            int qq = q >> 8;
+            int k = (g->a * qq * qq) >> 16;
+            uint32_t p = h[0];
+            int rr = (int)(p >> 11), gg = (int)((p >> 5) & 63), bb = (int)(p & 31);
+            rr += ((tr - rr) * k) >> 8;
+            gg += ((tg - gg) * k) >> 8;
+            bb += ((tb - bb) * k) >> 8;
+            h[0] = (uint16_t)((rr << 11) | (gg << 5) | bb);
+        }
+    }
 }
 static void rows_prepare(void)
 {
@@ -242,7 +297,7 @@ static void rows_prepare(void)
         float cx = vdot(C.R, lh), cz = vdot(C.F, lh);
         if (cz > 0.05f) {
             s_bg->gx = C.cx + C.fx * cx * frcp(cz);
-            s_bg->gw = VW * 0.16f;
+            s_bg->gw = VW * 0.2f;
         }
     }
     uint32_t tw = (uint32_t)(s_wtime * 1000);
@@ -301,9 +356,9 @@ static void rows_prepare(void)
                 if (w > 196) {
                     int k = 22 + (L >= 12 ? R_->gl : 0);
                     k = (k * (w - 196)) >> 2;
-                    r += k * 32;
-                    g += k * 32;
-                    b += k * 26;
+                    r += k * 34;  // (the gold of the sunset)
+                    g += k * 24;
+                    b += k * 10;
                 }
                 r = clampi(r, 0, 63000);
                 g = clampi(g, 0, 64000);
@@ -317,15 +372,35 @@ static void rows_prepare(void)
             }
         }
     }
-    // the sun (a big warm halo, a bright middle) and the clouds
+    // THE SUNSET (round 3: a radiant sunset over one part of the sea): the sun low on the horizon in the
+    // direction of the light (south-west, so the shadows agree), a wide warm glow along the horizon (five glows side by
+    // side), a pink glow over it; the gold path of the sun on the sea (the glints) points to it
     s_bg->nsky = 0;
-    v3 cs = V3(vdot(C.R, L_SUN), vdot(C.U, L_SUN), vdot(C.F, L_SUN));
-    if (cs.z > 0.05f) {
-        float iz = frcp(cs.z);
-        float sx = C.cx + C.fx * cs.x * iz, sy = C.cy - C.f * cs.y * iz;
-        sky_glow(sx, sy, C.f * 0.45f, 255, 196, 130, 140);
-        sky_glow(sx, sy, C.f * 0.14f, 255, 236, 190, 230);
-        sky_glow(sx, sy, C.f * 0.045f, 255, 255, 240, 256);
+    {
+        float az0 = fatan2(L_SUN.x, L_SUN.z);
+        for (int k = -1; k <= 3; k++) {
+            if (k == 2) {
+                continue;
+            }
+            float az = az0 + (k < 3 ? k * 0.36f : 0), el = k < 3 ? 0.035f : 0.16f;
+            v3 d = V3(fsin(az) * fcos(el), fsin(el), fcos(az) * fcos(el));
+            v3 q = V3(vdot(C.R, d), vdot(C.U, d), vdot(C.F, d));
+            if (q.z < 0.05f) {
+                continue;
+            }
+            float iz = frcp(q.z);
+            float sx = C.cx + C.fx * q.x * iz, sy = C.cy - C.f * q.y * iz;
+            int ak = k < 0 ? -k : k;
+            if (k == 3) {
+                sky_tint(sx, sy, C.f * 0.8f, 236, 104, 150, 150);  // (the pink over it)
+            } else {
+                sky_tint(sx, sy, C.f * (0.66f - 0.1f * ak), 255, 112 + 20 * ak, 48, 235 - 45 * ak);
+            }
+            if (k == 0) {
+                sky_glow(sx, sy, C.f * 0.16f, 255, 170, 80, 200);  // (the sun)
+                sky_glow(sx, sy, C.f * 0.06f, 255, 236, 180, 256);
+            }
+        }
     }
     for (int k = 0; k < (int)(sizeof CLOUDS / sizeof CLOUDS[0]); k++) {
         const cloud_t *c = &CLOUDS[k];
@@ -402,7 +477,11 @@ static void bg_tile(tile_t *t)
     }
     for (int k = 0; k < B->nsky; k++) {
         const sglow_t *g = &B->sky[k];
-        glow_add(t, g->x, g->y, g->r, -1, g->cr, g->cg, g->cb, g->a);
+        if (g->tint) {
+            tint_add(t, g);
+        } else {
+            glow_add(t, g->x, g->y, g->r, -1, g->cr, g->cg, g->cb, g->a);
+        }
     }
 }
 
@@ -427,15 +506,20 @@ static void list_begin(void)
             const chunk_t *ch = &s_ch[k];
             // (a prop: its fine version near the eye, its coarse version far)
             if (ch->lod != LOD_ALL) {
+                // (a wall or a small terrace: its own distance)
                 float dx = ch->anc.x - C.eye.x, dy = ch->anc.y - C.eye.y, dz = ch->anc.z - C.eye.z;
-                bool near = dx * dx + dy * dy + dz * dz < LOD_D * LOD_D;
-                if (near != (ch->lod == LOD_FINE)) {
+                float ld = ch->lod >= LOD_WFINE ? WLOD_D : LOD_D;
+                bool near = dx * dx + dy * dy + dz * dz < ld * ld;
+                if (near != (ch->lod == LOD_FINE || ch->lod == LOD_WFINE)) {
                     continue;
                 }
             }
             v3 cc = xf_pt(&C.w2c, ch->c);
             if (!cam_sees(cc, ch->rad)) {
                 continue;  // (only the chunks in the view go into the order)
+            }
+            if (cc.z - ch->rad > (ch->lod == LOD_COARSE ? PROP_D : ch->kind != CK_SOLID ? RING_D : FAR_D)) {
+                continue;  // (too far: the haze)
             }
             float z = cc.z;
             int j = n++;
@@ -452,6 +536,89 @@ static void list_begin(void)
 }
 // the list of a frame on this core (lane 0): the robot, the things and the near chunks; world_kick() starts the far
 // chunks and the rows (lane 1) on core 1 when the pipeline does not do that
+// (parts of list_build: inline, so the machine code is the same; the size check of tests/style)
+static inline __attribute__((always_inline)) void list_machines(xf_t *xp)
+{
+    // the machines and the plates; the lamps on the posts (one for each plate: green = down)
+    for (int m = 0; m < NMECH; m++) {
+        const mech_t *q = &s_mech[m];
+        if (q->kind == MK_BRIDGE) {
+            // (the drawbridge turns round its hinge at the south end: up = closed, flat = open)
+            float k = clampf((q->h - q->hc) / (float)(q->ho - q->hc), 0, 1);
+            xf_make(xp, V3(q->i0, q->ho, q->j0), 0, -(1 - k) * PI_F * 0.5f, 0, V3(1, 1, 1));
+            dl_model(&s_mod[M_BRIDGE], xp, 1, 0);
+        } else if (q->h > q->ho + 0.02f) {  // (open: all under the ground)
+            xf_make(xp, V3(q->i0, q->h, q->j0), 0, 0, 0, V3(1, 1, 1));
+            dl_model(&s_mod[q->kind == MK_GATE ? M_GATE : M_DOOR], xp, 1, 0);
+        }
+    }
+    {
+        // (the lamps: the gate, the door, the bridge; two posts each)
+        static const float LAMP[NMECH][2][3] = {{{14.8f, 13.9f, 30.5f}, {17.2f, 13.9f, 30.5f}},
+                                                {{47.5f, 13.9f, 23.8f}, {47.5f, 13.9f, 26.2f}},
+                                                {{47.8f, 4.9f, 36.8f}, {50.2f, 4.9f, 36.8f}}};
+        for (int m = 0; m < NMECH; m++) {
+            const mech_t *q = &s_mech[m];
+            for (int s = 0; s < 2; s++) {
+                bool on = s_plate[q->pl[q->np > 1 ? s : 0]].on;
+                v3 c = V3(LAMP[m][s][0], LAMP[m][s][1], LAMP[m][s][2]);
+                dl_glow(c, on ? 0.55f : 0.32f, on ? AC_CYAN : AC_PINK, on ? 220 : 120);
+            }
+        }
+    }
+    for (int p = 0; p < NPLATE; p++) {
+        const plate_t *pl = &s_plate[p];
+        float y = s_H[pl->i][pl->j];
+        if (xf_pt(&C.w2c, V3(pl->i + 0.5f, y, pl->j + 0.5f)).z > THING_D) {
+            continue;  // (far: a few px)
+        }
+        xf_make(xp, V3(pl->i, y, pl->j), 0, 0, 0, V3(1, 1, 1));
+        dl_model(&s_mod[M_PLATE], xp, 1, 0);
+        xf_make(xp, V3(pl->i, y - 0.06f * pl->push, pl->j), 0, 0, 0, V3(1, 1, 1));
+        dl_model(&s_mod[pl->on ? M_PLATE_ON : M_PLATE_UP], xp, 1, 0);
+        if (pl->on) {
+            dl_glow(V3(pl->i + 0.5f, y + 0.15f, pl->j + 0.5f), 0.5f, AC_CYAN, 110);
+        }
+    }
+}
+
+static inline __attribute__((always_inline)) void list_drops(xf_t *xp)
+{
+    // the SUNDROPS: a glowing drop, its rays and its halo; a found one goes up and fades
+    for (int k = 0; k < NDROP; k++) {
+        const drop_t *d = &s_drop[k];
+        float up = d->got ? d->t * 2.5f : 0;
+        if (d->got && d->t > 1.2f) {
+            continue;
+        }
+        float s = d->got ? 1 - d->t / 1.2f : 1 + 0.06f * fsin(s_rt * 3 + k);
+        v3 c = V3(d->p.x, d->p.y + 0.12f * fsin(s_rt * 1.8f + k) + up, d->p.z);
+        xf_make(xp, c, s_rt * 1.4f + k, 0, 0, V3(s, s, s));
+        dl_model(&s_mod[M_SUNDROP], xp, 1, 0);
+        dl_glow(c, 0.9f * s, AC_GOLD, 170);
+        // the rays (light triangles in the plane of the view)
+        v3 cc = xf_pt(&C.w2c, c);
+        if (cc.z > 0.5f) {
+            int m = pv_add_cam(cc, 170 * s, 0, 0);
+            for (int r = 0; r < 7; r++) {
+                float a = r * TAU_F / 7 + s_rt * 0.6f, len = (0.95f + 0.25f * fsin(s_rt * 2.3f + r)) * s, w = 0.07f;
+                v3 tip = V3(cc.x + fcos(a) * len, cc.y + fsin(a) * len, cc.z);
+                v3 sa = V3(cc.x - fsin(a) * w, cc.y + fcos(a) * w, cc.z),
+                   sb = V3(cc.x + fsin(a) * w, cc.y - fcos(a) * w, cc.z);
+                int t = pv_add_cam(tip, 0, 0, 0), ia = pv_add_cam(sa, 60, 0, 0), ib = pv_add_cam(sb, 60, 0, 0);
+                dl_tri(m, ia, t, DK_ADD, AC_GOLD);
+                dl_tri(m, t, ib, DK_ADD, AC_GOLD);
+            }
+        }
+        if (!d->got) {
+            float g2 = floor_at(c.x, c.z, c.y, NULL);
+            if (g2 > -10) {
+                dl_shadow(V3(c.x, g2 + 0.02f, c.z), 0.3f, 0.3f, 0, 0.2f);
+            }
+        }
+    }
+}
+
 static void list_build(float alpha, bool kick)
 {
     if (kick) {
@@ -524,6 +691,20 @@ static void list_build(float alpha, bool kick)
         dl_shadow(V3(f->i + 0.5f, g2 + 0.02f, f->j + 0.5f), 0.6f, 0.6f, 0,
                   clampf(0.4f - (f->y - g2) * 0.05f, 0.1f, 0.4f));
     }
+    if (s_toss.on) {
+        // (the thrown cube: an arc up over the higher end, one turn about its side axis, a little bigger in the air)
+        float u = clampf(s_toss.t / s_toss.dur, 0, 1);
+        v3 a = s_toss.a, b = s_toss.b;
+        float h = FMAX(a.y, b.y) + 0.55f - (a.y + (b.y - a.y) * 0.5f);
+        v3 c = V3(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u + 4 * h * u * (1 - u), a.z + (b.z - a.z) * u);
+        float sc = 0.82f + 0.18f * smooth01(u * 2);
+        xf_make(&x, c, s_toss.yaw, -TAU_F * u, 0, V3(sc, sc, sc));
+        draw_cube_model(s_toss.kind, &x, 1, 1, 0, s_t);
+        float g2 = floor_at(c.x, c.z, c.y, NULL);
+        if (g2 > -10) {
+            dl_shadow(V3(c.x, g2 + 0.02f, c.z), 0.5f, 0.5f, 0, 0.25f);
+        }
+    }
     for (int k = 0; k < NFALL; k++) {
         const fall_t *q = &s_fall[k];
         if (!q->on) {
@@ -532,11 +713,16 @@ static void list_build(float alpha, bool kick)
         xf_make(&x, V3(q->i + 0.5f, q->y + 0.5f, q->j + 0.5f), 0, 0, 0, V3(1, 1, 1));
         draw_cube_model(q->kind, &x, 1, 1, 0, s_t);
     }
+    list_machines(&x);
     // the junk piles
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NPILE; k++) {
         const pile_t *pl = &s_pile[k];
         float pu = pl->pulse, s = 1 - 0.25f * pu * (pu > 0.7f ? (1 - pu) / 0.3f : 1);
-        bool pfar = xf_pt(&C.w2c, V3(pl->x, pl->y, pl->z)).z > 10.0f;  // (far: the models with fewer triangles)
+        float pz = xf_pt(&C.w2c, V3(pl->x, pl->y, pl->z)).z;
+        if (pz > THING_D) {
+            continue;  // (far: in the haze)
+        }
+        bool pfar = pz > 10.0f;  // (far: the models with fewer triangles)
         if (pl->kind == CB_TIN) {
             xf_make(&x, V3(pl->x, pl->y, pl->z), 0.4f, 0, 0, V3(s, s, s));
             dl_model(&s_mod[pfar ? M_PILE_TIN_LO : M_PILE_TIN], &x, 1, 0);
@@ -560,39 +746,7 @@ static void list_build(float alpha, bool kick)
         }
         dl_shadow(V3(pl->x, pl->y + 0.015f, pl->z), 0.7f, 0.6f, 0, 0.35f);
     }
-    // the SUNDROPS: a glowing drop, its rays and its halo; a found one goes up and fades
-    for (int k = 0; k < 3; k++) {
-        const drop_t *d = &s_drop[k];
-        float up = d->got ? d->t * 2.5f : 0;
-        if (d->got && d->t > 1.2f) {
-            continue;
-        }
-        float s = d->got ? 1 - d->t / 1.2f : 1 + 0.06f * fsin(s_rt * 3 + k);
-        v3 c = V3(d->p.x, d->p.y + 0.12f * fsin(s_rt * 1.8f + k) + up, d->p.z);
-        xf_make(&x, c, s_rt * 1.4f + k, 0, 0, V3(s, s, s));
-        dl_model(&s_mod[M_SUNDROP], &x, 1, 0);
-        dl_glow(c, 0.9f * s, AC_GOLD, 170);
-        // the rays (light triangles in the plane of the view)
-        v3 cc = xf_pt(&C.w2c, c);
-        if (cc.z > 0.5f) {
-            int m = pv_add_cam(cc, 170 * s, 0, 0);
-            for (int r = 0; r < 7; r++) {
-                float a = r * TAU_F / 7 + s_rt * 0.6f, len = (0.95f + 0.25f * fsin(s_rt * 2.3f + r)) * s, w = 0.07f;
-                v3 tip = V3(cc.x + fcos(a) * len, cc.y + fsin(a) * len, cc.z);
-                v3 sa = V3(cc.x - fsin(a) * w, cc.y + fcos(a) * w, cc.z),
-                   sb = V3(cc.x + fsin(a) * w, cc.y - fcos(a) * w, cc.z);
-                int t = pv_add_cam(tip, 0, 0, 0), ia = pv_add_cam(sa, 60, 0, 0), ib = pv_add_cam(sb, 60, 0, 0);
-                dl_tri(m, ia, t, DK_ADD, AC_GOLD);
-                dl_tri(m, t, ib, DK_ADD, AC_GOLD);
-            }
-        }
-        if (!d->got) {
-            float g2 = floor_at(c.x, c.z, c.y, NULL);
-            if (g2 > -10) {
-                dl_shadow(V3(c.x, g2 + 0.02f, c.z), 0.3f, 0.3f, 0, 0.2f);
-            }
-        }
-    }
+    list_drops(&x);
     // the sparks: small gold nuts that turn
     for (int k = 0; k < NSPARK; k++) {
         const drop_t *d = &s_spark[k];
@@ -600,17 +754,22 @@ static void list_build(float alpha, bool kick)
             continue;
         }
         v3 c = V3(d->p.x, d->p.y + 0.08f * fsin(s_rt * 2.4f + k), d->p.z);
-        // (far away a spark is a few px: only its glow)
-        if (xf_pt(&C.w2c, c).z < 13.0f) {
+        // (far away a spark is a few px: only its glow; farther: nothing)
+        float sz = xf_pt(&C.w2c, c).z;
+        if (sz > THING_D) {
+            continue;
+        }
+        if (sz < 13.0f) {
             xf_make(&x, c, s_rt * 3.0f + k, 0, 0, V3(1.4f, 1.4f, 1.4f));
             dl_model(&s_mod[M_SPARK], &x, 1, 0);
         }
         dl_glow(c, 0.38f, AC_GOLD, 90);
     }
+    life_draw();  // (the crabs, the butterflies, the fish)
     // the gulls
     for (int k = 0; k < 3; k++) {
-        float a = s_rt * (0.25f + 0.07f * k) + k * 2.1f, rr = 9 + k * 3;
-        v3 c = V3(13 + fcos(a) * rr, 7.5f + k * 1.4f + fsin(s_rt * 0.7f + k) * 0.6f, 11 + fsin(a) * rr);
+        float a = s_rt * (0.18f + 0.05f * k) + k * 2.1f, rr = 14 + k * 5;
+        v3 c = V3(33 + fcos(a) * rr, 10.5f + k * 1.6f + fsin(s_rt * 0.7f + k) * 0.6f, 29 + fsin(a) * rr);
         float flap = fsin(s_rt * 9 + k * 2) * 1.4f;
         xf_make(&x, c, a + PI_F, 0, (k & 1) ? 0.2f : -0.2f, V3(1, flap, 1));
         dl_model(&s_mod[M_BIRD], &x, 1, 0);
@@ -1024,9 +1183,9 @@ static void frame_draw(void)
 #define HUD_GAP 26
 #elif CB_ROUND
 // (the round: the SUNDROPS and the sparks in the middle of the top arc)
-#define HUD_IX  (OW / 2 - OW * 84 / 466)
+#define HUD_IX  (OW / 2 - OW * 112 / 466)
 #define HUD_IY  (OH * 12 / 100)
-#define HUD_GAP (OW * 38 / 466)
+#define HUD_GAP (OW * 29 / 466)
 #else
 #define HUD_IX  20
 #define HUD_IY  18
@@ -1042,7 +1201,7 @@ static void frame_draw(void)
 // the HUD of the play: the SUNDROPS, the sparks, JUMP, ACT, the stick, the slow time (shapes in the tiles)
 static void hud_shapes(void)
 {
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NDROP; k++) {
         float cx = HUD_IX + k * HUD_GAP, cy = HUD_IY;
         if (s_drop[k].got) {
             hud_disc(cx, cy, 12 * HS, 0xFFAA28, 90);
@@ -1053,7 +1212,7 @@ static void hud_shapes(void)
             hud_ring(cx, cy, 9.5f * HS, 2, 0xFFE6AA, 210);
         }
     }
-    float sx = HUD_IX + 3 * HUD_GAP;
+    float sx = HUD_IX + NDROP * HUD_GAP;
     hud_disc(sx, HUD_IY, 6 * HS, 0xFFC83C, 255);
     hud_disc(sx, HUD_IY, 2 * HS, 0x965A14, 255);
     // JUMP: a dark ring and a white ring (seen on the bright and the dark scene); a gold fill while it is held
@@ -1152,22 +1311,27 @@ static void hud_text(void)
         mf_text_oc(&MF_N20, OW / 2, OH / 2 - 24, "FRIEND LEFT", rgb(255, 255, 255), rgb(30, 50, 90), 2, 1);
     }
     snprintf(buf, sizeof buf, "%d/%d", s_nsparks, NSPARK);
-    mf_text_o(&HUD_FONT, HUD_IX + 3 * HUD_GAP + (int)(10 * HS), HUD_IY + (int)(5 * HS), buf, rgb(255, 255, 255),
+    mf_text_o(&HUD_FONT, HUD_IX + NDROP * HUD_GAP + (int)(10 * HS), HUD_IY + (int)(5 * HS), buf, rgb(255, 255, 255),
               rgb(30, 40, 70), 1, 1);
+#if CB_WIDE
+    int cy = 64 + CB_DY / 2;
+#elif CB_ROUND
+    int cy = OH * 30 / 100;
+#else
+    int cy = 92;
+#endif
     if (s_win_t > 1.4f && s_win_t < 9) {
         float k = smooth01((s_win_t - 1.4f) / 0.5f) * (1 - smooth01((s_win_t - 8.3f) / 0.7f));
         if (k > 0.03f) {
-#if CB_WIDE
-            int cy = 64 + CB_DY / 2;
-#elif CB_ROUND
-            int cy = OH * 30 / 100;
-#else
-            int cy = 92;
-#endif
-            mf_text_oc(&MF_N28, OW / 2, cy, "SUNDROP COVE", rgb(255, 230, 120), rgb(110, 50, 20), 2, 2);
-            snprintf(buf, sizeof buf, "3/3  +  %d/%d", s_nsparks, NSPARK);
+            mf_text_oc(&MF_N28, OW / 2, cy, "SUNDROP ISLE", rgb(255, 230, 120), rgb(110, 50, 20), 2, 2);
+            snprintf(buf, sizeof buf, "%d/%d  +  %d/%d", NDROP, NDROP, s_nsparks, NSPARK);
             mf_text_oc(&MF_N20, OW / 2, cy + 30, buf, rgb(255, 255, 255), rgb(30, 50, 90), 2, 1);
         }
+    } else if (s_drop_name >= 0 && s_drop_name_t > 0.6f && s_drop_name_t < 3.6f && s_win_t < 0) {
+        // (the name of the SUNDROP that the robot found, and the count)
+        mf_text_oc(&MF_N20, OW / 2, cy, DROP_NAME[s_drop_name], rgb(255, 230, 120), rgb(110, 50, 20), 2, 1);
+        snprintf(buf, sizeof buf, "%d/%d", s_ndrops, NDROP);
+        mf_text_oc(&MF_N20, OW / 2, cy + 26, buf, rgb(255, 255, 255), rgb(30, 50, 90), 2, 1);
     }
 }
 #if CB_WIDE
@@ -1206,7 +1370,7 @@ static void title_shapes(void)
 static void title_text(void)
 {
     mf_text_oc(&MF_N34, OW / 2, TITLE_CY, "CUBBY", rgb(255, 196, 50), rgb(120, 50, 10), 3, 4);
-    mf_text_oc(&MF_LABEL, OW / 2, TITLE_SY, "SUNDROP COVE", rgb(255, 255, 255), rgb(30, 60, 110), 1, 2);
+    mf_text_oc(&MF_LABEL, OW / 2, TITLE_SY, "SUNDROP ISLE", rgb(255, 255, 255), rgb(30, 60, 110), 1, 2);
     if (s_net == N2_OFF) {
         mf_text_oc(&HUD_FONT, FRIEND_BX, FRIEND_BY + 34, "2 BOARDS", rgb(255, 255, 255), rgb(30, 60, 110), 1, 1);
     }
@@ -1265,6 +1429,8 @@ static void item_set(int id, int v)
 static void item_opened(void)
 {
     audio_drone(0, 0, 0, W_TRI);
+    audio_drone(1, 0, 0, W_NOISE);
+    s_mot_vol = 0;
 }
 static void item_resume(void)
 {
@@ -1406,7 +1572,9 @@ static void cb_enter(int64_t now)
             model_bake(&s_mod[m]);
         }
     }
+    s_gsat = GRADE_SAT;  // (the island: the soft grade; the robot and the things: HOT_SAT)
     world_build();
+    s_gsat = HOT_SAT;
     // (the builder is not necessary after the build)
     heap_caps_free(s_bv);
     s_bv = NULL;
@@ -1430,6 +1598,7 @@ static void cb_enter(int64_t now)
         midi_bg_start();
         music_to(CBM_TITLE);
     }
+    motor_make();  // (the samples of the motor and the cleats)
     static const char *const *names = FX_NAMES;
     tfsfx_load_mem(CB_SFX_DATA, CB_SFX_LEN, names, FX_N < CB_SFX_N ? FX_N : CB_SFX_N, 46);
     sysui_panel_items(&PANEL);
@@ -1452,12 +1621,14 @@ static void cb_leave(void)
     net_stop();
     worker_stop();
     audio_drone(0, 0, 0, W_TRI);
+    audio_drone(1, 0, 0, W_NOISE);
+    motor_end();
     midi_bg_end();
     tfsfx_free();
     cb_free_all();
     s_ok = false;
 }
-static void cb_input(const input_event_t *ev)
+static void cb_input_ev(const input_event_t *ev)
 {
     if (!s_ok) {
         return;
@@ -1479,13 +1650,24 @@ static void cb_input(const input_event_t *ev)
     }
     play_start();
 }
+// a slow tap (a press of 350 - 900 ms) on the title acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void cb_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    cb_input_ev(ev);
+    if (slow && (s_gs == GS_TITLE)) {
+        cb_input_ev(&tap);
+    }
+}
 // THE BENCH (a test of the speed; the console: "store cubby_bench 1", then "open CUBBY"): fixed views of the island
 // (the robot at 3 places, the camera from 4 sides; then the title), BENCH_FR frames each; the log gives the mean time
 // of a frame of each view (from frame BENCH_SKIP on), then the mean of all. The views are the same in each build.
 #define BENCH_FR   50
 #define BENCH_SKIP 15
 #define BENCH_NV   13
-static const float BENCH_AT[3][2] = {{10.0f, 3.5f}, {17.5f, 4.5f}, {6.0f, 15.0f}};
+static const float BENCH_AT[3][2] = {{33.0f, 7.0f}, {21.0f, 22.0f}, {42.0f, 31.0f}};
 static int64_t s_bench_prev, s_bench_sum, s_bench_rsum, s_bench_usum;
 static int s_bench_n;
 static float s_bench_ms[BENCH_NV];
@@ -1602,7 +1784,7 @@ static void cb_render(int64_t now)
 {
     if (!s_ok) {
         gfx_fill(rgb(20, 30, 60));
-        gfx_text_center(OH / 2 - 4, "NO MEMORY", rgb(255, 255, 255), 2);
+        gfx_text_center(OH / 2 - 4, "NO MEMORY", 2, rgb(255, 255, 255));
         return;
     }
     int64_t tr0 = esp_timer_get_time();

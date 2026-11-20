@@ -105,7 +105,7 @@ static const char *const TEXT[T_N][2] = {
         {"A SERIAL DEVICE", "התקן טורי"},
         {"SENT BEFORE", "נשלח קודם"},
         {"MODE", "מצב"},
-        {"HEX: TWO DIGITS A BYTE (01 0A FF)", "בתים ב-HEX, שתי ספרות לבית (01 0A FF)"},
+        {"HEX: TWO DIGITS A BYTE (01 0A FF)", "בתים ב-HEX, שתי ספרות לבית: 01 0A FF"},
         {"SENT", "נשלח"},
         {"THE PORT IS NOT OPEN", "היציאה לא פתוחה"},
         {"THE TEXT TO SEND", ""},

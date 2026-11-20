@@ -41,9 +41,6 @@
 #include ARCADE_APPS_LIST
 #undef ARCADE_APP
 
-// The open of an app at one item (a notice: notify.c): the app reads the argument in its enter() with
-// app_launch_arg() ("" = the app opens as it is; the argument stays until the next open).
-void app_open_arg(const app_t *app, const char *arg);
 // The app that is open now.
 const app_t *app_current(void);
 // A match with another board now (main.c: a game of 2 BOARDS, a turn game, the own link of an app with a board that
@@ -55,8 +52,10 @@ int walkie_web_state(char *out, int max);
 void walkie_web_set(int which, bool on);
 // The screen saver now (tests): off = true: the screen goes off at once, else it dims first.
 void app_saver_now(bool off);
-// the frames a second of the app that runs (measured each 300 frames; 0 = not yet)
+// the frames a second of the app that runs (measured each 300 frames; 0 = not yet), and the longest frame (ms) and the
+// frames over 50 ms of the same 300 frames
 float app_fps(void);
+void app_frame_stats(int *longest_ms, int *slow);
 // the menu repaints the whole frame at the next frame (it repaints only what changes; main.c drew over it)
 void menu_redraw_all(void);
 // the startup app of the menu profile (START in /data/menu.txt), NULL = the menu
@@ -77,5 +76,3 @@ const char *menu_profile(void);
 uint32_t menu_profile_hash(void);
 // The PWR key in the menu: up one level. Returns false at the top level.
 bool menu_back(void);
-// The app with this name (no case), or NULL (the console command "open").
-const app_t *app_find(const char *name);

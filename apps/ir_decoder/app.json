@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "IR DECODER",
+ "sym": "app_irdec",
+ "group": "UTIL",
+ "emoji": "📺",
+ "new": true,
+ "srcs": [
+  "app_irdec.c"
+ ],
+ "store": {
+  "en": "The codes of infrared remotes, as IRremote reads them: NEC, Samsung, Sony, RC5, RC6, Panasonic, LG, JVC, Denon and more, or the raw times. An IR receiver on the pins, a wiring sketch; an IR LED sends a code again. A demo with no module. English and Hebrew.",
+  "he": "קוראים את הקודים של שלטי אינפרא-אדום כמו IRremote: NEC, סמסונג, סוני, RC5, RC6, פנסוניק, LG, JVC, דנון ועוד, או הזמנים הגולמיים. מודול מקלט IR על הפינים, שרטוט חיווט, לד IR שולח קוד שוב. הדגמה בלי מודול. אנגלית ועברית."
+ }
+}

@@ -1,6 +1,6 @@
 {
 "version": 1,
-"rev": 24,
+"rev": 34,
 "about": "TFN OS: the firmware names that app packages can call (made by sdk/tools/abi_gen.py from the built-in apps and main/tfn_abi_extra.json; add-only inside one version). symbols: name -> the board kinds whose firmware has it. revs: the revision that added a name (none = 0). perms: the permission classes. need: name -> the class that an app needs for it.",
 "perms": {
 "adc": {
@@ -410,7 +410,9 @@
 "alarm_stop": 16,
 "alarm_tz_get": 16,
 "alarm_tz_set": 16,
+"app_find": 26,
 "app_launch_arg": 4,
+"app_open_arg": 26,
 "app_screen_pocket": 10,
 "app_standby_hold": 9,
 "audio_alert": 9,
@@ -461,6 +463,13 @@
 "clock_source": 16,
 "clock_sync": 16,
 "clock_time_ok": 16,
+"comp_close": 26,
+"comp_fw_poll": 29,
+"comp_fw_start": 29,
+"comp_my_name": 26,
+"comp_open": 26,
+"comp_poll": 26,
+"comp_with_role": 26,
 "device_guard_accounts_read": 17,
 "device_guard_accounts_write": 17,
 "device_guard_setup_allowed": 17,
@@ -668,6 +677,21 @@
 "ledc_timer_resume": 2,
 "ledc_timer_rst": 2,
 "ledc_update_duty": 2,
+"link_raw_close": 25,
+"link_raw_open": 25,
+"link_raw_recv": 25,
+"link_raw_send": 25,
+"listen_answer": 34,
+"listen_ask": 34,
+"listen_cancel": 34,
+"listen_handler": 34,
+"listen_level": 34,
+"listen_offer": 34,
+"listen_ready": 34,
+"listen_start": 34,
+"listen_state": 34,
+"listen_stop": 34,
+"listen_text": 34,
 "llround": 11,
 "log10": 11,
 "lround": 11,
@@ -1188,6 +1212,7 @@
 "mq_topic_ok": 22,
 "mq_type_name": 22,
 "multi_heap_get_info": 2,
+"net2_peer_info": 33,
 "nvs_close": 2,
 "nvs_commit": 2,
 "nvs_erase_all": 2,
@@ -1328,6 +1353,17 @@
 "sfx_ui": 10,
 "sntp_enabled": 2,
 "sntp_get_sync_interval": 2,
+"speech_file_ok": 32,
+"speech_make": 32,
+"speech_offer": 30,
+"speech_play_file": 32,
+"speech_read_close": 32,
+"speech_read_get": 32,
+"speech_read_open": 32,
+"speech_read_play": 32,
+"speech_ready": 31,
+"speech_say": 31,
+"speech_stop": 31,
 "spi_bus_add_device": 2,
 "spi_bus_remove_device": 2,
 "spi_device_acquire_bus": 2,
@@ -1340,6 +1376,50 @@
 "spi_device_release_bus": 2,
 "spi_device_transmit": 2,
 "sysui_panel_on": 11,
+"tc_chip_gpios": 26,
+"tc_chip_name": 26,
+"tc_err_name": 26,
+"tc_img_info": 28,
+"tc_ir_plan": 26,
+"tc_ir_plan_raw": 26,
+"tc_levels_from_vals": 26,
+"tc_pin_adc": 27,
+"tc_pin_flags": 26,
+"tc_role_class": 27,
+"tc_role_name": 26,
+"tc_role_pullup": 27,
+"tc_role_rx": 26,
+"tc_role_tx": 26,
+"tc_vals_from_levels": 26,
+"tcm_capture": 26,
+"tcm_capture_ready": 26,
+"tcm_cfg_result": 26,
+"tcm_config": 26,
+"tcm_count": 26,
+"tcm_find": 26,
+"tcm_forget": 26,
+"tcm_found": 26,
+"tcm_frame": 26,
+"tcm_get": 26,
+"tcm_hold": 26,
+"tcm_info": 26,
+"tcm_online": 26,
+"tcm_ota": 28,
+"tcm_ota_done": 28,
+"tcm_pair_cancel": 26,
+"tcm_pair_index": 26,
+"tcm_pair_start": 26,
+"tcm_pair_state": 26,
+"tcm_pulse": 26,
+"tcm_rename": 26,
+"tcm_req": 26,
+"tcm_req_code": 26,
+"tcm_req_type": 26,
+"tcm_send": 26,
+"tcm_set": 27,
+"tcm_stop": 26,
+"tcm_value": 27,
+"tcm_watch": 26,
 "tfn_notify": 4,
 "tfn_secret_get": 5,
 "tfn_secret_set": 5,
@@ -1438,6 +1518,7 @@
 "uart_set_word_length": 14,
 "uart_wait_tx_done": 14,
 "uart_write_bytes": 14,
+"ui_text": 33,
 "ulTaskGenericNotifyTake": 2,
 "ulTaskGetIdleRunTimeCounterForCore": 2,
 "usb_audio_close": 6,
@@ -2151,6 +2232,14 @@
 "tab5",
 "watcher"
 ],
+"app_find": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
 "app_key_down": [
 "am175",
 "am18",
@@ -2184,6 +2273,14 @@
 "watcher"
 ],
 "app_open": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"app_open_arg": [
 "am175",
 "am18",
 "cores3",
@@ -3032,6 +3129,62 @@
 "watcher"
 ],
 "closedir": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"comp_close": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"comp_fw_poll": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"comp_fw_start": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"comp_my_name": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"comp_open": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"comp_poll": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"comp_with_role": [
 "am175",
 "am18",
 "cores3",
@@ -5800,6 +5953,38 @@
 "tab5",
 "watcher"
 ],
+"link_raw_close": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"link_raw_open": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"link_raw_recv": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"link_raw_send": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
 "link_recv": [
 "am175",
 "am18",
@@ -5833,6 +6018,94 @@
 "watcher"
 ],
 "link_stop": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_answer": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_ask": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_cancel": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_handler": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_level": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_offer": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_ready": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_start": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_state": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_stop": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"listen_text": [
 "am175",
 "am18",
 "cores3",
@@ -10480,6 +10753,14 @@
 "tab5",
 "watcher"
 ],
+"net2_peer_info": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
 "net2_poll": [
 "am175",
 "am18",
@@ -11967,6 +12248,94 @@
 "tab5",
 "watcher"
 ],
+"speech_file_ok": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_make": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_offer": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_play_file": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_read_close": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_read_get": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_read_open": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_read_play": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_ready": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_say": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"speech_stop": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
 "spi_bus_add_device": [
 "am175",
 "am18",
@@ -12648,6 +13017,358 @@
 "watcher"
 ],
 "tanhf": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_chip_gpios": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_chip_name": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_err_name": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_img_info": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_ir_plan": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_ir_plan_raw": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_levels_from_vals": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_pin_adc": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_pin_flags": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_role_class": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_role_name": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_role_pullup": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_role_rx": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_role_tx": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tc_vals_from_levels": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_capture": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_capture_ready": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_cfg_result": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_config": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_count": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_find": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_forget": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_found": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_frame": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_get": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_hold": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_info": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_online": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_ota": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_ota_done": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_pair_cancel": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_pair_index": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_pair_start": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_pair_state": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_pulse": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_rename": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_req": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_req_code": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_req_type": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_send": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_set": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_stop": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_value": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"tcm_watch": [
 "am175",
 "am18",
 "cores3",
@@ -13520,6 +14241,14 @@
 "watcher"
 ],
 "ui_rrect": [
+"am175",
+"am18",
+"cores3",
+"lcd349",
+"tab5",
+"watcher"
+],
+"ui_text": [
 "am175",
 "am18",
 "cores3",

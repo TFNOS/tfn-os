@@ -60,8 +60,10 @@ struct zim_s {
     uint16_t mime_off[64];
     block_t blk[NBLOCK];
     uint32_t tick;
-    // the title listing (loaded at the first use)
+    // the title listing (found at the first use): in memory (a compressed cluster), or its place in the file (a cluster
+    // with no compression: the new files of Kiwix; the English top file has 703,608 titles = 2.8 MB)
     uint32_t *titles;
+    uint64_t titles_at;
     uint32_t ntitles;
     bool titles_tried;
     // the decoded cluster (a decode that can go on: the same buffer, the same decoder, the next input place)
@@ -465,7 +467,21 @@ static void load_titles(zim_t *z)
         i = zim_find_url(z, 'X', "listing/titleOrdered/v0");
     }
     zim_entry_t e;
-    if (i == ZIM_NONE || !zim_entry(z, i, &e) || e.mime == ZIM_REDIRECT) {
+    if (i == ZIM_NONE || !zim_entry(z, i, &e) || e.mime == ZIM_REDIRECT || e.cluster >= z->clusters) {
+        return;
+    }
+    // a cluster with no compression: only the place of the blob (zim_title_entry reads 4 bytes through the cache)
+    uint8_t p[16], info;
+    if (cread(z, z->cluster_ptr + 8ull * e.cluster, p, 8) && cread(z, rd64(p), &info, 1) && (info & 0x0F) <= 1) {
+        const uint64_t at = rd64(p);
+        const int osz = (info & 0x10) ? 8 : 4;
+        if (cread(z, at + 1 + (uint64_t)e.blob * (uint64_t)osz, p, (size_t)(2 * osz))) {
+            const uint64_t o0 = osz == 8 ? rd64(p) : rd32(p), o1 = osz == 8 ? rd64(p + 8) : rd32(p + 4);
+            if (o1 > o0 && (o1 - o0) / 4 < 0xFFFFFFF0u) {
+                z->titles_at = at + 1 + o0;
+                z->ntitles = (uint32_t)((o1 - o0) / 4);
+            }
+        }
         return;
     }
     uint32_t len = 0;
@@ -491,7 +507,14 @@ uint32_t zim_title_count(zim_t *z)
 uint32_t zim_title_entry(zim_t *z, uint32_t i)
 {
     load_titles(z);
-    return i < z->ntitles ? z->titles[i] : ZIM_NONE;
+    if (i >= z->ntitles) {
+        return ZIM_NONE;
+    }
+    if (z->titles) {
+        return z->titles[i];
+    }
+    uint8_t p[4];
+    return cread(z, z->titles_at + 4ull * i, p, 4) ? rd32(p) : ZIM_NONE;
 }
 
 uint32_t zim_title_lower_bound(zim_t *z, const char *prefix)
@@ -501,7 +524,7 @@ uint32_t zim_title_lower_bound(zim_t *z, const char *prefix)
     zim_entry_t e;
     while (lo < hi) {
         uint32_t mid = lo + (hi - lo) / 2;
-        if (!zim_entry(z, z->titles[mid], &e)) {
+        if (!zim_entry(z, zim_title_entry(z, mid), &e)) {
             return hi;
         }
         if (strcmp(e.title, prefix) < 0) {

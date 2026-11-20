@@ -40,6 +40,17 @@ enum {
     M_PILE_SPRING_LO,
     M_BODY_F,
     M_HATCH_F,
+    M_GATE,
+    M_DOOR,
+    M_BRIDGE,
+    M_PLATE,
+    M_PLATE_UP,
+    M_PLATE_ON,
+    M_CRAB,
+    M_WING_A,
+    M_WING_B,
+    M_WING_C,
+    M_FISH,
     M_COUNT
 };
 static model_t s_mod[M_COUNT];
@@ -145,6 +156,129 @@ static void build_tread(void)
     }
     model_add(&s_mod[M_TREAD]);
 }
+// (parts of robot_build: inline, so the machine code is the same; the size check of tests/style)
+static inline __attribute__((always_inline)) void robot_build_friend(void)
+{
+    // ---- the friend robot (a second board): its body and its hatch in teal and blue
+    s_bmat = MT_PLASTIC;
+    prim_cbox(V3(0, 0, 0), V3(0.34f, 0.30f, 0.31f), 0.09f, 0x2FD8E6);
+    prim_cbox(V3(0, -0.22f, 0), V3(0.352f, 0.06f, 0.322f), 0.035f, 0x2A62E0);
+    prim_box(V3(0, 0.07f, 0.30f), V3(0.22f, 0.12f, 0.03f), 0xE6FFFF);
+    s_bmat = MT_GLASS;
+    prim_box(V3(0, 0.30f, -0.04f), V3(0.25f, 0.02f, 0.19f), 0xFF5AA0);
+    s_bmat = MT_PLASTIC;
+    prim_box(V3(0, 0.02f, -0.315f), V3(0.21f, 0.15f, 0.02f), 0x24A8D0);
+    for (int k = 0; k < 3; k++) {
+        prim_box(V3(0, 0.09f - k * 0.07f, -0.336f), V3(0.15f, 0.012f, 0.008f), 0x103C5A);
+    }
+    model_add(&s_mod[M_BODY_F]);
+    prim_cbox(V3(0, 0.09f, 0.0f), V3(0.24f, 0.09f, 0.02f), 0.015f, 0x22B4D8);
+    prim_box(V3(0, 0.15f, 0.02f), V3(0.10f, 0.012f, 0.01f), 0x0E3A58);
+    model_add(&s_mod[M_HATCH_F]);
+}
+
+static inline __attribute__((always_inline)) void robot_build_machines(void)
+{
+    // ---- the machines (round 3). The origin: the low corner of the cells (x, z) at the top (y 0)
+    // the gate of the orchard: iron bars over 2 cells, 11 high, with three cross bars and points at the top
+    s_bmat = MT_METAL;
+    for (int k = 0; k < 8; k++) {
+        float x = 0.14f + k * 0.246f;
+        prim_cyl(V3(x, 0, 0.5f), -11.0f, 0.0f, 0.055f, 0.055f, 5, 0, 0x3E4450, 0x5A6272, 0);
+        prim_cyl(V3(x, 0, 0.5f), 0.0f, 0.28f, 0.07f, 0.0f, 5, 0, 0x5A6272, 0x8A92A0, 0);
+    }
+    for (int k = 0; k < 3; k++) {
+        prim_box(V3(1.0f, -0.35f - k * 3.6f, 0.5f), V3(1.0f, 0.09f, 0.07f), 0x4A505E);
+    }
+    model_add(&s_mod[M_GATE]);
+    // the door of the vault: a stone slab over 2 cells (along z), 11 high, with bands of bronze and a ring
+    s_bmat = MT_MATTE;
+    prim_cbox(V3(0.5f, -5.5f, 1.0f), V3(0.42f, 5.5f, 0.98f), 0.06f, 0x8E867A);
+    s_bmat = MT_METAL;
+    for (int k = 0; k < 3; k++) {
+        prim_box(V3(0.5f, -0.6f - k * 1.2f, 1.0f), V3(0.44f, 0.08f, 0.99f), 0xB08850);
+    }
+    prim_cyl(V3(0.04f, 0, 1.0f), -1.9f, -1.5f, 0.16f, 0.16f, 8, 2, 0xB08850, 0xD0A868, 0xD0A868);
+    model_add(&s_mod[M_DOOR]);
+    // the drawbridge: a deck of planks 2 wide and 7 long (along z), the top at y 0, the rails at the sides
+    s_bmat = MT_MATTE;
+    for (int k = 0; k < 14; k++) {
+        prim_box(V3(1.0f, -0.08f, 0.25f + k * 0.5f), V3(0.98f, 0.08f, 0.23f), (k & 1) ? 0xA8805A : 0xB88E66);
+    }
+    for (int s = 0; s < 2; s++) {
+        prim_box(V3(0.05f + s * 1.9f, -0.2f, 3.5f), V3(0.06f, 0.16f, 3.5f), 0x7A5A40);
+    }
+    model_add(&s_mod[M_BRIDGE]);
+    // a plate: a stone ring, and the plate in it (up: amber; down: green)
+    prim_cyl(V3(0.5f, 0, 0.5f), -0.02f, 0.05f, 0.47f, 0.44f, 12, 2, 0x8A8478, 0xA49E92, 0xA49E92);
+    model_add(&s_mod[M_PLATE]);
+    s_bmat = MT_PLASTIC;
+    prim_cyl(V3(0.5f, 0, 0.5f), -0.02f, 0.09f, 0.36f, 0.34f, 12, 2, 0xC88A34, 0xF0B04A, 0xF0B04A);
+    model_add(&s_mod[M_PLATE_UP]);
+    prim_cyl(V3(0.5f, 0, 0.5f), -0.02f, 0.09f, 0.36f, 0.34f, 12, 2, 0x3CA05A, 0x6AD884, 0x6AD884);
+    model_add(&s_mod[M_PLATE_ON]);
+}
+
+static inline __attribute__((always_inline)) void robot_build_life(void)
+{
+    // ---- the small creatures (cb_life.inc). A crab: it faces +z (the claws), it walks to its sides
+    s_bmat = MT_PLASTIC;
+    prim_ell(V3(0, 0.09f, 0), V3(0.16f, 0.065f, 0.12f), 2, 6, 0xF07048, 0xC0402A);
+    for (int s = -1; s <= 1; s += 2) {
+        prim_ell(V3(s * 0.12f, 0.08f, 0.15f), V3(0.055f, 0.04f, 0.06f), 2, 5, 0xF07048, 0xC8482E);
+        prim_ell(V3(s * 0.045f, 0.17f, 0.09f), V3(0.022f, 0.022f, 0.022f), 1, 4, 0xFFFFFF, 0x202020);
+        for (int l = 0; l < 3; l++) {
+            xf_t lx;
+            xf_make(&lx, V3(s * 0.17f, 0.05f, -0.06f + l * 0.06f), 0, 0, s * 0.6f, V3(1, 1, 1));
+            mb_frame(&lx);
+            prim_box(V3(0, 0, 0), V3(0.07f, 0.012f, 0.012f), 0xC0402A);
+            mb_noframe();
+        }
+    }
+    model_add(&s_mod[M_CRAB]);
+    // a wing of a butterfly (the right one; the left one is drawn mirrored): two lobes, both faces
+    s_bmat = MT_GLOW;
+    {
+        static const uint32_t WC[3][2] = {{0xFF9A30, 0x3A2A20}, {0x58A8FF, 0x203048}, {0xFFE878, 0x403820}};
+        for (int w = 0; w < 3; w++) {
+            float ca[3], cb[3];
+            col3(ca, WC[w][0]);
+            col3(cb, WC[w][1]);
+            for (int side = 0; side < 2; side++) {
+                v3 n = V3(0, side ? -1 : 1, 0);
+                int o = mb_v(V3(0, 0, 0), n, cb, 1), a = mb_v(V3(0.15f, 0.02f, 0.10f), n, ca, 1),
+                    b = mb_v(V3(0.17f, 0.02f, -0.02f), n, ca, 1), c = mb_v(V3(0.10f, 0.0f, -0.11f), n, ca, 1);
+                if (side) {
+                    mb_t(o, b, a);
+                    mb_t(o, c, b);
+                } else {
+                    mb_t(o, a, b);
+                    mb_t(o, b, c);
+                }
+            }
+            model_add(&s_mod[M_WING_A + w]);
+        }
+    }
+    // a fish: a silver body and a tail (both faces)
+    s_bmat = MT_METAL;
+    prim_ell(V3(0, 0, 0), V3(0.05f, 0.065f, 0.17f), 2, 6, 0xC8E0F0, 0x5A88B0);
+    {
+        float ct[3];
+        col3(ct, 0x7AA0C8);
+        for (int side = 0; side < 2; side++) {
+            v3 n = V3(side ? -1 : 1, 0, 0);
+            int a = mb_v(V3(0, 0, -0.14f), n, ct, 1), b = mb_v(V3(0, 0.08f, -0.27f), n, ct, 1),
+                c = mb_v(V3(0, -0.08f, -0.27f), n, ct, 1);
+            if (side) {
+                mb_t(a, c, b);
+            } else {
+                mb_t(a, b, c);
+            }
+        }
+    }
+    model_add(&s_mod[M_FISH]);
+}
+
 static void robot_build(void)
 {
     mb_begin();
@@ -364,22 +498,7 @@ static void robot_build(void)
     prim_ell(V3(0, 0.02f, 0), V3(0.22f, 0.06f, 0.22f), 3, 8, 0xB07A50, 0x8A5A3A);
     model_add(&s_mod[M_POST]);
 
-    // ---- the friend robot (a second board): its body and its hatch in teal and blue
-    s_bmat = MT_PLASTIC;
-    prim_cbox(V3(0, 0, 0), V3(0.34f, 0.30f, 0.31f), 0.09f, 0x2FD8E6);
-    prim_cbox(V3(0, -0.22f, 0), V3(0.352f, 0.06f, 0.322f), 0.035f, 0x2A62E0);
-    prim_box(V3(0, 0.07f, 0.30f), V3(0.22f, 0.12f, 0.03f), 0xE6FFFF);
-    s_bmat = MT_GLASS;
-    prim_box(V3(0, 0.30f, -0.04f), V3(0.25f, 0.02f, 0.19f), 0xFF5AA0);
-    s_bmat = MT_PLASTIC;
-    prim_box(V3(0, 0.02f, -0.315f), V3(0.21f, 0.15f, 0.02f), 0x24A8D0);
-    for (int k = 0; k < 3; k++) {
-        prim_box(V3(0, 0.09f - k * 0.07f, -0.336f), V3(0.15f, 0.012f, 0.008f), 0x103C5A);
-    }
-    model_add(&s_mod[M_BODY_F]);
-    prim_cbox(V3(0, 0.09f, 0.0f), V3(0.24f, 0.09f, 0.02f), 0.015f, 0x22B4D8);
-    prim_box(V3(0, 0.15f, 0.02f), V3(0.10f, 0.012f, 0.01f), 0x0E3A58);
-    model_add(&s_mod[M_HATCH_F]);
+    robot_build_friend();
 
     // ---- the SUNDROP, the spark, a bird
     s_bmat = MT_GLOW;
@@ -418,6 +537,9 @@ static void robot_build(void)
         mb_t(a, b, c);
         model_add(&s_mod[M_BIRD]);
     }
+
+    robot_build_machines();
+    robot_build_life();
     s_bmat = MT_MATTE;
 }
 

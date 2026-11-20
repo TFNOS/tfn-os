@@ -44,22 +44,7 @@
 #define GUARD_BUILD 0
 #endif
 #include "../libs/kscroll/kscroll.h"
-#if BOARD_UI_SMOOTH_TEXT || BOARD_ROUND
-// THE TAB5 TEXT (also the AMOLED-1.75C): the dot font of the 3.49 rows is coarse at 1280 x 720 and on the scaled
-// frame of a fine AMOLED. Each
-// gfx_text* call of this page uses an anti-aliased font of about the same size. scale 1 = KF_LABEL, 2 = KF_TEXT,
-// 3 = KF_BIG, 4 and more = KF_TITLE. y stays the top of the dot letters (7 x scale rows); the letters of the font sit in
-// the middle of that band.
-#define SCR_W_T5 640
-int set_t5_text_width(const char *s, int sc);
-void set_t5_text(int x, int y, const char *s, int sc, uint16_t c);
-void set_t5_text_center(int y, const char *s, int sc, uint16_t c);
-void set_t5_text_center_in(int x, int w, int y, const char *s, int sc, uint16_t c);
-#define gfx_text           set_t5_text
-#define gfx_text_width     set_t5_text_width
-#define gfx_text_center    set_t5_text_center
-#define gfx_text_center_in set_t5_text_center_in
-#endif
+#include "set_text.h"  // (the text of SETUP: anti-aliased faces in place of the dot font, on all boards)
 
 #define DRAG_PX 10    // finger travel that starts a scroll (same as the tap limit)
 #if BOARD_ROUND_ZOOM  // (the 1.75C shows the 320 x 240 frame scaled: its rows)

@@ -327,16 +327,16 @@ static void hud_draw_round(const char *name, int li, int moves_left, int moves, 
     uint16_t sc = obj_state == 0   ? C_HUD
                   : obj_state == 1 ? (fsin(s_clock * 14) > 0 ? C_WARN : cmul(C_WARN, 0.65f))
                                    : C3(255, 90, 80);
-    text_sh(&KF_LABEL, SW / 2, y2, st, sc, 0, rchord(y2 - 10) - 30);
+    text_sh(&KF_NAME, SW / 2, y2, st, sc, 0, rchord(y2 - 10) - 30);
     // the bottom cap: the moves (diamonds) above, the goal (a bar and its text) below
     int by1 = SH * 86 / 100, by2 = SH * 925 / 1000;
     shade_band(0, SH * 80 / 100, SW, SH, 190);
     const char *mv = TX("MOVES", "מהלכים");
-    int mw = ui_text_w(&KF_LABEL, mv), dw = moves * 15, tw = mw + 10 + dw, x0 = SW / 2 - tw / 2;
+    int mw = ui_text_w(&KF_NAME, mv), dw = moves * 15, tw = mw + 10 + dw, x0 = SW / 2 - tw / 2;
     int mx = s_he ? x0 + tw : x0;
-    text_sh(&KF_LABEL, mx, by1, mv, C3(246, 234, 210), s_he ? 1 : -1, 100);
+    text_sh(&KF_NAME, mx, by1, mv, C3(246, 234, 210), s_he ? 1 : -1, 100);
     for (int i = 0; i < moves; i++) {
-        float cx = s_he ? (float)(x0 + dw - 7 - i * 15) : (float)(x0 + mw + 17 + i * 15), cy = (float)by1 - 5;
+        float cx = s_he ? (float)(x0 + dw - 7 - i * 15) : (float)(x0 + mw + 17 + i * 15), cy = (float)by1 - 6;
         float p[8] = {cx, cy - 6, cx + 6, cy, cx, cy + 6, cx - 6, cy};
         tfd_poly(p, 4, i < moves_left ? C_HUD : C3(110, 120, 116), i < moves_left ? 256 : 120);
     }
@@ -346,11 +346,11 @@ static void hud_draw_round(const char *name, int li, int moves_left, int moves, 
     } else {
         snprintf(line, sizeof line, "%s %d%%", gl, (int)(clampf(goal, 0, 1) * 100));
     }
-    int lw = ui_text_w(&KF_LABEL, line), bw = SW * 18 / 100, gw = lw + 10 + bw, g0 = SW / 2 - gw / 2;
+    int lw = ui_text_w(&KF_NAME, line), bw = SW * 18 / 100, gw = lw + 10 + bw, g0 = SW / 2 - gw / 2;
     int bx = s_he ? g0 : g0 + lw + 10;
     tfd_rrect(bx, by2 - 9, bw, 8, 4, C3(10, 20, 22), 200);
     tfd_rrect(bx + 1, by2 - 8, (int)((bw - 2) * clampf(goal, 0, 1)), 6, 3, goal >= 1 ? C3(255, 214, 102) : C_HUD, 256);
-    text_sh(&KF_LABEL, s_he ? g0 + gw : g0, by2, line, C3(246, 234, 210), s_he ? 1 : -1, 140);
+    text_sh(&KF_NAME, s_he ? g0 + gw : g0, by2, line, C3(246, 234, 210), s_he ? 1 : -1, 140);
 }
 static void hud_draw(const char *name, int li, int moves_left, int moves, float goal, bool goal_break, int panes,
                      int need, int obj_state, const char *obj_name, const char *he_safe, const char *he_broke)

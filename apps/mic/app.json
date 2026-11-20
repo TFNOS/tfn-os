@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "MIC",
+ "sym": "app_mic",
+ "group": "UTIL",
+ "emoji": "🎙️",
+ "new": true,
+ "srcs": [
+  "app_mic.c"
+ ],
+ "store": {
+  "en": "The board as a USB microphone. Connect a USB-C cable to a PC or a Mac: the computer finds TFN SOUND with no driver. It hears the microphone of the board, the sound of the board (games, music, ON AIR), or both. With SOUND TO USB, the board's sound goes to the computer at all times.",
+  "he": "הלוח כמיקרופון USB. חברו כבל USB-C למחשב PC או Mac: המחשב מוצא את TFN SOUND בלי דרייבר. הוא שומע את המיקרופון של הלוח, את הצלילים של הלוח (משחקים, מוזיקה, ON AIR), או את שניהם. עם SOUND TO USB, הצלילים של הלוח עוברים למחשב כל הזמן."
+ }
+}

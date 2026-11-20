@@ -60,10 +60,20 @@ apps/gummy_siege/gs_data.h
 apps/gummy_siege/gs_music.c
 apps/gummy_siege/gs_music.h
 apps/i2c_scanner/i2c_fonts.inc
+apps/integral/ig_data.c
+apps/integral/ig_font.c
+apps/integral/ig_font.h
+apps/integral/ig_sfx.c
+apps/integral/ig_sfx.h
+apps/ir_decoder/ird_fonts.inc
 apps/kart/kt_music.c
 apps/kart/kt_music.h
 apps/kart/kt_sfx.c
 apps/kart/kt_sfx.h
+apps/linalg/la_font.c
+apps/linalg/la_font.h
+apps/linalg/la_sfx.c
+apps/linalg/la_sfx.h
 apps/mqtt/mq_fonts.inc
 apps/murano/mu_music.c
 apps/murano/mu_music.h
@@ -73,12 +83,20 @@ apps/orbital/orb_music.c
 apps/orbital/orb_music.h
 apps/orbital/orb_sfx.c
 apps/orbital/orb_sfx.h
+apps/rf_decoder/rfd_fonts.inc
+apps/sdr/sdr_fonts.inc
 apps/sea_battle/sea_art.c
 apps/serial_monitor/ser_fonts.inc
 apps/summer/sc_music.c
 apps/summer/sc_music.h
 apps/summer/sc_sfx.c
 apps/summer/sc_sfx.h
+apps/trivia/tv_art.c
+apps/trivia/tv_art.h
+apps/trivia/tv_bank.c
+apps/trivia/tv_bank.h
+apps/trivia/tv_sfx.c
+apps/trivia/tv_sfx.h
 apps/turning_wood/tw_game.inc
 apps/turning_wood/tw_music_tab.inc
 apps/turning_wood/tw_sfx.c
@@ -98,3 +116,5 @@ main/tfn_abi.inc
 libs/hebcal/hc_parsha.inc
 libs/interfont/sb_fonts.inc
 main/standby_roots.inc
+# the case tables of DETECTIVE (made by apps/detective/tools/mk_cases.py)
+# the app list of TALK (made by apps/talk/tools/mk_apps.py from main/apps.json)

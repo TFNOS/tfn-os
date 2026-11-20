@@ -2,6 +2,7 @@
 // sweep. The web server task only puts a request in; the app task (sysui_update) takes it.
 #include "sysui_priv.h"
 #include "tfn/theme.h"
+#include "../libs/bidi/bidi.h"
 #ifdef ESP_PLATFORM
 #include "esp_attr.h"  // (EXT_RAM_BSS_ATTR: the consent state of the question in PSRAM: the internal RAM is short)
 #endif
@@ -295,10 +296,6 @@ static inline uint16_t mix565(uint16_t d, uint16_t s, int a)
     uint32_t r = (dd + (((ss - dd) * a5) >> 5)) & 0x07E0F81F;
     return (uint16_t)(r | (r >> 16));
 }
-static inline bool heb(uint16_t c)
-{
-    return c >= 0x590 && c <= 0x5FF;
-}
 static float adv(const mfont_t *f, uint16_t c)
 {
     const mglyph_t *g = mf_glyph(f, c);
@@ -378,59 +375,22 @@ static float run_w(const mfont_t *f, const uint16_t *cp, int n)
     }
     return w;
 }
-// one line centred at cx: a line with Hebrew is laid out right to left (the words from the right; the letters of a
-// Hebrew word from the right; a number or a Latin word keeps its order)
+// one line centred at cx: a line with Hebrew in the order of the Unicode Bidirectional Algorithm (libs/bidi/bidi.h:
+// from the right, a Latin phrase or a number in its own order, the brackets of a right-to-left part mirrored). A line
+// draws BIDI_MAX letters at most.
 static void line_draw(const mfont_t *f, const uint16_t *cp, int n, int cx, int base, uint16_t col)
 {
-    float w = run_w(f, cp, n);
-    bool rtl = false;
+    int16_t ord[BIDI_MAX];
+    uint8_t mir[BIDI_MAX];
+    if (n > BIDI_MAX) {
+        n = BIDI_MAX;
+    }
+    const bool rtl = bidi_order(cp, n, ord, mir);
+    float x = cx - run_w(f, cp, n) / 2;
     for (int i = 0; i < n; i++) {
-        if (heb(cp[i])) {
-            rtl = true;
-            break;
-        }
-    }
-    if (!rtl) {
-        float x = cx - w / 2;
-        for (int i = 0; i < n; i++) {
-            glyph(f, x, base, cp[i], col);
-            x += adv(f, cp[i]);
-        }
-        return;
-    }
-    float x = cx + w / 2;
-    int i = 0;
-    while (i < n) {
-        int j = i;
-        while (j < n && cp[j] != ' ') {
-            j++;
-        }
-        bool hw = false;
-        for (int k = i; k < j; k++) {
-            if (heb(cp[k])) {
-                hw = true;
-                break;
-            }
-        }
-        float ww = run_w(f, cp + i, j - i);
-        x -= ww;
-        if (hw) {
-            float xx = x + ww;
-            for (int k = i; k < j; k++) {
-                xx -= adv(f, cp[k]);
-                glyph(f, xx, base, cp[k], col);
-            }
-        } else {
-            float xx = x;
-            for (int k = i; k < j; k++) {
-                glyph(f, xx, base, cp[k], col);
-                xx += adv(f, cp[k]);
-            }
-        }
-        if (j < n) {
-            x -= adv(f, ' ');
-        }
-        i = j + 1;
+        const uint16_t c = !rtl ? cp[i] : mir[i] ? bidi_mirror(cp[ord[i]]) : cp[ord[i]];
+        glyph(f, x, base, c, col);
+        x += adv(f, c);
     }
 }
 

@@ -652,9 +652,10 @@ static int qr_block(int x, int px, const char *code, const char *l1, const char 
     }
     int tx = x + side + 10;
     gfx_text(tx, 30 + QR_OY, l1, 2, set_c_accent);
-    gfx_text(tx, 56 + QR_OY, l2, 1, set_c_dim);
+    // (a line that is too wide for the room at the right of the code takes two lines)
+    int n = set_wrap(tx, 56 + QR_OY, w - side - 12, 12, l2, 1, set_c_dim, false);
     int sc = gfx_text_width(l3, 2) <= w - side - 12 ? 2 : 1;
-    gfx_text(tx, 74 + QR_OY, l3, sc, big_c);
+    gfx_text(tx, 74 + 12 * (n - 1) + QR_OY, l3, sc, big_c);
     return x + w;
 }
 #else
@@ -672,8 +673,9 @@ static void qr_column(int x, int w, int dx, int max_side, const char *code, cons
     }
     int ty = 6 + side + 6;
     gfx_text_center_in(x + dx, w, ty, l1, 2, set_c_accent);
-    gfx_text_center_in(x + dx, w, ty + 20, l2, 1, set_c_dim);
-    gfx_text_center_in(x + dx, w, ty + 32, l3, gfx_text_width(l3, 2) <= w ? 2 : 1, big_c);
+    // (a line that is too wide for the column takes two lines)
+    int n = set_wrap(x + dx, ty + 20, w, 12, l2, 1, set_c_dim, true);
+    gfx_text_center_in(x + dx, w, ty + 32 + 12 * (n - 1), l3, gfx_text_width(l3, 2) <= w ? 2 : 1, big_c);
 }
 #endif
 
@@ -745,7 +747,13 @@ void set_qr_render(int64_t now)
         snprintf(url, sizeof(url), "http://%s/", web);
         snprintf(ip, sizeof(ip), "%s", web);
         qr_column(x0, w, 0, SCR_H - 88, url, "OPEN THE PAGE", "IN A BROWSER, ON THE SAME WIFI:", ip, set_c_accent);
-        gfx_text_center_in(x0, w, SCR_H - 14, "EXPORTS, MP3, MIDI SONGS, GAMEPAD SETUP", 1, set_c_dim);
+        const char *what = "EXPORTS, MP3, MIDI SONGS, GAMEPAD SETUP";
+        if (gfx_text_width(what, 1) <= w - 8) {
+            gfx_text_center_in(x0, w, SCR_H - 14, what, 1, set_c_dim);
+        } else {
+            gfx_text_center_in(x0, w, SCR_H - 26, "EXPORTS, MP3, MIDI SONGS,", 1, set_c_dim);
+            gfx_text_center_in(x0, w, SCR_H - 14, "GAMEPAD SETUP", 1, set_c_dim);
+        }
     } else {
         gfx_text_center_in(x0, w, 40, "NO WEB PAGE NOW", 3, set_c_text);
         gfx_text_center_in(x0, w, 84, "CONNECT TO WIFI, OR START THE HOTSPOT:", 1, set_c_dim);

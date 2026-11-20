@@ -34,7 +34,8 @@ CONFIG_GC0308_SUPPORT=y
 CONFIG_CAMERA_DMA_BUFFER_SIZE_MAX=8192
 # the slim layout: small app slots, a big /data for the app files (partitions_slim.csv)
 CONFIG_PARTITION_TABLE_CUSTOM=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_slim.csv"
+# the wide layout: two 4.5 MB app slots (main/layout.c changes a slim board by itself)
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_wide.csv"
 
 # USB-C HEADPHONES: slower USB timings (the first descriptor of the headphones failed with the
 # defaults: ENUM CHECK_SHORT_DEV_DESC, a transfer error)
@@ -45,3 +46,6 @@ CONFIG_USB_HOST_SET_ADDR_RECOVERY_MS=50
 # the FIFO of the USB host for periodic OUT (the audio stream to the headphones): the AB13X headphones have
 # an endpoint of 384 bytes; the balanced FIFO allowed 128 (HCD DWC: EP MPS exceeds supported limit)
 CONFIG_USB_HOST_HW_BUFFER_BIAS_PERIODIC_OUT=y
+# the CoreS3 slot is full: the common certificate bundle of ESP-IDF (the CAs of about 99 % of the web sites), not the
+# full one: about 30 KB less
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN=y

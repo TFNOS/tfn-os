@@ -224,6 +224,13 @@ static void hints_draw(void)
 }
 
 // ---------------------------------------------------------------- the screens
+// The short tunes. They are static: the audio task reads the notes while the tune plays, after the call is complete
+// (an array on the stack of the caller is gone then, and the notes become random data: a note that never stops).
+static const tune_note_t SC_T_INTRO[] = {JN(0, 120, J_G4, W_TRI, 40), JN(130, 120, J_B4, W_TRI, 40),
+                                         JN(260, 260, J_D5, W_TRI, 45)};
+static const tune_note_t SC_T_OPEN[] = {JN(0, 110, J_E4, W_TRI, 40), JN(120, 110, J_G4, W_TRI, 40),
+                                        JN(240, 110, J_B4, W_TRI, 42), JN(360, 110, J_E5, W_TRI, 44),
+                                        JSL(480, 420, J_D5, 2, W_TRI, 46)};
 static void title_go(void)
 {
     s_st = ST_TITLE;
@@ -243,8 +250,7 @@ static void intro_go(int ev)
     s_st_t = 0;
     ev_start(ev);
     mus_loop(SCM_PLAY);
-    JPLAY(((const tune_note_t[]){JN(0, 120, J_G4, W_TRI, 40), JN(130, 120, J_B4, W_TRI, 40),
-                                 JN(260, 260, J_D5, W_TRI, 45)}));
+    JPLAY(SC_T_INTRO);
 }
 static void play_go(void)
 {
@@ -548,9 +554,7 @@ static void sc_enter(int64_t now)
     s_draw_us = 0;
     title_go();
     cam_snap();
-    JPLAY(((const tune_note_t[]){JN(0, 110, J_E4, W_TRI, 40), JN(120, 110, J_G4, W_TRI, 40),
-                                 JN(240, 110, J_B4, W_TRI, 42), JN(360, 110, J_E5, W_TRI, 44),
-                                 JSL(480, 420, J_D5, 2, W_TRI, 46)}));
+    JPLAY(SC_T_OPEN);
 }
 static void sc_leave(void)
 {
@@ -567,7 +571,7 @@ static bool in_btn(int i, int x, int y)
     int m = 6;  // (a fat finger: a little more than the box)
     return x >= b.x - m && x < b.x + b.w + m && y >= b.y - m && y < b.y + b.h + m;
 }
-static void sc_input(const input_event_t *ev)
+static void sc_input_ev(const input_event_t *ev)
 {
     if (s_st == ST_TITLE) {
         if (ev->kind != IN_TAP || s_st_t < 0.3f) {
@@ -616,6 +620,17 @@ static void sc_input(const input_event_t *ev)
         }
     } else if (s_st == ST_CUPEND) {
         title_go();
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title, the intro and the cards acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void sc_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    sc_input_ev(ev);
+    if (slow && (s_st != ST_PLAY)) {
+        sc_input_ev(&tap);
     }
 }
 static void sc_update(int64_t now)

@@ -175,6 +175,11 @@ BaseType_t xQueueReset(QueueHandle_t q)
     return pdTRUE;
 }
 
+UBaseType_t uxQueueMessagesWaiting(QueueHandle_t q)
+{
+    return q ? (UBaseType_t)q->n : 0;
+}
+
 SemaphoreHandle_t xSemaphoreCreateBinary(void)
 {
     return NULL;

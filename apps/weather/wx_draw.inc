@@ -250,6 +250,27 @@ static void spinner(int cx, int cy, int r, int64_t t, uint16_t c)
     tfd_ring((float)cx, (float)cy, (float)r, 2.4f, c, 50);
 }
 
+// NO WIFI and no weather to show: a WiFi sign with a slash, the state, and the way to fix it, centred at cx in the
+// width w from the top y (before: a spinner that never ended and one thin line); a narrow place (the hero of the
+// narrow desk) shows the sign and the state only. The result: the y under the text.
+static int no_wifi(int cx, int y, int w)
+{
+    const float sy = (float)y + 30;
+    for (int k = 0; k < 3; k++) {
+        tfd_arc((float)cx, sy, 8.0f + 9.0f * k, 3.4f, -2.36f, -0.79f, C_TEXT, 256 - 50 * k);
+    }
+    tfd_disc((float)cx, sy, 3.4f, C_TEXT, 256);
+    tfd_line((float)cx - 18, sy - 28, (float)cx + 14, sy + 2, 3.6f, tfd_rgb(10, 16, 30), 200);
+    tfd_line((float)cx - 17, sy - 30, (float)cx + 15, sy, 3.0f, tfd_rgb(255, 128, 104), 256);
+    stext_c(&WK_PLACE, cx, y + 64, TX(T_NOWIFI), C_TEXT, w);
+    if (w < 150) {
+        return y + 70;
+    }
+    stext_c(&WK_LABEL, cx, y + 84, TX(T_WIFI1), C_TEXT, w);
+    stext_c(&WK_LABEL, cx, y + 101, TX(T_WIFI2), C_TEXT, w);
+    return y + 106;
+}
+
 // ---------------------------------------------------------------- the hours
 // the rows of the next hours: 24 hours from now; *ev = the rows of a sunrise or a sunset between them
 static int hours_rows(const wx_t *w, int64_t now, int *ev)
@@ -726,8 +747,10 @@ static void draw_hero(const wx_t *w, const place_t *pl, int64_t now, int top, in
         if (updating(s_cur) || s_ip_need) {
             spinner(cx, top + 150, 16, t, C_TEXT);
             stext_c(&WK_TEXT, cx, top + 200, TX(s_ip_need && !s_npl ? T_FINDING : T_LOADING), C_TEXT, W - 16);
+        } else if (s_wifi) {
+            stext_c(&WK_TEXT, cx, top + 160, TX(T_NOUPD), C_TEXT, W - 16);
         } else {
-            stext_c(&WK_TEXT, cx, top + 160, TX(s_wifi ? T_NOUPD : T_NOWIFI), C_TEXT, W - 16);
+            no_wifi(cx, top + 100, W - 16);
         }
         return;
     }
@@ -822,8 +845,12 @@ static void draw_page(int64_t t)
         // no place yet: the sky and "finding your place"
         if (band(RG_TOP, kmix(1, (int)(t / 33)), 0, H)) {
             sky_draw(0, 0, H, (float)t / 1000.0f);
-            spinner(W / 2, 220, 16, t, C_TEXT);
-            stext_c(&WK_TEXT, W / 2, 270, TX(s_wifi ? T_FINDING : T_NOWIFI), C_TEXT, W - 16);
+            if (s_wifi) {
+                spinner(W / 2, 220, 16, t, C_TEXT);
+                stext_c(&WK_TEXT, W / 2, 270, TX(T_FINDING), C_TEXT, W - 16);
+            } else {
+                no_wifi(W / 2, 190, W - 16);
+            }
             band_end(0, H);
         }
         return;
@@ -953,6 +980,10 @@ static void draw_hero_land(const wx_t *w, const place_t *pl, int64_t now, int64_
     }
     int cx = PW / 2 + ox;
     const int up = LNARROW ? 0 : 7;  // (the wide desk: the rows go up to give the credit a line at the bottom)
+    if (!w->fetched && !s_wifi && !updating(s_cur) && !s_ip_need) {
+        no_wifi(cx, 40 + LDY, PW - 16);
+        return;
+    }
     if (!w->fetched) {
         if (updating(s_cur) || s_ip_need) {
             spinner(cx, 92 + LDY, 14, t, C_TEXT);
@@ -1170,8 +1201,12 @@ static void draw_page_land(int64_t t)
         if (band_r(RG_TOP, kmix(41, (int)(t / 33)), 0, 0, LW, LH)) {
             tfd_rect(PW, 0, LW - PW, LH, s_page_c, 256);
             sky_draw(0, 0, LH, (float)t / 1000.0f);
-            spinner(PW / 2, 80, 14, t, C_TEXT);
-            tfd_text_c(&WK_TEXT, (PW + LW) / 2, 92, TX(s_wifi ? T_FINDING : T_NOWIFI), C_TEXT, LW - PW - 20);
+            if (s_wifi) {
+                spinner(PW / 2, 80, 14, t, C_TEXT);
+                tfd_text_c(&WK_TEXT, (PW + LW) / 2, 92, TX(T_FINDING), C_TEXT, LW - PW - 20);
+            } else {
+                no_wifi((PW + LW) / 2, (LH - 106) / 2, LW - PW - 20);  // (in the page: the room of the text)
+            }
             band_end_r(0, 0, LW, LH);
         }
         return;

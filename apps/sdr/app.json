@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "SDR",
+ "sym": "app_sdr",
+ "group": "UTIL",
+ "emoji": "📶",
+ "new": true,
+ "srcs": [
+  "app_sdr.c"
+ ],
+ "store": {
+  "en": "A spectrum analyzer for the 2.4 GHz radio of the board: live, max, min and average traces, a waterfall, persistence, the use of the WiFi and Bluetooth channels, markers, zoom, AUTO GAIN. It restarts the board with no WiFi while it listens. English and Hebrew.",
+  "he": "נתח ספקטרום על הרדיו של הלוח (2.4 גיגה): קווים חי, מרבי, מזערי וממוצע, מפל, התמדה, תפוסת ערוצי WIFI ובלוטות', סמנים, זום והגבר אוטומטי. בזמן ההאזנה הלוח עובד בלי WIFI אחרי הפעלה מחדש. אנגלית ועברית."
+ }
+}

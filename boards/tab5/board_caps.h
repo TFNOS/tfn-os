@@ -90,6 +90,10 @@
 // the size of the PSRAM (MB): the icon budgets of the menu (tfn_app_priv.h); 32 or more = the icons stay at an app
 // load, and a task reads all icons at the start
 #define BOARD_PSRAM_MB 32
+// the voice (tfn/speech.h, the store app VOICE): 1 = the board can read text aloud (tiny-voca needs an octal PSRAM
+// and its model on an SD card); here: another chip (ESP32-P4, 32 MB PSRAM) and an SD card slot: the voice and the
+// ears use their plain C kernels (the PIE kernels are for the S3)
+#define BOARD_TTS 1
 // the I2S pins of the codecs (the speaker and the microphones; the pins of M5Unified)
 #define BOARD_I2S_MCLK GPIO_NUM_30
 #define BOARD_I2S_BCLK GPIO_NUM_27

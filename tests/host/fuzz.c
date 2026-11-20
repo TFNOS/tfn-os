@@ -2,7 +2,14 @@
 // IMU values (tilt, linear, shake, hits, snaps, dial, steps), the microphone, the audio tick,
 // frame steps of 12, 16 and 33 ms with long frames, and leave/enter. Build with build.sh for the
 // 3.49 (inc349), the CoreS3 (incs3) and the Watcher (incwt). Usage: fuzz.exe [frames per app] [seed]
+// The environment: FUZZ_ONLY=<name> runs one app; FUZZ_CYCLE=<n> = a leave and an enter after each n frames (else
+// about one time in 1500 frames); FUZZ_SKIP below; NOMEM=1 of build.sh: the allocation failures of nomem.c.
 
+#ifdef HOST_NOMEM
+#undef malloc
+#undef calloc
+#undef realloc
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -158,8 +165,13 @@ static int run_app(const app_t *a, int frames)
         if (!BOARD_FIXED_ORIENT && a == &app_menu && rand() % 200 == 0) {
             gfx_set_orient((orient_t)(rand() % 4));
         }
-        // sometimes leave and come back
-        if (rand() % 1500 == 0) {
+        // sometimes leave and come back (FUZZ_CYCLE: after each n frames)
+        static int cycle = -1;
+        if (cycle < 0) {
+            const char *e = getenv("FUZZ_CYCLE");
+            cycle = e ? atoi(e) : 0;
+        }
+        if (cycle > 0 ? f % cycle == cycle - 1 : rand() % 1500 == 0) {
             if (a->leave) a->leave();
             a->enter(s_now_ms);
         }
@@ -171,13 +183,7 @@ static int run_app(const app_t *a, int frames)
 
 // the apps that only some board kinds have ("only" in main/apps.json, apps_gen/only.txt: the store apps of the 3.49):
 // this run skips them on the other kinds (they draw into a frame of the 3.49 size)
-#if BOARD_BAR_SCREEN
-#define HOST_KIND "lcd349"
-#elif BOARD_WHEEL
-#define HOST_KIND "watcher"
-#else
-#define HOST_KIND "cores3"
-#endif
+#define HOST_KIND BOARD_KIND_NAME
 static bool not_here(const char *name)
 {
     static char buf[4096];
@@ -214,6 +220,11 @@ int main(int argc, char **argv)
     for (int i = 0; i < N_APPS; i++) {
         if (APPS[i]->init) APPS[i]->init();
     }
+#ifdef HOST_NOMEM
+    extern int host_nomem_on;
+    host_nomem_on = 1;  // (after the init of all apps: the failures are for the apps that run)
+#endif
+    const char *only = getenv("FUZZ_ONLY");
     int bad = 0;
     for (int caps = 0; caps < 2; caps++) {
 #if BOARD_BAR_SCREEN
@@ -232,6 +243,9 @@ int main(int argc, char **argv)
                 const char *p = strstr(skip, APPS[i]->name);
                 size_t ln = strlen(APPS[i]->name);
                 if (p && (p == skip || p[-1] == ',') && (p[ln] == 0 || p[ln] == ',')) continue;
+            }
+            if (only && strcmp(only, APPS[i]->name)) {
+                continue;
             }
             long v0 = n_voices, s0 = n_sfx;
             int u = run_app(APPS[i], frames);

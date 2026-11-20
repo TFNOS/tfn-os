@@ -2,8 +2,11 @@
 // (Open-Meteo, at most each 30 minutes and only while the screen is on and the WiFi is up; the last answer stays in
 // /data/standby_wx.bin with its time), the Hebrew date and the Shabbat times (the calculations of HEBREW CALENDAR:
 // libs/hebcal), the sun, and the NEXT item.
-// The tasks: the main task calls all functions here; the fetch task "sbwx" (core 0, its stack in PSRAM) does only the
-// network and the JSON, never a file (a task with a PSRAM stack cannot run while the flash writes).
+// The tasks: the main task calls all functions here; the fetch task "sbwx" (core 1, priority 1, its stack in PSRAM)
+// does only the network and the JSON, never a file (a task with a PSRAM stack cannot run while the flash writes).
+// NOT ON CORE 0 ABOVE THE MAIN TASK (priority 1 on core 0): the TLS of a fetch took the core from the main loop for
+// about 2.5 s, and a fetch starts at each wake of the screen (the weather is old then): the touches waited in the
+// queue while the screen showed STANDBY, then all of them acted on the menu at once.
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +20,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "alarm.h"
+#include "power.h"
 #include "settings.h"
 #include "standby_priv.h"
 #include "tfnet/tfnet.h"
@@ -365,9 +369,12 @@ static void fetch_task(void *arg)
             continue;
         }
         s_state = 2;
+        // (the TLS of the two fetches: seconds of ECDSA in software on core 1; the task watchdog printed a warning)
+        power_idle1_hold(true);
         if (s_need_ip) {
             ask_ip();
             if (!s_ip.ok) {
+                power_idle1_hold(false);
                 s_state = 4;
                 continue;
             }
@@ -381,6 +388,7 @@ static void fetch_task(void *arg)
                  (double)s_q_lat, (double)s_q_lon, SBW_HOURS);
         int st = 0;
         const int n = tn_fetch_ca(SB_ROOTS_METEO, "GET", url, NULL, NULL, 0, s_body, BODY_MAX, 10000, &s_cancel, &st);
+        power_idle1_hold(false);
         memset(&s_got, 0, sizeof s_got);
         const bool ok = n > 0 && st == 200 && parse(s_body, n, &s_got);
         ESP_LOGI(TAG, "the weather: %d bytes, status %d, %s", n, st, ok ? "ok" : "FAILED");
@@ -404,7 +412,7 @@ static bool task_start(void)
         return false;
     }
     // (the stack in PSRAM: this task never writes the flash; the main task writes the file)
-    if (xTaskCreatePinnedToCoreWithCaps(fetch_task, "sbwx", 10240, NULL, 2, &s_task, 0,
+    if (xTaskCreatePinnedToCoreWithCaps(fetch_task, "sbwx", 10240, NULL, 1, &s_task, 1,
                                         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
         s_task = NULL;
         return false;

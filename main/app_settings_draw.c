@@ -7,59 +7,6 @@
 uint32_t set_free_int, set_free_ps, set_free_fs;
 float set_chip_c = NAN;  // the temperature of the chip (board_chip_temp, once a second)
 
-#if BOARD_UI_SMOOTH_TEXT || BOARD_ROUND
-// (a round board with no smooth text in the 320 x 240 frame, the Watcher: the dot font in that frame, as before)
-#define SET_DOT (!BOARD_UI_SMOOTH_TEXT && !gfx_round())
-#pragma push_macro("gfx_text")
-#pragma push_macro("gfx_text_width")
-#pragma push_macro("gfx_text_center")
-#pragma push_macro("gfx_text_center_in")
-#undef gfx_text
-#undef gfx_text_width
-#undef gfx_text_center
-#undef gfx_text_center_in
-static const kfont_t *t5_font(int sc)
-{
-    return sc <= 1 ? &KF_LABEL : sc == 2 ? &KF_TEXT : sc == 3 ? &KF_BIG : &KF_TITLE;
-}
-static int t5_base(int y, int sc)
-{
-    return y + (7 * sc + t5_font(sc)->asc * 3 / 4) / 2;
-}
-void set_t5_text(int x, int y, const char *s, int sc, uint16_t c)
-{
-    if (SET_DOT) {
-        gfx_text(x, y, s, sc, c);
-        return;
-    }
-    ui_text(t5_font(sc), x, t5_base(y, sc), s, c);
-}
-int set_t5_text_width(const char *s, int sc)
-{
-    return SET_DOT ? gfx_text_width(s, sc) : ui_text_w(t5_font(sc), s);
-}
-void set_t5_text_center(int y, const char *s, int sc, uint16_t c)
-{
-    if (SET_DOT) {
-        gfx_text_center(y, s, sc, c);
-        return;
-    }
-    ui_text_c(t5_font(sc), gfx_w / 2, t5_base(y, sc), s, c);
-}
-void set_t5_text_center_in(int x, int w, int y, const char *s, int sc, uint16_t c)
-{
-    if (SET_DOT) {
-        gfx_text_center_in(x, w, y, s, sc, c);
-        return;
-    }
-    ui_text_c(t5_font(sc), x + w / 2, t5_base(y, sc), s, c);
-}
-#pragma pop_macro("gfx_text")
-#pragma pop_macro("gfx_text_width")
-#pragma pop_macro("gfx_text_center")
-#pragma pop_macro("gfx_text_center_in")
-#endif
-
 // ---------------------------------------------------------------- drawing the list
 
 static void button(int x, int y, int w, int h, const char *label, int scale, bool hot, bool on)
@@ -271,29 +218,59 @@ static void about_id(int y, int left, char *buf, size_t bsz)
 }
 
 #if SET_WIDE
+#define SUB_R (RIGHT_X - 8)  // the end of the line under the name in a row with a control at RIGHT_X
+// THE TWO TEXTS OF A ROW: the name (scale 2) and the line under it (scale 1, colour c), from TEXT_X. The line must end
+// before right (the left end of the control of the row). A longer line takes two lines, broken at a space, and the name
+// goes up (as in the HOTSPOT row).
+static void row_text(int y, const char *name, const char *sub, uint16_t c, int right)
+{
+    const int room = right - TEXT_X;
+    int cut = -1;
+    char a[96];
+    if (gfx_text_width(sub, 1) > room) {
+        for (int i = 0; sub[i] && i < (int)sizeof(a) - 1; i++) {
+            if (sub[i] != ' ') {
+                continue;
+            }
+            memcpy(a, sub, (size_t)i);
+            a[i] = 0;
+            if (gfx_text_width(a, 1) > room) {
+                break;
+            }
+            cut = i;
+        }
+    }
+    if (cut < 0) {
+        gfx_text(TEXT_X, y + 12, name, 2, set_c_text);
+        gfx_text(TEXT_X, y + 32, sub, 1, c);
+        return;
+    }
+    memcpy(a, sub, (size_t)cut);
+    a[cut] = 0;
+    gfx_text(TEXT_X, y + 6, name, 2, set_c_text);
+    gfx_text(TEXT_X, y + 26, a, 1, c);
+    gfx_text(TEXT_X, y + 38, sub + cut + 1, 1, c);
+}
 // the DEVELOPER MODE row (a protected build: ADMIN ACCESS) and ON / OFF
 static void row_dev(int y, int cy)
 {
-    gfx_text(TEXT_X, y + 12, GUARD_BUILD ? "ADMIN ACCESS" : "DEVELOPER MODE", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32, GUARD_BUILD ? "UNLOCK WITH YOUR WEB PASSWORD" : "APP FILES WITH NO SIGNATURE CAN RUN", 1,
-             set_c_dim);
+    row_text(y, GUARD_BUILD ? "ADMIN ACCESS" : "DEVELOPER MODE",
+             GUARD_BUILD ? "UNLOCK WITH YOUR WEB PASSWORD" : "APP FILES WITH NO SIGNATURE CAN RUN", set_c_dim, SUB_R);
     toggle(cy, GUARD_BUILD ? device_guard_local_admin() : tfn_dev_mode(), set_active == CTRL_DEV);
 }
 // the TRUSTED PUBLISHERS row: the count of the keys and OPEN
 static void row_pub(int y, int cy, char *buf, size_t bsz)
 {
-    gfx_text(TEXT_X, y + 12, "TRUSTED PUBLISHERS", 2, set_c_text);
     snprintf(buf, bsz, "%d BUILT-IN STORE KEY%s, %d ADDED", tfn_pub_builtin_count(),
              tfn_pub_builtin_count() == 1 ? "" : "S", tfn_pub_count());
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    row_text(y, "TRUSTED PUBLISHERS", buf, set_c_dim, SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_PUB, false);
 }
 // the POOL row: the state of the pool (pool_page.h) and OPEN
 static void row_pool(int y, int cy, char *buf, size_t bsz)
 {
-    gfx_text(TEXT_X, y + 12, "POOL", 2, set_c_text);
     pool_page_row_text(buf, (int)bsz);
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    row_text(y, "POOL", buf, set_c_dim, SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_POOL, false);
 }
 // the STORE SOURCE row: the source of the store now and AUTO / MANAGER / STATIC
@@ -301,50 +278,46 @@ static void row_store(int y, int cy, char *buf, size_t bsz)
 {
     const char *a, *b;
     store_lines(&a, &b);
-    gfx_text(TEXT_X, y + 12, "STORE SOURCE", 2, set_c_text);
     snprintf(buf, bsz, "%s %s", a, b);
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    row_text(y, "STORE SOURCE", buf, set_c_dim, SUB_R);
     store_btn(cy);
 }
 // the TILT SCALE row: the value of the sensor and - , AUTO / SET, +
 static void row_ascale(int y, int cy, char *buf, size_t bsz)
 {
-    gfx_text(TEXT_X, y + 12, "TILT SCALE", 2, set_c_text);
     snprintf(buf, bsz, "SENSOR %.2f G STILL", (double)imu_raw_g());
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    row_text(y, "TILT SCALE", buf, set_c_dim, MINUS_X - 8);
     ascale_ctl(y, cy);
 }
 // the WIFI row: the state in one line and NETWORKS / SET UP
 static void row_wifi(int y, int cy, char *buf, size_t bsz)
 {
-    gfx_text(TEXT_X, y + 12, "WIFI", 2, set_c_text);
     uint16_t sc = set_wifi_line(buf, bsz);
-    gfx_text(TEXT_X, y + 32, buf, 1, sc);
+    row_text(y, "WIFI", buf, sc, SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, wifi_state() == WIFI_CONNECTED ? "NETWORKS" : "SET UP", 2,
            set_active == CTRL_WIFI, false);
 }
 // the TILT TEST row: the text and the ring with the ball
 static void row_tilt(int y)
 {
-    gfx_text(TEXT_X, y + 12, "TILT TEST", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32, "TAP: THIS POSITION IS LEVEL", 1, set_c_dim);
+    row_text(y, "TILT TEST", "TAP: THIS POSITION IS LEVEL", set_c_dim, TILT_CX - TILT_R - 8);
     tilt_ctl(y + (ROW_H - 4) / 2);
 }
 // the TILT CALIBRATE row: the state and OPEN
 static void row_tcal(int y, int cy)
 {
-    gfx_text(TEXT_X, y + 12, "TILT CALIBRATE", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32, imu_accel_cal_on() ? "ON: THE 6 SIDES ARE MEASURED" : "OFF. FOR A SENSOR THAT READS WRONG",
-             1, set_c_dim);
+    row_text(y, "TILT CALIBRATE",
+             imu_accel_cal_on() ? "ON: THE 6 SIDES ARE MEASURED" : "OFF. FOR A SENSOR THAT READS WRONG", set_c_dim,
+             SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_TCAL, false);
 }
 // the POWER OFF and DEEP IDLE rows (on the battery): the text and < value >
 static void row_battery(int i, int y, int cy)
 {
     const bool deep = i == R_DEEP;
-    gfx_text(TEXT_X, y + 12, deep ? "DEEP IDLE" : "POWER OFF", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32, deep ? "ON BATTERY: CHECK FOR NEWS THIS OFTEN" : "SCREEN OFF THIS LONG, ON BATTERY", 1,
-             set_c_dim);
+    row_text(y, deep ? "DEEP IDLE" : "POWER OFF",
+             deep ? "ON BATTERY: CHECK FOR NEWS THIS OFTEN" : "SCREEN OFF THIS LONG, ON BATTERY", set_c_dim,
+             SLP_PREV_X - 8);
     if (deep) {
         deep_ctl(cy);
     } else {
@@ -355,19 +328,17 @@ static void row_battery(int i, int y, int cy)
 static void row_move(int y, int cy)
 {
     bool on = store_get("wake_mv", 1) != 0;
-    gfx_text(TEXT_X, y + 12, "WAKE ON MOVE", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32,
-             on ? "A MOVE LIGHTS THE SCREEN AND KEEPS IT ON" : "ONLY A TOUCH OR A KEY (A BOARD IN A BAG STAYS DARK)", 1,
-             set_c_dim);
+    row_text(y, "WAKE ON MOVE",
+             on ? "A MOVE LIGHTS THE SCREEN AND KEEPS IT ON" : "ONLY A TOUCH OR A KEY (A BOARD IN A BAG STAYS DARK)",
+             set_c_dim, SUB_R);
     toggle(cy, on, set_active == CTRL_MOVE);
 }
 // the SCREEN KEY row: the state and ON / OFF
 static void row_skey(int y, int cy)
 {
     bool on = store_get("scr_key", 0) != 0;
-    gfx_text(TEXT_X, y + 12, "SCREEN KEY", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32, on ? "BOOT: THE SCREEN OFF AND ON. PWR IN THE MENU: OFF" : "OFF: THE KEYS ACT AS BEFORE",
-             1, set_c_dim);
+    row_text(y, "SCREEN KEY", on ? "BOOT: THE SCREEN OFF AND ON. PWR IN THE MENU: OFF" : "OFF: THE KEYS ACT AS BEFORE",
+             set_c_dim, SUB_R);
     toggle(cy, on, set_active == CTRL_SKEY);
 }
 // the WEB PAGE row: the address and QR CODE (or START HOTSPOT)
@@ -387,59 +358,49 @@ static void row_web(int y, int cy, char *buf, size_t bsz)
 static void row_webpass(int y, int cy)
 {
     bool on = web_auth_on();
-    gfx_text(TEXT_X, y + 12, "WEB PASSWORD", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32,
-             on ? "ON: THE WEB PAGE AND ITS API NEED IT" : "OFF: EACH DEVICE ON THE WIFI CAN USE THE PAGE", 1,
-             on ? THEME_SETUP_OK : THEME_SETUP_WARN);
+    row_text(y, "WEB PASSWORD",
+             on ? "ON: THE WEB PAGE AND ITS API NEED IT" : "OFF: EACH DEVICE ON THE WIFI CAN USE THE PAGE",
+             on ? THEME_SETUP_OK : THEME_SETUP_WARN, SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, on ? "CHANGE" : "SET", 2, set_active == CTRL_WEBPASS, false);
 }
 // the FRIENDS row: the count, the name of this board and OPEN
 static void row_friends(int y, int cy, char *buf, size_t bsz)
 {
-    gfx_text(TEXT_X, y + 12, "FRIENDS", 2, set_c_text);
     snprintf(buf, bsz, "%d FRIEND%s. THIS BOARD: %s", friends_count(), friends_count() == 1 ? "" : "S",
              GUARD_BUILD && !device_guard_local_admin() ? "ADMIN ACCESS REQUIRED" : friends_my_name());
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    row_text(y, "FRIENDS", buf, set_c_dim, SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_FRIENDS, false);
 }
 // the NOTIFICATIONS row: the count of the notices and OPEN
 static void row_notify(int y, int cy, char *buf, size_t bsz)
 {
-    gfx_text(TEXT_X, y + 12, "NOTIFICATIONS", 2, set_c_text);
     int un = notify_unread(NULL);
     if (!notify_all_on()) {
         snprintf(buf, bsz, "ALL OFF");
-    }
-#if BOARD_UI_SMOOTH_TEXT
-    // (the Tab5: the font is wider than the dot font; the long text went under OPEN)
-    else {
-        snprintf(buf, bsz, "%d NOTICE%s, %d UNREAD", notify_count(), notify_count() == 1 ? "" : "S", un);
-    }
-#else
-    else {
+    } else {
         snprintf(buf, bsz, "%d NOTICE%s, %d UNREAD. THE APPS, SOUND, DO NOT DISTURB", notify_count(),
                  notify_count() == 1 ? "" : "S", un);
     }
-#endif
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    row_text(y, "NOTIFICATIONS", buf, set_c_dim, SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_NOTIFY, false);
 }
 // the STANDBY row: on or off, the face, OPEN
 static void row_standby(int y, int cy, char *buf, size_t bsz)
 {
-    gfx_text(TEXT_X, y + 12, "STANDBY", 2, set_c_text);
     snprintf(buf, bsz, "%s. AT A WAKE AND AFTER 1 MIN IN THE MENU", standby_state_text());
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
+    row_text(y, "STANDBY", buf, set_c_dim, SUB_R);
     button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_STANDBY, false);
 }
 // the TEMPERATURE row: the temperature of the chip in green, yellow or red
 static void row_temp(int y, char *buf, size_t bsz)
 {
-#if BOARD_UI_SMOOTH_TEXT
     // An info line with the temperature. The value is in the Rubik face at the right (green, yellow from
     // 60 C, red from 75 C), a degree ring and C.
-    gfx_text(TEXT_X, y + 12, "TEMPERATURE", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32, "THE CHIP (ESP32-P4), READ EACH SECOND", 1, set_c_dim);
+#if BOARD_UI_TABLET  // (the Tab5 has the ESP32-P4)
+    row_text(y, "TEMPERATURE", "THE CHIP (ESP32-P4), READ EACH SECOND", set_c_dim, SUB_R);
+#else
+    row_text(y, "TEMPERATURE", "THE CHIP (ESP32-S3), READ EACH SECOND", set_c_dim, SUB_R);
+#endif
     const bool ok = !isnan(set_chip_c);
     if (ok) {
         snprintf(buf, bsz, "%.1f", (double)set_chip_c);
@@ -455,22 +416,6 @@ static void row_temp(int y, char *buf, size_t bsz)
     ui_text(&KF_BIG, tx, base, buf, tc);
     ui_ring(rx, base - KF_BIG.asc + 4, 4, 2, tc, 255);
     ui_text(&KF_BIG, cx, base, "C", tc);
-#else
-    // The temperature on the 3.49 and the other ESP32-S3 boards (green, yellow from 60 C, red from 75 C)
-    gfx_text(TEXT_X, y + 12, "TEMPERATURE", 2, set_c_text);
-    gfx_text(TEXT_X, y + 32, "THE CHIP (ESP32-S3), READ EACH SECOND", 1, set_c_dim);
-    const bool ok = !isnan(set_chip_c);
-    if (ok) {
-        snprintf(buf, bsz, "%.1f C", (double)set_chip_c);
-    } else {
-        snprintf(buf, bsz, "--");
-    }
-    const uint16_t tc = !ok               ? set_c_dim
-                        : set_chip_c < 60 ? THEME_SETUP_LEVEL_OK
-                        : set_chip_c < 75 ? THEME_SETUP_LEVEL_WARN
-                                          : THEME_SETUP_LEVEL_HIGH;
-    gfx_text(RIGHT_X + RIGHT_W - gfx_text_width(buf, 3), y + (ROW_H - 4) / 2 - 10, buf, 3, tc);
-#endif
 }
 // the ABOUT row: the firmware, the memory, the files, the time up, the addresses
 static void row_about(int y, char *buf, size_t bsz)
@@ -479,11 +424,7 @@ static void row_about(int y, char *buf, size_t bsz)
     snprintf(buf, bsz, "FIRMWARE %s (%s)", ota_version(), ota_slot());
     gfx_text(TEXT_X + 76, y + 8, buf, 1, set_c_text);
     about_id(y + 8, TEXT_X + 76 + gfx_text_width(buf, 1), buf, bsz);
-    snprintf(buf, bsz, "MEMORY %lu KB + %lu KB   FILES %lu.%lu MB FREE", (unsigned long)(set_free_int / 1024),
-             (unsigned long)(set_free_ps / 1024), (unsigned long)(set_free_fs / 1024),
-             (unsigned long)(set_free_fs % 1024 * 10 / 1024));
-#if BOARD_UI_SMOOTH_TEXT
-    // (the Tab5: the lines of the font are taller than the dot lines: two columns of two lines, 16 px apart)
+    // (the lines of the font are taller than the dot lines: two columns of two lines, 16 px apart)
     snprintf(buf, bsz, "MEMORY %lu KB + %lu KB", (unsigned long)(set_free_int / 1024),
              (unsigned long)(set_free_ps / 1024));
     gfx_text(TEXT_X, y + 22, buf, 1, set_c_dim);
@@ -491,17 +432,10 @@ static void row_about(int y, char *buf, size_t bsz)
              (unsigned long)(set_free_fs % 1024 * 10 / 1024));
     gfx_text(TEXT_X, y + 38, buf, 1, set_c_dim);
     const int x2 = TEXT_X + 220;
-#else
-    gfx_text(TEXT_X, y + 22, buf, 1, set_c_dim);
-#endif
     int64_t up = esp_timer_get_time() / 1000000;
     snprintf(buf, bsz, "UP %d:%02d:%02d   GAMEPAD NAME: %s", (int)(up / 3600), (int)(up / 60 % 60), (int)(up % 60),
              bt_pad_name());
-#if BOARD_UI_SMOOTH_TEXT
     gfx_text(x2, y + 22, buf, 1, set_c_dim);
-#else
-    gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
-#endif
     char a[24] = "-", b[24] = "OFF";
     if (wifi_state() == WIFI_CONNECTED) {
         snprintf(a, sizeof(a), "%s", wifi_ip());
@@ -510,11 +444,7 @@ static void row_about(int y, char *buf, size_t bsz)
         snprintf(b, sizeof(b), "%s", wifi_hotspot_ip());
     }
     snprintf(buf, bsz, "WIFI %s   HOTSPOT %s", a, b);
-#if BOARD_UI_SMOOTH_TEXT
     gfx_text(x2, y + 38, buf, 1, set_c_dim);
-#else
-    gfx_text(TEXT_X, y + 42, buf, 1, set_c_dim);
-#endif
 }
 
 // the rows with a button at the right that opens a page or changes one setting
@@ -557,42 +487,35 @@ static void draw_row(int i, int64_t now)
         break;
     }
     case R_SOUND:
-        gfx_text(TEXT_X, y + 12, "SOUND", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, "ALL SOUND AND MUSIC", 1, set_c_dim);
+        row_text(y, "SOUND", "ALL SOUND AND MUSIC", set_c_dim, SUB_R);
         toggle(cy, !g_settings.mute, set_active == CTRL_SOUND);
         break;
     case R_UISND:
-        gfx_text(TEXT_X, y + 12, "UI SOUNDS", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, "THE TICKS AND CLICKS OF THE MENUS", 1, set_c_dim);
+        row_text(y, "UI SOUNDS", "THE TICKS AND CLICKS OF THE MENUS", set_c_dim, SUB_R);
         toggle(cy, audio_ui_sounds(), set_active == CTRL_UISND);
         break;
     case R_USBSND:
         if (usb_phones_supported()) {  // (the CoreS3: three places for the sound)
             static const char *const M[3] = {"SPEAKER", "COMPUTER", "HEADPHONES"};
             int m = usb_audio_mode();
-            gfx_text(TEXT_X, y + 12, "SOUND OUT", 2, set_c_text);
-            gfx_text(TEXT_X, y + 32, usbsnd_sub(m), 1, set_c_dim);
+            row_text(y, "SOUND OUT", usbsnd_sub(m), set_c_dim, SUB_R);
             button(RIGHT_X, cy, RIGHT_W, CTL_H, M[m], 1, set_active == CTRL_USBSND, m != 0);
             break;
         }
-        gfx_text(TEXT_X, y + 12, "SOUND TO USB", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, "TO A COMPUTER, NOT THE SPEAKER", 1, set_c_dim);
+        row_text(y, "SOUND TO USB", "TO A COMPUTER, NOT THE SPEAKER", set_c_dim, SUB_R);
         toggle(cy, usb_audio_setting(), set_active == CTRL_USBSND);
         break;
     case R_ROTATE:
-        gfx_text(TEXT_X, y + 12, "AUTO ROTATE", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, "TURN THE PICTURE WITH THE BOARD", 1, set_c_dim);
+        row_text(y, "AUTO ROTATE", "TURN THE PICTURE WITH THE BOARD", set_c_dim, SUB_R);
         toggle(cy, g_settings.auto_rotate, set_active == CTRL_ROTATE);
         break;
     case R_LANG:
-        gfx_text(TEXT_X, y + 12, "APP LANGUAGE", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, "ALL APPS; EACH APP CAN CHANGE IT IN ITS PANEL", 1, set_c_dim);
+        row_text(y, "APP LANGUAGE", "ALL APPS; EACH APP CAN CHANGE IT IN ITS PANEL", set_c_dim, SUB_R);
         button(RIGHT_X, cy, RIGHT_W, CTL_H, settings_lang_all() == 0 ? "ENGLISH" : "HEBREW", 1, set_active == CTRL_LANG,
                true);
         break;
     case R_SLEEP:
-        gfx_text(TEXT_X, y + 12, "SCREEN SLEEP", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, "DIM, THEN OFF, WITH NO ACTIVITY", 1, set_c_dim);
+        row_text(y, "SCREEN SLEEP", "DIM, THEN OFF, WITH NO ACTIVITY", set_c_dim, SLP_PREV_X - 8);
         sleep_ctl(cy);
         break;
     case R_POWER:
@@ -613,11 +536,12 @@ static void draw_row(int i, int64_t now)
         gfx_text(TEXT_X, y + 6, "HOTSPOT", 2, set_c_text);
         if (on) {
             int n = wifi_hotspot_clients();
-            snprintf(buf, sizeof(buf), "%s  %d PHONE%s", wifi_hotspot_ssid(), n, n == 1 ? "" : "S");
+            snprintf(buf, sizeof(buf), "%.12s  %d PHONE%s", wifi_hotspot_ssid(), n, n == 1 ? "" : "S");
             gfx_text(TEXT_X, y + 26, buf, 1, THEME_SETUP_OK);
             int left = wifi_hotspot_left_s();  // the 2-minute hotspot of AUTO (no phone on it)
+            // (the line must end before the < of the mode)
             if (left >= 0 && n == 0) {
-                snprintf(buf, sizeof(buf), "TAP HERE: QR CODE  OFF IN %d:%02d", left / 60, left % 60);
+                snprintf(buf, sizeof(buf), "TAP: QR CODE. OFF IN %d:%02d", left / 60, left % 60);
             } else {
                 snprintf(buf, sizeof(buf), "TAP HERE: QR CODE");
             }
@@ -654,8 +578,7 @@ static void draw_row(int i, int64_t now)
         break;
     case R_TOUCH: {
         float tm[6];
-        gfx_text(TEXT_X, y + 12, "TOUCH TEST", 2, set_c_text);
-        gfx_text(TEXT_X, y + 32, input_touch_cal_get(tm) ? "CALIBRATION: ON" : "CALIBRATION: OFF", 1, set_c_dim);
+        row_text(y, "TOUCH TEST", input_touch_cal_get(tm) ? "CALIBRATION: ON" : "CALIBRATION: OFF", set_c_dim, SUB_R);
         button(RIGHT_X, cy, RIGHT_W, CTL_H, "OPEN", 2, set_active == CTRL_TOUCH, false);
         break;
     }
@@ -667,15 +590,16 @@ static void draw_row(int i, int64_t now)
         break;
     case R_MEM: {
         // The free RAM (a full PSRAM stops the load of a big app: "NO MEMORY FOR ...")
-        gfx_text(TEXT_X, y + 12, "FREE MEMORY", 2, set_c_text);
-        snprintf(buf, sizeof(buf), "PSRAM AT THE RIGHT; INTERNAL RAM %lu KB", (unsigned long)(set_free_int / 1024));
-        gfx_text(TEXT_X, y + 32, buf, 1, set_c_dim);
-        snprintf(buf, sizeof(buf), "%lu.%lu MB", (unsigned long)(set_free_ps / 1048576),
+        char val[16];
+        snprintf(val, sizeof(val), "%lu.%lu MB", (unsigned long)(set_free_ps / 1048576),
                  (unsigned long)(set_free_ps % 1048576 * 10 / 1048576));
+        const int vx = RIGHT_X + RIGHT_W - gfx_text_width(val, 3);
+        snprintf(buf, sizeof(buf), "PSRAM AT THE RIGHT; INTERNAL RAM %lu KB", (unsigned long)(set_free_int / 1024));
+        row_text(y, "FREE MEMORY", buf, set_c_dim, vx - 8);
         const uint16_t mc = set_free_ps >= 2048u * 1024  ? THEME_SETUP_LEVEL_OK
                             : set_free_ps >= 768u * 1024 ? THEME_SETUP_LEVEL_WARN
                                                          : THEME_SETUP_LEVEL_HIGH;
-        gfx_text(RIGHT_X + RIGHT_W - gfx_text_width(buf, 3), y + (ROW_H - 4) / 2 - 10, buf, 3, mc);
+        gfx_text(vx, y + (ROW_H - 4) / 2 - 10, val, 3, mc);
         break;
     }
     default:
@@ -881,12 +805,8 @@ static void row_about(int y, char *buf, size_t bsz)
 {
     gfx_text(TEXT_X, y + 6, "ABOUT", 2, set_c_text);
     about_id(y + 10, TEXT_X + gfx_text_width("ABOUT", 2), buf, bsz);
-#if BOARD_UI_SMOOTH_TEXT
-    const int ap = 11, a0 = 21;  // (the smooth small font needs 11 px between two lines; the dot font 10; the
-                                 // last line must end where the dot font ended: the list stops there)
-#else
-    const int ap = 10, a0 = 23;
-#endif
+    const int ap = 11, a0 = 21;  // (the small face needs 11 px between two lines; the last line must end where the
+                                 // dot font ended: the list stops there)
     // (the firmware name can be long, a DEV build: a line of its own, not at the right of the title)
     snprintf(buf, bsz, "FIRMWARE %s", ota_version());
     gfx_text(TEXT_X, y + a0 + 0 * ap, buf, 1, set_c_text);

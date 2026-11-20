@@ -478,7 +478,7 @@ static void enter(int64_t now)
     s_land = orient_is_landscape(gfx_orient());
     frame_sizes();
     s_rot_want = gfx_orient();
-    if (s_cur >= s_npl) {
+    if (s_cur < 0 || s_cur >= s_npl) {
         s_cur = 0;
     }
     s_sc = SC_PLACE;

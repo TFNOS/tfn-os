@@ -5,6 +5,9 @@
 // Screensaver: no activity for the time in SETUP -> dim, 15 s later -> off.
 // Activity = touch, PWR key, a change of the board position, a shake, music.
 
+#include "esp_debug_helpers.h"
+#include "tfn_speech.h"
+#include "tfn_listen.h"
 #include "power.h"
 #include "main_priv.h"
 #include "tfn/theme.h"
@@ -12,6 +15,7 @@
 #include "tfn_pool.h"
 #include "radio_play.h"
 #include "standby.h"
+#include "tfn/companion.h"
 
 static const char *TAG = "main";
 
@@ -19,6 +23,14 @@ static float s_app_fps;  // the frames a second of the app (each 300 frames), fo
 float app_fps(void)
 {
     return s_app_fps;
+}
+static int s_win_max, s_win_slow;
+static int64_t s_fr_last;  // the time of the last frame (0: none since the screen went off)
+static int s_fr_max, s_fr_slow;
+void app_frame_stats(int *longest_ms, int *slow)
+{
+    *longest_ms = s_win_max;
+    *slow = s_win_slow;
 }
 
 // All apps of this build: the menu, then the menu order (main/apps.json; ARCADE_APPS_LIST in app.h)
@@ -277,6 +289,7 @@ static void switch_app(const app_t *app, int64_t t)
     snprintf(s_arg, sizeof s_arg, "%s", s_next_arg);
     s_next_arg[0] = 0;
     notify_center_close();  // (an app opens: the notification center goes)
+    listen_app_changed();   // (the talk handler of the app before goes)
     app->enter(t);
     notify_seen_app(app->name);  // (the badge of the app goes)
     ESP_LOGI(TAG, "open %s%s%s", app->name, s_arg[0] ? " at " : "", s_arg);
@@ -332,9 +345,13 @@ static int64_t s_fps_t0;
 // biggest block that the BLE start needs). It only prints (esp_rom_printf): it can run in any task.
 static void alloc_failed(size_t size, uint32_t caps, const char *fn)
 {
-    esp_rom_printf("ALLOC FAILED: %u bytes, caps 0x%x, %s; internal %u free, %u block\n", (unsigned)size,
-                   (unsigned)caps, fn ? fn : "?", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
-                   (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    esp_rom_printf("ALLOC FAILED: %u bytes, caps 0x%x, %s; internal %u free, %u block; PSRAM %u free, %u block\n",
+                   (unsigned)size, (unsigned)caps, fn ? fn : "?",
+                   (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                   (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                   (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+                   (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+    esp_backtrace_print(8);  // (the code that asked for the memory: a fault that comes after a failed request)
 }
 
 void app_main(void)
@@ -431,6 +448,11 @@ void app_main(void)
 // background work of the app. Returns true when the frame ends here (the screen is off).
 static bool frame_saver(int64_t t)
 {
+    if (mai_saver == SAVER_DIM && standby_on() && input_pending()) {
+        // STANDBY on a dim screen (it is seen): the touch wakes the screen AND goes to STANDBY (one touch to the menu)
+        mai_touch_at = mai_hand_at = t;
+        mai_wake(t, "a touch");
+    }
     if (mai_saver != SAVER_ON) {
         // a touch wakes the screen and does nothing else
         input_event_t ev;
@@ -452,7 +474,8 @@ static bool frame_saver(int64_t t)
     if (mai_saver == SAVER_OFF) {
         mai_pwr_key_poll(t);
         mai_boot_key_poll(t);
-        walkie_call_update(t);                       // (a call or a WAKE: it wakes the screen, opens WALKIE / TALKIE)
+        listen_tick(t);         // (a talk-key turn also ends with the screen off: its command runs)
+        walkie_call_update(t);  // (a call or a WAKE: it wakes the screen, opens WALKIE / TALKIE)
         radio_play_update(t, mai_app == &app_menu);  // (a radio invite also while the screen is off)
         if (s_next_app) {                            // (the web page opens WALKIE with the screen off)
             const app_t *a = s_next_app;
@@ -476,6 +499,7 @@ static bool frame_saver(int64_t t)
         } else {
             vTaskDelay(pdMS_TO_TICKS(power_x() & PWX_LOOP ? 250 : 100));  // (fewer wakes: the keys, the motion)
         }
+        s_fr_last = 0;  // (the time with the screen off is not a long frame)
         return true;
     }
     return false;
@@ -591,6 +615,9 @@ static void frame_touches(int64_t t)
         if (sysui_input(&ev)) {
             continue;  // a message or the locate sound takes the touch
         }
+        if (ev.kind == IN_DOWN && s_own == OWN_PANEL && !sysui_panel_on()) {
+            s_own = OWN_NONE;  // (a new touch after the panel closed: else the notices and STANDBY lost its IN_DOWN)
+        }
         if (!sysui_panel_on() && s_own != OWN_PANEL && notify_input(&ev)) {
             continue;  // the banner, the center
         }
@@ -633,14 +660,16 @@ static void frame_layers(int64_t t, int64_t at, bool frozen)
     radio_play_update(t, mai_app == &app_menu);  // (PLAY BY RADIO, the radio invite: radio_play.h)
     sysui_update(t);
     notify_tick(t);
+    comp_bg_tick(t);  // (the companions near the board: tfn/companion.h)
     gfx_clip_reset();
 #if BOARD_HI_FRAME
     // the HI frame (gfx.h) only when no system layer draws over the app (they keep copies of the frame)
 #if BOARD_UI_TABLET
     gfx_hi_frame(!sysui_panel_on() && !notify_center_on() && !notify_banner_on() && !sysui_active() && !hb_busy() &&
-                 !standby_on());
+                 !standby_on() && !listen_shows());
 #else
-    gfx_hi_frame(!sysui_panel_on() && !notify_center_on() && !notify_banner_on() && !sysui_active() && !standby_on());
+    gfx_hi_frame(!sysui_panel_on() && !notify_center_on() && !notify_banner_on() && !sysui_active() && !standby_on() &&
+                 !listen_shows());
 #endif
 #endif
     if (sysui_panel_on()) {
@@ -680,6 +709,7 @@ static void frame_layers(int64_t t, int64_t at, bool frozen)
     }
     sysui_draw();          // a message from the manager, the locate sound
     web_walkie_overlay();  // "WEB LISTENS" while a browser hears the microphone
+    listen_overlay();      // THE TALK KEY: "LISTENING", the answer
     webcam_overlay();
     ota_overlay();  // the firmware update panel
     shot_copy();
@@ -696,6 +726,7 @@ static void frame_end(int64_t t)
 
     mai_pwr_key_poll(t);
     mai_boot_key_poll(t);
+    listen_tick(t);  // (the end of a talk-key turn: the command, the answer)
 #if CONFIG_TFN_SELFTEST
     mai_selftest(t);
 #endif
@@ -704,12 +735,24 @@ static void frame_end(int64_t t)
         settings_save();
         board_power_off();
     }
+    // (the longest frame and the frames over 50 ms of each 300: a stop in a scroll shows here, not in the mean)
+    const int64_t tf = tfn_now_ms();
+    if (s_fr_last) {
+        const int gap = (int)(tf - s_fr_last);
+        s_fr_max = gap > s_fr_max ? gap : s_fr_max;
+        s_fr_slow += gap > 50;
+    }
+    s_fr_last = tf;
     if (++s_frames == 300) {
         int64_t t1 = tfn_now_ms();
         s_app_fps = (float)(300000.0 / (double)(t1 - s_fps_t0));
-        ESP_LOGI(TAG, "%s: %.1f fps", mai_app->name, (double)s_app_fps);
+        ESP_LOGI(TAG, "%s: %.1f fps, the longest frame %d ms, %d frames over 50 ms", mai_app->name, (double)s_app_fps,
+                 s_fr_max, s_fr_slow);
         s_fps_t0 = t1;
         s_frames = 0;
+        s_win_max = s_fr_max;
+        s_win_slow = s_fr_slow;
+        s_fr_max = s_fr_slow = 0;
     }
 }
 
@@ -769,6 +812,7 @@ static void main_frame(void)
         gfx_clip_reset();
         mai_app->render(t);
         web_walkie_overlay();
+        listen_overlay();
         webcam_overlay();
         ota_overlay();
         int64_t p2 = esp_timer_get_time();
@@ -813,6 +857,12 @@ static void main_frame(void)
 
         frame_end(t);
 
-        vTaskDelay(1);
+        // (the voice is made now, or the ears work: about 10 frames a second, the rest of both cores goes to them:
+        // tfn_speech.h, tfn_listen.h)
+        if (speech_calm() || listen_calm()) {
+            mai_calm_wait(90);
+        } else {
+            vTaskDelay(1);
+        }
     }
 }

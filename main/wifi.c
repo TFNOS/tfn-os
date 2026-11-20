@@ -4,6 +4,7 @@
 // The parts: wifi_web.c (the board pages of wifi_web_register), wifi_nets.c (the saved networks).
 
 #include "wifi_priv.h"
+#include "esp_system.h"
 #include "friends.h"
 
 static const char *TAG = "wifi";
@@ -231,6 +232,35 @@ static void http_retry_later(void)
     esp_timer_start_once(s_http_retry, 5000000);
 }
 
+// THE WEB TASK WATCH: once the task of the web server was gone while the server handle stayed: the
+// port took each connection and reset it, and nothing started the server again. Each 10 s: no task "httpd" with a
+// server = a log line, and a restart of the board when the menu shows (else at a later check).
+static void web_watch_cb(void *arg)
+{
+    (void)arg;
+    if (!web_server_handle() || xTaskGetHandle("httpd")) {
+        return;
+    }
+    ESP_LOGE(TAG, "THE WEB TASK IS GONE (internal RAM %u free, %u at the least, app %s): %s",
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL), app_current() ? app_current()->name : "-",
+             app_current() == &app_menu ? "a restart" : "a restart in the menu");
+    if (app_current() == &app_menu && !app_in_match()) {
+        esp_restart();
+    }
+}
+
+static void web_watch_on(void)
+{
+    static esp_timer_handle_t t;
+    if (!t) {
+        const esp_timer_create_args_t a = {.callback = web_watch_cb, .name = "web_watch"};
+        if (esp_timer_create(&a, &t) == ESP_OK) {
+            esp_timer_start_periodic(t, 10 * 1000000LL);
+        }
+    }
+}
+
 static void http_start(void)
 {
     if (web_server_handle()) {
@@ -244,6 +274,7 @@ static void http_start(void)
         return;
     }
     ESP_LOGI(TAG, "web server on http://%s/", s_ip[0] ? s_ip : AP_IP);
+    web_watch_on();
 }
 
 // ---------------------------------------------------------------- events

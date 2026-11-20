@@ -415,6 +415,14 @@ static void solid_span(uint16_t *row, int y, int x0, int x1, int m)
     if (x0 >= x1) {
         return;
     }
+    if (!s_tex) {
+        // (no memory for the textures at the open: the span in the colour of the lower edge, no read of the textures)
+        const dc_t *lo = &(m == MAT_BRICK ? s_bedge_dc : s_edge_dc)[2];
+        for (int x = x0; x < x1; x++) {
+            row[x] = lo->c[y & 1][x & 1];
+        }
+        return;
+    }
     // the texture coordinates of x0 (16.16): the world point of the pixel
     float iz = frcp(cam_z);
     float wx = cam_x + (x0 + 0.5f - s_vcx - s_shx) * iz;

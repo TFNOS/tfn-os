@@ -1,3 +1,8 @@
+#ifdef HOST_NOMEM
+#undef malloc  // (NOMEM=1: the stubs are the test frame, they use the real functions)
+#undef calloc
+#undef realloc
+#endif
 #include <stdio.h>
 // Stubs for the hardware: audio, IMU, NVS, board.
 #include <stdlib.h>
@@ -35,8 +40,10 @@ void audio_set_mute(bool m) {}
 bool audio_muted(void) { return false; }
 void audio_set_volume(int v) {}
 void audio_drone(int ch, float hz, int vol, wave_t w) { if (ch < 0 || ch > 1 || hz != hz) abort(); }
+void (*sim_voice_hook)(const audio_voice_t *v);  // (a test can mix the voices itself)
 void audio_voice(const audio_voice_t *v)
 {
+    if (sim_voice_hook) sim_voice_hook(v);
     // (a looped sample voice can last for hours: the stream of ON AIR plays its ring of samples that way)
     bool stream = v->wave == W_SAMPLE && v->loop && v->sample && v->sample_len > 1;
     if (v->f0 != v->f0 || v->f0 < 0 || v->f0 > 20000 || v->dur == 0 || (v->dur > 10 * AUDIO_SAMPLE_RATE && !stream) || v->delay > AUDIO_SAMPLE_RATE) {
@@ -125,6 +132,7 @@ const char *app_launch_arg(void) { return sim_arg; }
 static uint32_t nt_bits(const char *app) { char k[16]; snprintf(k, sizeof k, "na_%.12s", app); return store_get(k, 0); }
 static void nt_bits_set(const char *app, uint32_t m, uint32_t v) { char k[16]; snprintf(k, sizeof k, "na_%.12s", app); store_set(k, (store_get(k, 0) & ~m) | (v & m)); }
 int notify_count(void) { return 0; }
+__attribute__((weak)) uint32_t notify_post(const char *app, const char *t, const char *x, const char *l) { (void)app; (void)t; (void)x; (void)l; return 1; }
 int notify_unread(const char *app) { (void)app; return 0; }
 int notify_apps(char names[][NT_NAME], int max) { if (max < 1) return 0; snprintf(names[0], NT_NAME, "WEATHER"); return 1; }
 int notify_mode(const char *app) { return (int)(nt_bits(app) & 3) % 3; }
@@ -217,6 +225,56 @@ void wifi_forget_name(const char *ssid) { (void)ssid; }
 // TFN OS (main/tfn_app.c): no installed apps on the host
 #include "tfn_app.h"
 int tfn_count(void) { return 0; }
+void tfn_icon_ask(bool on) { (void)on; }  // (the icon reader of the menus: no icon files on the host)
+bool tfn_icon_missed(void) { return false; }
+void tfn_icon_want(const app_t *a) { (void)a; }
+// the ears (tfn_listen.h): no ears here (no TALK watcher)
+#include "tfn_listen.h"
+bool listen_offer(const listen_ops_t *ops) { (void)ops; return false; }
+bool listen_ready(void) { return false; }
+bool listen_start(const char *brain) { (void)brain; return false; }
+void listen_stop(void) {}
+void listen_cancel(void) {}
+int listen_state(void) { return LS_OFF; }
+float listen_level(void) { return 0.0f; }
+void listen_text(char *out, int cap) { if (cap > 0) { out[0] = 0; } }
+void listen_answer(char *out, int cap) { if (cap > 0) { out[0] = 0; } }
+bool listen_ask(const char *brain, const char *text) { (void)brain; (void)text; return false; }
+void listen_handler(listen_handler_fn fn) { (void)fn; }
+bool tfa_listen_task_now(int *w) { (void)w; return false; }
+void tfa_listen_slot_gone(int w) { (void)w; }
+void tfa_listen_quiet(void) {}
+bool listen_key_down(void) { return false; }
+void listen_key_held(int ms) { (void)ms; }
+void listen_key_up(void) {}
+void listen_tick(int64_t now) { (void)now; }
+void listen_overlay(void) {}
+void listen_app_changed(void) {}
+bool listen_shows(void) { return false; }
+bool listen_awake(void) { return false; }
+bool listen_calm(void) { return false; }
+void listen_console(const char *a, const char *b) { (void)a; (void)b; }
+// the voice (tfn/speech.h, main/tfn_speech.c): no voice on the host
+#include "tfn_speech.h"
+bool speech_offer(const speech_ops_t *ops) { (void)ops; return false; }
+bool speech_ready(void) { return false; }
+void speech_say(const char *text) { (void)text; }
+void speech_stop(void) {}
+bool speech_make(const char *text, const char *path) { (void)text; (void)path; return false; }
+bool speech_file_ok(const char *path, const char *text) { (void)path; (void)text; return false; }
+int speech_play_file(const char *path) { (void)path; return 0; }
+bool speech_read_open(const speech_read_cfg_t *c) { (void)c; return false; }
+void speech_read_play(bool on) { (void)on; }
+void speech_read_close(void) {}
+void speech_read_get(speech_read_t *st) { memset(st, 0, sizeof *st); }
+#if BOARD_TTS
+bool speech_calm(void) { return false; }
+bool speech_notices_on(void) { return false; }
+void speech_set_notices(bool on) { (void)on; }
+void speech_notice(const char *app, const char *title, const char *text) { (void)app; (void)title; (void)text; }
+const char *speech_state(void) { return "NO VOICE ON THE HOST"; }
+void speech_init(void) {}
+#endif
 const tfn_entry_t *tfn_entry(int i) { (void)i; return NULL; }
 bool tfn_runs(const tfn_entry_t *e) { (void)e; return false; }
 const app_t *tfn_find(const char *name) { (void)name; return NULL; }
@@ -431,6 +489,7 @@ void audio_tia_loop(int ch, const tia_step_t *steps, int n, int times)
 void audio_tia_off(void) { n_tia_off++; sim_tia_steps[0] = sim_tia_steps[1] = NULL; }
 void audio_play(const audio_voice_t *v)
 {
+    if (sim_voice_hook) sim_voice_hook(v);
     // (a looping sample can play for any time: an ambience)
     if (v->f0 != v->f0 || v->f0 < 0 || v->f0 > 20000 || v->dur == 0 ||
         (v->dur > 30 * AUDIO_SAMPLE_RATE && !(v->wave == W_SAMPLE && v->loop))) {
@@ -808,7 +867,7 @@ bool storage_read(const char *path, void *data, size_t max, size_t *len)
 #ifndef NO_LINK_STUB
 bool link_start(void) { return true; }
 void link_stop(void) {}
-bool link_ready(void) { return true; }
+__attribute__((weak)) bool link_ready(void) { return true; }
 void link_quiet(bool quiet) { (void)quiet; }
 bool link_quiet_on(void) { return false; }
 // power.c (SETUP: POWER OFF)
@@ -817,6 +876,7 @@ const uint16_t POWER_OFF_MIN[POWER_OFF_CHOICES] = {0, 15, 30, 60, 120, 240};
 const char *const POWER_OFF_NAMES[POWER_OFF_CHOICES] = {"NEVER", "15 MIN", "30 MIN", "1 HOUR", "2 HOURS", "4 HOURS"};
 static int s_pwoff;
 int power_off_choice(void) { return s_pwoff; }
+void power_idle1_hold(bool hold) { (void)hold; }  // (the STANDBY fetch; power.c is not in the host build)
 void power_set_off_choice(int i) { if (i >= 0 && i < POWER_OFF_CHOICES) s_pwoff = i; }
 // (SETUP: DEEP IDLE; the host has no DEEP IDLE and no power test switches)
 const uint16_t POWER_DEEP_S[POWER_DEEP_CHOICES] = {0, 10, 30, 60};
@@ -846,6 +906,11 @@ void link_meet_learn(int kind) { (void)kind; }
 int link_channel(void) { return 6; }
 void link_my_mac(uint8_t mac[6]) { for (int i = 0; i < 6; i++) mac[i] = (uint8_t)(0x10 + i); }
 #endif
+// the raw frames (a TFN COMPANION): no radio; a test gives its own versions (a fake radio)
+__attribute__((weak)) bool link_raw_open(uint8_t m0, uint8_t m1) { (void)m0; (void)m1; return true; }
+__attribute__((weak)) void link_raw_close(void) {}
+__attribute__((weak)) bool link_raw_send(const uint8_t *mac, const void *d, int n) { (void)mac; (void)d; return n >= 2 && n <= LINK_RAW_MAX; }
+__attribute__((weak)) bool link_raw_recv(link_raw_t *m) { (void)m; return false; }
 
 // the battery: a random level, sometimes no battery
 #include "board.h"
@@ -890,6 +955,8 @@ __attribute__((weak)) bool clock_time_ok(void) { return true; }
 __attribute__((weak)) void clock_sync(void) {}
 __attribute__((weak)) int clock_source(void) { return 2; }
 __attribute__((weak)) void alarm_init(void) {}
+__attribute__((weak)) bool alarm_voice_on(void) { return false; }
+__attribute__((weak)) void alarm_voice_set(bool on) { (void)on; }
 #include "oref.h"
 #if CONFIG_TFN_EXTRA_OREF  // (with the extra off, oref.h has the empty inline hooks)
 __attribute__((weak)) void oref_init(void) {}

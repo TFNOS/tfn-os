@@ -3,12 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<title>TFN OS</title>
-<meta name="description" content="TFN OS: an open operating system with apps and an app store for small ESP32 touch boards. Install it from your browser.">
+<meta name="theme-color" content="#f2f3f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1116" media="(prefers-color-scheme: dark)">
+<title>TFN OS: a small, open operating system for ESP32 touch boards</title>
+<meta name="description" content="TFN OS is a free, open-source operating system for small ESP32 touch boards: games, tools for makers, play with friends by radio, and a signed app store. Install it from your browser.">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/archivo-display.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/home.css">
 <script src="js/theme.js"></script>
 </head>
 <body>
@@ -16,58 +20,248 @@
 <header class="top">
   <div class="wrap">
     <a class="brand" href="index.html" aria-label="TFN OS home">
-      <svg viewBox="0 0 34 14" aria-hidden="true"><rect x="1" y="1" width="32" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="4.5" width="5" height="5" rx="1" fill="#e6a315"/></svg>
+      <svg viewBox="0 0 34 14" aria-hidden="true"><rect x="1" y="1" width="32" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="4.5" width="5" height="5" rx="1" fill="#e2a018"/></svg>
       TFN OS
     </a>
     <nav class="nav" aria-label="Main">
-      <a href="index.html#boards">Boards</a>
       <a href="store.html">Apps</a>
+      <a href="#boards" class="hide-s">Boards</a>
       <a href="how.html" class="hide-s">How it works</a>
       <a href="install.html">Install</a>
-      <a href="index.html#faq" class="hide-s">FAQ</a>
     </nav>
-    <a class="gh-btn" href="https://github.com/TFNOS" rel="noopener" aria-label="TFN OS on GitHub" title="TFN OS on GitHub"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
+    <a class="gh-btn" href="https://github.com/TFNOS/tfn-os" rel="noopener" aria-label="TFN OS on GitHub" title="TFN OS on GitHub"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span class="hide-s">GitHub</span></a>
     <button class="theme-btn" type="button" data-theme-btn aria-label="Colour theme">Auto</button>
   </div>
 </header>
 
 <main id="main">
-<section class="hero">
+<section class="home-hero">
   <div class="wrap">
-    <div class="hero-head">
-      <h1 class="hero-title">TFN OS</h1>
-      <div>
-        <p class="hero-lede">An open operating system with apps and an app store for small ESP32 touch boards.</p>
-        <p class="hero-sub">Connect your board by USB and install TFN OS from the install page. You need Chrome or Edge on a computer. Then get free apps from the app page.</p>
+    <p class="release">Free and open source, under the MIT licence. <a href="https://github.com/TFNOS/tfn-os/releases/latest" rel="noopener">The latest release</a></p>
+    <h1>A small, open operating system for ESP32 touch boards.</h1>
+    <div class="hero-grid">
+      <div class="hero-text">
+        <p class="hero-sub">Games that you play by tilt and touch, tools for your electronics bench, play with a friend by radio, and an app store where each app is signed. It is free, and it installs from this site.</p>
         <p class="hero-cta">
           <a class="btn btn-primary" href="install.html">Install TFN OS</a>
-          <a class="btn" href="store.html">Get apps</a>
+          <a class="btn" href="store.html">See the apps</a>
         </p>
+        <p class="hero-need">You need Chrome or Edge on a computer and a USB cable that carries data. The install takes about two minutes.</p>
+      </div>
+      <figure class="hero-art">
+        <div class="dev dev-lcd349">
+          <div class="dev-body"><div class="dev-screen"><img src="img/screens/sb_349_day.webp" width="640" height="172" fetchpriority="high" alt="The TFN OS standby screen on the Touch-LCD-3.49: 10:30, Friday 13 November, partly cloudy, 22 degrees, sunset at 16:42, over a blue sky with clouds."></div></div>
+        </div>
+        <figcaption>STANDBY on the Touch-LCD-3.49, a board about 10 cm long: the time over the real sky of your place.</figcaption>
+      </figure>
+    </div>
+    <p class="runs-on">It runs on the Waveshare <a href="#board-lcd349">Touch-LCD-3.49</a>, <a href="#board-am175">AMOLED-1.75C</a> and <a href="#board-am18">AMOLED-1.8</a>, the M5Stack <a href="#board-cores3">CoreS3</a> and the Seeed Studio <a href="#board-watcher">SenseCAP Watcher</a>.</p>
+  </div>
+</section>
+
+<section class="chapter" id="games" aria-labelledby="games-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <h2 id="games-h">Games made for a board in your hand</h2>
+      <p>The games of the store use the whole board. You tilt the board to steer, shake it to roll the dice, and drag, pinch or tap the glass. Most of them speak English and Hebrew.<span class="hover-hint"> Point at a picture to see the game move.</span></p>
+    </div>
+    <ul class="games">
+      <li><div class="glass" data-clip="media/apps/cubby.mp4"><img src="media/apps/cubby.jpg" width="640" height="172" loading="lazy" decoding="async" alt="CUBBY: a small robot on treads next to a cube of junk, on a sunny island."></div><b>CUBBY</b><span>A small robot presses junk into cubes and builds his way up an island. In 3D.</span></li>
+      <li><div class="glass" data-clip="media/apps/wood.mp4"><img src="media/apps/wood.jpg" width="640" height="172" loading="lazy" decoding="async" alt="THE TURNING WOOD: a painted tree in a snowy wood."></div><b>THE TURNING WOOD</b><span>A painted adventure. Turn the whole wood to the season that each place needs.</span></li>
+      <li><div class="glass" data-clip="media/apps/murano.mp4"><img src="media/apps/murano.jpg" width="640" height="172" loading="lazy" decoding="async" alt="MURANO: hot glass glows on the pipe in a glass workshop."></div><b>MURANO</b><span>Blow glass in a Venice workshop in 1740. Turn, blow and shape it before it sets.</span></li>
+      <li><div class="glass" data-clip="media/apps/dirt25.mp4"><img src="media/apps/dirt25.jpg" width="640" height="172" loading="lazy" decoding="async" alt="DIRT KINGS: four monster trucks race on a dirt track."></div><b>DIRT KINGS</b><span>Monster trucks in a dirt arena. Hold the board as a wheel, and race 2 to 4 boards.</span></li>
+      <li><div class="glass" data-clip="media/apps/gummy.mp4"><img src="media/apps/gummy.jpg" width="640" height="172" loading="lazy" decoding="async" alt="GUMMY SIEGE: a gummy bear flies at a fort of crackers and chips at night."></div><b>GUMMY SIEGE</b><span>Send gummy bears into forts of chips and pretzels. 30 levels with real physics.</span></li>
+      <li><div class="glass" data-clip="media/apps/orbital.mp4"><img src="media/apps/orbital.jpg" width="640" height="172" loading="lazy" decoding="async" alt="ORBITAL: a tug tows a barge in orbit above a blue planet."></div><b>ORBITAL</b><span>Fly a rescue tug round a small planet, with real orbits and thin air.</span></li>
+    </ul>
+    <p class="chapter-more"><a href="store.html">All the apps of the store</a></p>
+  </div>
+</section>
+
+<section class="chapter" id="radio" aria-labelledby="radio-h">
+  <div class="wrap">
+    <div class="radio-head">
+      <div class="chapter-head">
+        <h2 id="radio-h">Two boards, no router</h2>
+        <p>Open the same game on two boards, and they find each other by radio (ESP-NOW). You need no WiFi network, no internet and no account. Boards on the same WiFi play too.</p>
+      </div>
+      <dl class="facts">
+        <dt>Two boards</dt><dd>CHESS, CHECKERS, BACKGAMMON, SEA BATTLE and CUBBY</dd>
+        <dt>Two to four boards</dt><dd>DIRT KINGS</dd>
+        <dt>Up to six players</dt><dd>BOULEVARD, on one board or on more, with bots</dd>
+        <dt>Your voice</dt><dd>WALKIE and TALKIE: push to talk from board to board</dd>
+      </dl>
+    </div>
+    <figure class="pair">
+      <div class="dev dev-lcd349"><div class="dev-body"><div class="dev-screen"><img src="img/screens/pair_a.webp" width="640" height="172" loading="lazy" decoding="async" alt="DIRT KINGS on the first board: four monster trucks on a dirt track named MOON PIT."></div></div></div>
+      <svg class="air" viewBox="0 0 120 40" aria-hidden="true"><path d="M6 34 Q60 -6 114 34" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="5 7" stroke-linecap="round"/></svg>
+      <div class="dev dev-lcd349"><div class="dev-body"><div class="dev-screen"><img src="img/screens/pair_b.webp" width="640" height="172" loading="lazy" decoding="async" alt="The same race on the second board, three seconds later."></div></div></div>
+      <figcaption>One race of DIRT KINGS on two boards, by radio.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="chapter" id="standby" aria-labelledby="standby-h">
+  <div class="wrap split split-r">
+    <div class="chapter-head">
+      <h2 id="standby-h">A clock that shows the real sky</h2>
+      <p>When the board rests in the menu, STANDBY shows the time over the sky of your place: the sun at its real height, the moon in its phase, and the clouds, rain or snow of the weather now. At night it changes to a dim, warm clock. A tap brings the menu back.</p>
+      <dl class="facts">
+        <dt>Faces</dt><dd>LIVE SKY, GLANCE and NIGHT</dd>
+        <dt>GLANCE</dt><dd>Four tiles that you choose: the weather, the Hebrew date, new notices, the next alarm or timer, the battery, friends near you</dd>
+        <dt>Weather</dt><dd>From Open-Meteo, with no key and no account</dd>
+        <dt>Screens</dt><dd>A layout for each board, the round ones too</dd>
+      </dl>
+    </div>
+    <div class="faces">
+      <figure><div class="glass"><img src="img/screens/sb_349_day.webp" width="640" height="172" loading="lazy" decoding="async" alt="LIVE SKY at 10:30: a blue sky with clouds, 22 degrees."></div><figcaption>LIVE SKY, in the morning</figcaption></figure>
+      <figure><div class="glass"><img src="img/screens/sb_349_glance.webp" width="640" height="172" loading="lazy" decoding="async" alt="GLANCE: the time, and four tiles: the weather, the Hebrew date, five new notices and the sunset time."></div><figcaption>GLANCE, with four tiles</figcaption></figure>
+      <figure><div class="glass"><img src="img/screens/sb_349_night.webp" width="640" height="172" loading="lazy" decoding="async" alt="NIGHT: 23:40 in dim amber on black, and the next alarm at 06:40."></div><figcaption>NIGHT, from 23:00</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="tools" aria-labelledby="tools-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <h2 id="tools-h">Tools for your bench</h2>
+      <p>Look at a bus, a serial port or an MQTT broker with the board in your hand. The tools are in the store. WALKIE, TALKIE, GAMEPAD and FILES come with the system.</p>
+    </div>
+    <div class="tools">
+      <dl class="index">
+        <div><dt>SERIAL MONITOR</dt><dd>A serial terminal for a device on the pins, with AUTO baud, and text or hex.</dd></div>
+        <div><dt>I2C SCANNER</dt><dd>Each device on the bus, live, with its ID registers and a wiring sketch.</dd></div>
+        <div><dt>MQTT</dt><dd>A client of your broker, with the last value and a chart of each topic. Or the broker of your network.</dd></div>
+        <div><dt>TOUCH LAB</dt><dd>The raw reports of the touch panel on a timeline. FREEZE saves them to a file.</dd></div>
+        <div><dt>MIDI</dt><dd>A MIDI controller over Bluetooth or USB, with no driver.</dd></div>
+        <div><dt>GAMEPAD</dt><dd>The board as a Bluetooth game controller for a computer or a phone.</dd></div>
+        <div><dt>LEVEL</dt><dd>A spirit level, a ruler and an angle meter.</dd></div>
+        <div><dt>CLOCK</dt><dd>Alarms that ring in any app, timers, a stopwatch and 46 cities.</dd></div>
+        <div><dt>WEATHER</dt><dd>Now, the next 24 hours and 10 days, with rain, wind, UV and air quality.</dd></div>
+        <div><dt>DICE</dt><dd>Real 3D dice, from one die to a D&amp;D set.</dd></div>
+        <div><dt>WALKIE and TALKIE</dt><dd>Push to talk from board to board. TALKIE is one big button, for a child.</dd></div>
+        <div><dt>FILES</dt><dd>The files of the board and of its SD card. Install an app from the card.</dd></div>
+      </dl>
+      <div class="tool-shots">
+        <figure><div class="glass" data-clip="media/apps/i2c.mp4"><img src="media/apps/i2c.jpg" width="640" height="172" loading="lazy" decoding="async" alt="I2C SCANNER: a map of the bus addresses, with ES8311, TCA9554 and SSD1306 found."></div><figcaption>I2C SCANNER</figcaption></figure>
+        <figure><div class="glass" data-clip="media/apps/mqtt.mp4"><img src="media/apps/mqtt.jpg" width="640" height="172" loading="lazy" decoding="async" alt="MQTT: the topics of a test broker with their last values."></div><figcaption>MQTT</figcaption></figure>
+        <figure><div class="glass" data-clip="media/apps/serial.mp4"><img src="media/apps/serial.jpg" width="640" height="172" loading="lazy" decoding="async" alt="SERIAL MONITOR: lines from a device at 115200 baud."></div><figcaption>SERIAL MONITOR</figcaption></figure>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section" id="boards">
+<section class="chapter" id="open" aria-labelledby="open-h">
   <div class="wrap">
-    <div class="section-head measure">
-      <h2>The boards</h2>
-      <p>The install page writes TFN OS to these boards. It finds the chip and the flash of your board, and you confirm the board kind.</p>
+    <div class="chapter-head">
+      <h2 id="open-h">Signed, open, and yours</h2>
     </div>
-    <ul class="picks">
-      <li><b>ESP32-S3-Touch-LCD-3.49</b>Waveshare. A long 640 x 172 screen, a motion sensor and an SD card.</li>
-      <li><b>CoreS3 / CoreS3 SE</b>M5Stack. A 320 x 240 screen in a closed case.</li>
-      <li><b>ESP32-S3-Touch-AMOLED-1.8</b>Waveshare. A 368 x 448 AMOLED screen.</li>
-      <li><b>ESP32-S3-Touch-AMOLED-1.75C</b>Waveshare. A round 466 x 466 AMOLED screen.</li>
-      <li><b>SenseCAP Watcher</b>Seeed Studio. A round 412 x 412 screen (experimental).</li>
-    </ul>
+    <div class="cols">
+      <div>
+        <h3>The store and the updates</h3>
+        <p>The STORE app installs apps over WiFi, to the board or to its SD card, and the <a href="store.html">app page</a> of this site installs them over USB. Big games bring a data pack for the SD card: 12.8 MB for THE TURNING WOOD.</p>
+        <p>The store signs each app, and the release key signs each firmware. The board checks each signature itself. A new release must pass its self-test, or the board goes back to the last good one.</p>
+      </div>
+      <div>
+        <h3>Open source</h3>
+        <p>TFN OS is free, under the MIT licence. The code, the SDK to make your own apps, a desktop simulator that runs the real firmware code, and the pool manager are on <a href="https://github.com/TFNOS/tfn-os" rel="noopener">GitHub</a>.</p>
+        <p>You need no account and no sign-in. Your boards can trust each other with keys that only you keep. <a href="how.html">How it works</a></p>
+      </div>
+    </div>
   </div>
 </section>
 
-<section class="section section-alt" id="faq">
+<section class="chapter" id="boards" aria-labelledby="boards-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <h2 id="boards-h">The boards</h2>
+      <p>Each app has a layout for each screen shape. The install page writes TFN OS to the first five boards. New to these boards? Start with the Touch-LCD-3.49: TFN OS started on it, and it has each part that the games use.</p>
+    </div>
+    <div class="shelf" aria-label="The six boards, drawn to the same scale">
+      <figure class="dev dev-lcd349"><div class="dev-body"><div class="dev-screen"><img src="img/screens/sb_349_day.webp" width="640" height="172" loading="lazy" decoding="async" alt=""></div></div><figcaption><b>Touch-LCD-3.49</b>640 x 172</figcaption></figure>
+      <figure class="dev dev-cores3"><div class="dev-body"><div class="dev-screen"><img src="img/screens/sb_s3_day.webp" width="320" height="240" loading="lazy" decoding="async" alt=""></div></div><figcaption><b>CoreS3</b>320 x 240</figcaption></figure>
+      <figure class="dev dev-am175"><div class="dev-body"><div class="dev-screen"><img src="img/screens/sb_a175_day.webp" width="466" height="466" loading="lazy" decoding="async" alt=""></div></div><figcaption><b>AMOLED-1.75C</b>466 round</figcaption></figure>
+      <figure class="dev dev-am18"><div class="dev-body"><div class="dev-screen"><img src="img/screens/sb_am18_day.webp" width="448" height="368" loading="lazy" decoding="async" alt=""></div></div><figcaption><b>AMOLED-1.8</b>368 x 448</figcaption></figure>
+      <figure class="dev dev-watcher"><div class="dev-body"><div class="dev-screen"><img src="img/screens/sb_wt_day.webp" width="412" height="412" loading="lazy" decoding="async" alt=""></div></div><figcaption><b>SenseCAP Watcher</b>412 round</figcaption></figure>
+      <figure class="dev dev-tab5"><div class="dev-body"><div class="dev-screen"><img src="img/screens/sb_t5_day.webp" width="640" height="360" loading="lazy" decoding="async" alt=""></div></div><figcaption><b>Tab5</b>1280 x 720</figcaption></figure>
+    </div>
+    <p class="shelf-note">Drawn to the same scale from the real screen sizes. The cases are close, not exact. Each screen shows STANDBY.</p>
+
+    <div class="board-list">
+      <article class="board-row" id="board-lcd349">
+        <h3>Touch-LCD-3.49 <span>Waveshare</span></h3>
+        <p class="b-screen">3.49 in, 640 x 172, a long bar. ESP32-S3, 16 MB flash.</p>
+        <p class="b-has">Motion sensor, speaker, two microphones, SD card, BOOT key.</p>
+        <p class="b-note">Each app has a bar layout. The games keep their controls near the ends, where the thumbs rest.</p>
+        <p class="b-buy"><a href="https://www.waveshare.com/esp32-s3-touch-lcd-3.49.htm" target="_blank" rel="noopener">Waveshare</a></p>
+      </article>
+      <article class="board-row" id="board-cores3">
+        <h3>CoreS3 and CoreS3 SE <span>M5Stack</span></h3>
+        <p class="b-screen">2.0 in, 320 x 240. ESP32-S3, 16 MB flash.</p>
+        <p class="b-has">Motion sensor, speaker, two microphones, camera, microSD slot, in a closed case.</p>
+        <p class="b-note">The SE has no motion sensor and no camera: the tilt games give it touch controls.</p>
+        <p class="b-buy"><a href="https://shop.m5stack.com/products/m5stack-cores3-esp32s3-iotdevelopment-kit" target="_blank" rel="noopener">CoreS3</a> <a href="https://shop.m5stack.com/products/m5stack-cores3-se-iot-controller-w-o-battery-bottom" target="_blank" rel="noopener">CoreS3 SE</a></p>
+      </article>
+      <article class="board-row" id="board-am175">
+        <h3>AMOLED-1.75C <span>Waveshare</span></h3>
+        <p class="b-screen">1.75 in round AMOLED, 466 x 466. ESP32-S3, 32 MB flash.</p>
+        <p class="b-has">Motion sensor, speaker. About 25 MB of the flash keeps your apps.</p>
+        <p class="b-note">A round menu and round layouts. It has no SD card, so the games with a big data pack do not run on it.</p>
+        <p class="b-buy"><a href="https://www.waveshare.com/esp32-s3-touch-amoled-1.75c.htm" target="_blank" rel="noopener">Waveshare</a></p>
+      </article>
+      <article class="board-row" id="board-am18">
+        <h3>AMOLED-1.8 <span>Waveshare</span></h3>
+        <p class="b-screen">1.8 in AMOLED, 368 x 448. ESP32-S3, 16 MB flash.</p>
+        <p class="b-has">Motion sensor, speaker, microphone, SD card.</p>
+        <p class="b-note">The apps draw their 320 x 240 layout 1.4 times bigger, so the pixels are softer than on a native layout.</p>
+        <p class="b-buy"><a href="https://www.waveshare.com/esp32-s3-touch-amoled-1.8.htm" target="_blank" rel="noopener">Waveshare</a></p>
+      </article>
+      <article class="board-row" id="board-watcher">
+        <h3>SenseCAP Watcher <span>Seeed Studio</span></h3>
+        <p class="b-screen">1.45 in round, 412 x 412. ESP32-S3, 32 MB flash.</p>
+        <p class="b-has">A wheel, speaker, microphone, camera.</p>
+        <p class="b-note">Turn the wheel to choose, push to open, hold to go back. With no motion sensor, the tilt games read the wheel. The install replaces the Seeed firmware; the page can save a copy first.</p>
+        <p class="b-buy"><a href="https://www.seeedstudio.com/SenseCAP-Watcher-W1-A-p-5979.html" target="_blank" rel="noopener">Seeed Studio</a></p>
+      </article>
+      <article class="board-row later" id="board-tab5">
+        <h3>Tab5 <span>M5Stack</span></h3>
+        <p class="b-screen">5 in, 1280 x 720. ESP32-P4, 16 MB flash.</p>
+        <p class="b-has">Motion sensor, microphones, SD card, the M5Stack keyboard.</p>
+        <p class="b-note">TFN OS runs on the Tab5 next to a second system, under a boot menu. The web install cannot do that yet: an install guide comes later.</p>
+        <p class="b-buy"><a href="https://shop.m5stack.com/products/m5stack-tab5-iot-development-kit-esp32-p4" target="_blank" rel="noopener">M5Stack</a></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="install" aria-labelledby="install-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <h2 id="install-h">Install it in about two minutes</h2>
+      <p>The install page talks to the board through the USB port of your computer. It finds the board, checks each file, and writes it.</p>
+    </div>
+    <ol class="steps">
+      <li>Open this site in Chrome or Edge on a computer.</li>
+      <li>Connect the board with a USB cable that carries data.</li>
+      <li>Click Connect and choose the port of the board. The page finds the board and its version.</li>
+      <li>Check the picture of the board, click Install, and wait until the board starts again.</li>
+    </ol>
+    <p class="note measure">An install erases the data on the board: its settings, its WiFi and its files. The SD card does not change. A board that already runs TFN OS can get an update, which keeps its apps and settings.</p>
+    <p class="hero-cta"><a class="btn btn-primary" href="install.html">Open the install page</a></p>
+  </div>
+</section>
+
+<section class="chapter" id="faq" aria-labelledby="faq-h">
   <div class="wrap">
    <div class="measure faq">
-    <h2>Questions</h2>
+    <h2 id="faq-h">Questions</h2>
+    <details>
+      <summary>Is TFN OS free?</summary>
+      <p>Yes. TFN OS and the apps of its store are free, and the source code is open under the MIT licence. Some parts that TFN OS uses have their own open licences: NOTICE.md in the source lists them.</p>
+    </details>
+    <details>
+      <summary>What is in a release?</summary>
+      <p>The system with STANDBY, STORE, FILES, WALKIE, TALKIE and GAMEPAD. The games and the tools come from the store: the STORE app of the board, or the app page of this site.</p>
+    </details>
     <details>
       <summary>Which browsers work?</summary>
       <p>Chrome and Edge on Windows, macOS, Linux and ChromeOS. They have Web Serial, the part that talks to the USB port. Firefox, Safari and phones do not have it.</p>
@@ -81,8 +275,8 @@
       <p>Yes, if you keep a copy. Before an install, the page can save the whole flash of the board to a file. Keep that file private: it has the WiFi passwords that the board knew. To put it back, write it at address 0 with esptool.</p>
     </details>
     <details>
-      <summary>Where do the files come from?</summary>
-      <p>From the release of the public source code of TFN OS. The pages check the SHA-256 of each file. The board checks the signature of each app before it installs the app.</p>
+      <summary>What does the install page send to the board?</summary>
+      <p>One text command, "ota", which asks a running TFN OS for its board kind and version. Then the firmware files of this site. The page checks the SHA-256 of each file before the write, and the board checks each block after it.</p>
     </details>
     <details>
       <summary>Does this site track me?</summary>
@@ -95,8 +289,9 @@
 
 <footer class="foot">
   <div class="wrap">
+    <p>The screens on this site are frames of the real TFN OS code: captures of the boards, or the same code on a computer. The board drawings are our own.</p>
     <p>TFN OS is not made by Waveshare, M5Stack or Seeed Studio. The board names are the trademarks of their owners.</p>
-    <p>The flasher uses esptool-js 0.7.0 by Espressif (Apache License 2.0). The fonts are Bricolage Grotesque and Atkinson Hyperlegible Next (SIL Open Font License 1.1). <a href="licences.html">Licences</a></p>
+    <p>The flasher uses esptool-js 0.7.0 by Espressif (Apache License 2.0). The fonts are Archivo and Atkinson Hyperlegible Next (SIL Open Font License 1.1). <a href="licences.html">Licences</a></p>
   </div>
 </footer>
 <script type="module" src="js/site.js"></script>

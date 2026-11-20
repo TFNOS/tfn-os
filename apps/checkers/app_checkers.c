@@ -51,6 +51,7 @@ static const tune_note_t CK_OPEN[] = {
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "tfsfx/tfsfx.h"
 #include "ck_sfx.h"
 #ifdef ESP_PLATFORM
@@ -2675,7 +2676,7 @@ static void loupe_tap(int x, int y)
         }
     }
 }
-static void input(const input_event_t *ev)
+static void input_ev(const input_event_t *ev)
 {
     if (s_lp_on) {
         // (the loupe: no drag; a tap in it chooses, a tap out of it closes it)
@@ -2705,6 +2706,17 @@ static void input(const input_event_t *ev)
     }
     if (C.g == G_PLAY) {
         tap_board(ev->x, ev->y);
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title and the end acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    input_ev(ev);
+    if (slow && (C.g == G_TITLE || C.g == G_OVER)) {
+        input_ev(&tap);
     }
 }
 
@@ -2849,7 +2861,7 @@ static void enter(int64_t now)
     if (s_snd) {
         JPLAY(CK_OPEN);  // (the opening obeys SOUND OFF)
     }
-    C.level = (int)store_get("ck_lvl", 1) % 3;
+    C.level = (int)(store_get("ck_lvl", 1) % 3);
     ck_israeli = store_get("ck_rules", 0) == 0;
     if (!art_load(SQ)) {
         free(s_art_mem);

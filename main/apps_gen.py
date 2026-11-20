@@ -52,7 +52,9 @@ APP_KEYS = {'name', 'sym', 'group', 'on', 'new', 'core', 'why_core', 'with', 'sr
             'link',     # prebuilt libraries (.a) of the ESP build of an app file (only sdk/tools/mk_app.py reads it)
             'class',    # "b" = a class B game (not installed by default; sdk/tools/store_class.py sends it to the manager)
             'only',     # the board kinds that have the app (the store apps of the 3.49 only): the host fuzz skips the others
-            'extra'}    # the extra (core.extras) that the app belongs to: the app leaves when that extra is off
+            'extra',    # the extra (core.extras) that the app belongs to: the app leaves when that extra is off
+            'store_on'}  # the slim kinds where a core app is an app file of the store, not in the firmware (a big core
+                         # app on a kind with a small app slot)
 SELECT_KEYS = {'apps', 'add', 'remove', 'about'}
 HEADER_NOTE = 'Made by main/apps_gen.py from main/apps.json: do not edit (change main/apps.json).'
 TEST_MS = 6000          # the self-test time of an app when apps.json gives no test_ms
@@ -333,9 +335,12 @@ def select(doc, main_dir, select_file=None, add=(), remove=(), host=False, with_
                                 (a['name'], a.get('why_core', 'system code calls it')))
             sel.discard(a['name'])
     if not host and slim_kind(doc, kind):
-        sel = {a['name'] for a in apps if a.get('core')}
+        sel = {a['name'] for a in apps if a.get('core') and kind not in a.get('store_on', [])}
         notes.append('the slim firmware of %s: only the core apps (the others are app files)' % kind)
     for a in apps:
+        if not host and slim_kind(doc, kind) and kind in a.get('store_on', []):
+            notes.append('%s: an app file of the store on %s (store_on)' % (a['name'], kind))
+            continue
         if a.get('core') and a['name'] not in sel:
             notes.append('%s is a core app: it stays in' % a['name'])
             sel.add(a['name'])

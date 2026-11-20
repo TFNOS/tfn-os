@@ -334,9 +334,27 @@ static void deliver(const uint8_t mac[6], const uint8_t *data, int len, int8_t r
 volatile bool g_link_no_lan;    // tests (console "lancopy 0"): no LAN copy of the sent packets (ESP-NOW only)
 volatile bool g_link_lan_only;  // tests (console "lanonly 1"): ignore the ESP-NOW packets
 
+// THE RAW FRAMES (link_raw_open): the frames of another protocol on the same radio (a TFN COMPANION: 'C' 'P') go to
+// their own queue, not to the link
+static QueueHandle_t s_raw_q;  // (made at the first open; it stays: no delete while the WiFi task can use it)
+static volatile bool s_raw_on;
+static volatile uint8_t s_raw_m0, s_raw_m1;
+#define RAW_QUEUE_LEN 16
+
 static void on_recv(const esp_now_recv_info_t *info, const uint8_t *data, int len)
 {
     if (!info || g_link_lan_only) {
+        return;
+    }
+    QueueHandle_t rq = s_raw_q;
+    if (s_raw_on && rq && len >= 2 && len <= LINK_RAW_MAX && data[0] == s_raw_m0 && data[1] == s_raw_m1) {
+        link_raw_t r;
+        memcpy(r.mac, info->src_addr, 6);
+        r.len = (uint8_t)len;
+        memcpy(r.data, data, (size_t)len);
+        r.rssi = info->rx_ctrl ? (int8_t)info->rx_ctrl->rssi : 0;
+        r.rx_ms = esp_timer_get_time() / 1000;
+        xQueueSend(rq, &r, 0);
         return;
     }
     deliver(info->src_addr, data, len, info->rx_ctrl ? (int8_t)info->rx_ctrl->rssi : 0, false);
@@ -992,4 +1010,68 @@ void link_my_mac(uint8_t mac[6])
 {
     memset(mac, 0, 6);
     arc_mac(mac);
+}
+
+// ---------------------------------------------------------------- the raw frames (link.h)
+bool link_raw_open(uint8_t magic0, uint8_t magic1)
+{
+    if (magic0 == LINK_MAGIC0 && magic1 == LINK_MAGIC1) {
+        return false;
+    }
+    if (!s_raw_q) {
+        s_raw_q = xQueueCreateWithCaps(RAW_QUEUE_LEN, sizeof(link_raw_t), MALLOC_CAP_SPIRAM);
+        if (!s_raw_q) {
+            return false;
+        }
+    }
+    s_raw_m0 = magic0;
+    s_raw_m1 = magic1;
+    if (!link_start()) {
+        return false;
+    }
+    xQueueReset(s_raw_q);
+    s_raw_on = true;
+    ESP_LOGI(TAG, "raw frames '%c%c' on, channel %d", magic0, magic1, link_channel());
+    return true;
+}
+
+void link_raw_close(void)
+{
+    if (!s_raw_on) {
+        return;
+    }
+    s_raw_on = false;
+    link_stop();
+}
+
+bool link_raw_send(const uint8_t *mac, const void *data, int len)
+{
+    if (!s_on || !s_raw_on || !data || len < 2 || len > LINK_RAW_MAX) {
+        return false;
+    }
+    const uint8_t *to = mac ? mac : BCAST;
+    if (!esp_now_is_peer_exist(to)) {
+        wifi_mode_t mode = WIFI_MODE_STA;
+        esp_wifi_get_mode(&mode);
+        esp_now_peer_info_t peer;
+        memset(&peer, 0, sizeof(peer));
+        memcpy(peer.peer_addr, to, 6);
+        peer.channel = 0;
+        peer.ifidx = mode == WIFI_MODE_AP ? WIFI_IF_AP : WIFI_IF_STA;
+        if (esp_now_add_peer(&peer) != ESP_OK) {
+            return false;
+        }
+    }
+    const esp_err_t e = esp_now_send(to, data, (size_t)len);
+    if (e == ESP_OK) {
+        portENTER_CRITICAL(&s_tx_mux);
+        s_tx_in++;  // (its send callback comes as the callback of a frame of the link)
+        portEXIT_CRITICAL(&s_tx_mux);
+    }
+    return e == ESP_OK;
+}
+
+bool link_raw_recv(link_raw_t *m)
+{
+    return s_raw_on && m && xQueueReceive(s_raw_q, m, 0) == pdTRUE;
 }

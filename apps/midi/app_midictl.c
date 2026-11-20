@@ -33,6 +33,15 @@
 #include "tfn/board.h"
 #include "tfn/ble_midi.h"
 #include "tfn/usb_midi.h"
+#include "aatext/aatext.h"
+// THE TEXT: the Bungee faces of the firmware in place of the 5 x 7 dot font (libs/aatext); the round view (mc_rv.inc)
+// draws its text with them too.
+#define gfx_text           aat_text
+#define gfx_text_width     aat_w
+#define gfx_text_center    aat_text_center
+#define gfx_text_center_in aat_text_center_in
+#define gfx_clip_bottom    aat_clip_bottom
+#define gfx_clip_reset     aat_clip_reset
 #include "mc_rv.inc"
 
 // ---------------------------------------------------------------- layout

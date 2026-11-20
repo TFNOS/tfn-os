@@ -39,3 +39,23 @@ bool link_set_channel(int ch);
 // The WiFi channel now (0 = not known), and the MAC address of this board.
 int link_channel(void);
 void link_my_mac(uint8_t mac[6]);
+
+// RAW FRAMES: the frames of another protocol on the same radio, for example a TFN COMPANION (libs/tfncomp: 'C' 'P').
+// A raw frame starts with its 2 magic bytes and has up to LINK_RAW_MAX bytes; it does not go by the LAN, it has no
+// pool tag (its protocol has its own), and the link does not search for a channel for it.
+#define LINK_RAW_MAX 250
+typedef struct {
+    uint8_t mac[6];  // the sender
+    uint8_t len;
+    uint8_t data[LINK_RAW_MAX];
+    int8_t rssi;
+    int64_t rx_ms;
+} link_raw_t;
+// Start the link (link_start) and take the frames that start with these 2 bytes into a queue. False: no radio.
+bool link_raw_open(uint8_t magic0, uint8_t magic1);
+// Stop the raw frames and the link (link_stop)
+void link_raw_close(void);
+// Send one raw frame: mac = NULL is a broadcast, else a unicast (the radio sends it again when no ACK comes).
+bool link_raw_send(const uint8_t *mac, const void *data, int len);
+// The next raw frame (no wait). False: none.
+bool link_raw_recv(link_raw_t *m);

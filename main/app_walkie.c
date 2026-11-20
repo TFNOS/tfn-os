@@ -849,12 +849,14 @@ static void draw_empty(const grid_t *g, int64_t now)
         ui_circle(cx - 30 * u + (int)(60 * u * q), cy - 6 * u - (int)(10 * u * sinf(q * 3.14159f)), 2 * u,
                   via_col(VIA_LAN), (int)(255 * sinf(q * 3.14159f)));
     }
-    int ty = cy + 22 * u + KF_TEXT.asc;
-    ui_text_c(&KF_TEXT, cx, ty, "NO FRIEND IS ONLINE", C_TXT);
+    // (the round panels: the bigger faces, the small ones were hard to read there)
+    const kfont_t *f1 = gfx_round() ? &KF_BIG : &KF_TEXT, *f2 = gfx_round() ? &KF_NAME : &KF_LABEL;
+    int ty = cy + 22 * u + f1->asc;
+    ui_text_c(f1, cx, ty, "NO FRIEND IS ONLINE", C_TXT);
     const char *l2 = friends_count() ? "A FRIEND SHOWS HERE" : "ADD A FRIEND IN SETTINGS > FRIENDS";
     const char *l3 = friends_count() ? "WHEN ITS BOARD IS ON" : "OR IN THE MANAGER";
-    ui_text_c(&KF_LABEL, cx, ty + KF_TEXT.line, l2, C_DIM);
-    ui_text_c(&KF_LABEL, cx, ty + KF_TEXT.line + KF_LABEL.line, l3, C_DIM);
+    ui_text_c(f2, cx, ty + f1->line, l2, C_DIM);
+    ui_text_c(f2, cx, ty + f1->line + f2->line, l3, C_DIM);
 }
 static void draw_top(int64_t now)
 {

@@ -12,6 +12,9 @@
   "GET /api/cam.jpg": [
    "main/webcam.c"
   ],
+  "GET /api/comp": [
+   "main/web_comp.c"
+  ],
   "GET /api/ctl": [
    "main/web_walkie.c"
   ],
@@ -87,6 +90,9 @@
   "GET /cam": [
    "main/webcam.c"
   ],
+  "GET /companions": [
+   "main/web_comp.c"
+  ],
   "GET /del/*": [
    "main/wifi_web.c"
   ],
@@ -119,6 +125,9 @@
   ],
   "POST /api/apps": [
    "main/tfn_web.c"
+  ],
+  "POST /api/comp": [
+   "main/web_comp.c"
   ],
   "POST /api/fs": [
    "main/tfn_web.c"
@@ -171,6 +180,7 @@
   "GET /api/apps",
   "GET /api/boards",
   "GET /api/cam.jpg",
+  "GET /api/comp",
   "GET /api/ctl",
   "GET /api/evlog",
   "GET /api/friends",
@@ -196,6 +206,7 @@
   "GET /app/*",
   "GET /apps",
   "GET /cam",
+  "GET /companions",
   "GET /del/*",
   "GET /f/*",
   "GET /files",
@@ -207,6 +218,7 @@
   "GET /walkie",
   "GET /ws/audio (websocket)",
   "POST /api/apps",
+  "POST /api/comp",
   "POST /api/fs",
   "POST /api/ha/config",
   "POST /api/ha/items",

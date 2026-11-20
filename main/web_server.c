@@ -21,6 +21,7 @@
 #if CONFIG_TFN_EXTRA_STOCKS
 #include "web_stocks.h"
 #endif
+#include "web_comp.h"
 #include "web_sys.h"
 #include "web_walkie.h"
 #include "webcam.h"
@@ -47,6 +48,7 @@ static void (*const WEB_MODULES[])(httpd_handle_t) = {
         web_chat_register,    // CHAT: the gateway addresses
 #endif
         web_sys_register,     // the message, the locate sound, the sweep, the start picture
+        web_comp_register,    // the companions: the list, the backup and the restore (/companions)
         evlog_register,       // the Tab5: GET /api/evlog (the event log); nothing on the other boards
 #if CONFIG_TFN_EXTRA_WEBCAM
         webcam_register,

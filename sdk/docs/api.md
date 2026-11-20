@@ -2,7 +2,7 @@
 
 > A tool makes this file. Do not change it by hand. To make it again: `python sdk/tools/gen_api_doc.py`.
 
-**ABI version 1 rev 24: 1626 names.** An app file can call only these names. `sdk/tools/mk_app.py` stops when an app needs another name and writes a request for it ([raw.md](raw.md)). Inside one ABI version, the list only gets new names; each addition gives the next revision.
+**ABI version 1 rev 34: 1707 names.** An app file can call only these names. `sdk/tools/mk_app.py` stops when an app needs another name and writes a request for it ([raw.md](raw.md)). Inside one ABI version, the list only gets new names; each addition gives the next revision.
 
 The source of each entry is the public header in `main/tfn/` and the comment above the declaration. A name that only some board kinds have shows the kinds. All 5 kinds have each other name (lcd349, cores3, am18, watcher, tab5).
 
@@ -29,9 +29,11 @@ The header helpers at the end (`static inline`, for example `rgb()` and `icon_ti
 - [Network and data modules](#network-and-data-modules) (`tfnet.h`, `tfmqtt.h`, `zimread.h`)
 - [Other: alarm.h](#other-alarmh)
 - [Other: bt_pad.h](#other-bt_padh)
+- [Other: companion.h](#other-companionh)
 - [Other: device_guard.h](#other-device_guardh)
 - [Other: irdecode.h](#other-irdecodeh)
 - [Other: kbd.h](#other-kbdh)
+- [Other: listen.h](#other-listenh)
 - [Other: notify.h](#other-notifyh)
 - [Other: rf_native.h](#other-rf_nativeh)
 - [Other: rfdecode.h](#other-rfdecodeh)
@@ -43,6 +45,10 @@ The header helpers at the end (`static inline`, for example `rgb()` and `icon_ti
 - [Other: sdr_spec.h](#other-sdr_spech)
 - [Other: sdr_trace.h](#other-sdr_traceh)
 - [Other: sdr_wf.h](#other-sdr_wfh)
+- [Other: speech.h](#other-speechh)
+- [Other: tc_ir.h](#other-tc_irh)
+- [Other: tc_master.h](#other-tc_masterh)
+- [Other: tfncomp.h](#other-tfncomph)
 - [Other: tfphys.h](#other-tfphysh)
 - [Other: tfsfx.h](#other-tfsfxh)
 - [Other: tz.h](#other-tzh)
@@ -88,6 +94,22 @@ void app_open(const app_t *app);
 ```
 
 Open an app (in main.c). The switch happens before the next frame.
+
+#### `app_open_arg`
+
+```c
+void app_open_arg(const app_t *app, const char *arg);
+```
+
+Open an app with an argument (app_launch_arg() of that app gives it), and an app by its menu name (an installed app file first; NULL: none)
+
+#### `app_find`
+
+```c
+const app_t *app_find(const char *name);
+```
+
+(The comment of the declarations above applies.)
 
 #### `app_launch_arg`
 
@@ -1903,6 +1925,38 @@ void link_my_mac(uint8_t mac[6]);
 ```
 
 (The comment of the declarations above applies.)
+
+#### `link_raw_open`
+
+```c
+bool link_raw_open(uint8_t magic0, uint8_t magic1);
+```
+
+Start the link (link_start) and take the frames that start with these 2 bytes into a queue. False: no radio.
+
+#### `link_raw_close`
+
+```c
+void link_raw_close(void);
+```
+
+Stop the raw frames and the link (link_stop)
+
+#### `link_raw_send`
+
+```c
+bool link_raw_send(const uint8_t *mac, const void *data, int len);
+```
+
+Send one raw frame: mac = NULL is a broadcast, else a unicast (the radio sends it again when no ACK comes).
+
+#### `link_raw_recv`
+
+```c
+bool link_raw_recv(link_raw_t *m);
+```
+
+The next raw frame (no wait). False: none.
 
 ### `friends.h`
 
@@ -3854,6 +3908,66 @@ bool bt_pad_boot(void);
 
 true: the computer uses the boot protocol (a BIOS): only the keyboard and the mouse work then
 
+## Other: companion.h
+
+### `companion.h`
+
+#### `comp_open`
+
+```c
+bool comp_open(void);
+```
+
+Start the radio frames of the companions (ESP-NOW on the channel of the WiFi network) and read the paired list. False: no radio.
+
+#### `comp_poll`
+
+```c
+void comp_poll(void);
+```
+
+Each frame of the app: the received frames, the retries, the pings (it also sounds a change: a companion comes online = rising notes, goes offline = a low falling note)
+
+#### `comp_close`
+
+```c
+void comp_close(void);
+```
+
+Stop the radio (the list is saved)
+
+#### `comp_my_name`
+
+```c
+const char *comp_my_name(void);
+```
+
+The name of this board for a pairing ("TFN 1A2B")
+
+#### `comp_with_role`
+
+```c
+int comp_with_role(int role, int *pin);
+```
+
+The first companion that has a module of this role in its wiring (TC_R_*), online first; -1: none. *pin = its GPIO.
+
+#### `comp_fw_start`
+
+```c
+bool comp_fw_start(const char *target, bool image);
+```
+
+THE FIRMWARE OF THE COMPANIONS IN THE STORE (the manager or the static store of this board): compfw/index.txt (a line "<target> <fw> <size> <sha256>" for each chip; a STORE key signs it: compfw/index.sig) and compfw/<target>.bin. A job in the background (one at a time): the index (*fw = the newest version for the target), and with image = true the file of the target into PSRAM (its size and its SHA-256 as the index says). target: "esp32", "esp32s3", "esp32c3", "esp32c6", "esp32s2". False: a job runs already.
+
+#### `comp_fw_poll`
+
+```c
+int comp_fw_poll(int *fw, uint8_t **img, int *len, char *msg, int mlen);
+```
+
+0: the job runs; 1: done (*fw; with image: *img (free it with heap_caps_free) and *len); -1: msg has the fault
+
 ## Other: device_guard.h
 
 ### `device_guard.h`
@@ -4089,6 +4203,106 @@ int kbd_state(void);
 ```
 
 The state (for the tests and the callers): 0 = the keys, 1 = a finger on a key (its preview), 2 = the question of OK / CANCEL.
+
+## Other: listen.h
+
+### `listen.h`
+
+#### `listen_offer`
+
+```c
+bool listen_offer(const listen_ops_t *ops);
+```
+
+the module (the watcher of TALK)
+
+#### `listen_ready`
+
+```c
+bool listen_ready(void);
+```
+
+the apps
+
+the ears are here (TALK is installed, its data is on the card)
+
+#### `listen_start`
+
+```c
+bool listen_start(const char *brain);
+```
+
+Record from now until listen_stop (+ 0.4 s) or 10 s (start it when the finger goes down: no word start is lost). Then the text is made on the listen task. brain: NULL = text only; a TNY2 file = that brain also answers the text (listen_answer).
+
+#### `listen_stop`
+
+```c
+void listen_stop(void);
+```
+
+(The comment of the declarations above applies.)
+
+#### `listen_cancel`
+
+```c
+void listen_cancel(void);
+```
+
+(The comment of the declarations above applies.)
+
+stop and drop all (no text)
+
+#### `listen_state`
+
+```c
+int listen_state(void);
+```
+
+(The comment of the declarations above applies.)
+
+LS_*
+
+#### `listen_level`
+
+```c
+float listen_level(void);
+```
+
+(The comment of the declarations above applies.)
+
+the level of the microphone now, 0..1 (while LS_REC)
+
+#### `listen_text`
+
+```c
+void listen_text(char *out, int cap);
+```
+
+The results (LS_DONE): the heard text, the answer of the brain ("" with no brain). They stay until the next start.
+
+#### `listen_answer`
+
+```c
+void listen_answer(char *out, int cap);
+```
+
+(The comment of the declarations above applies.)
+
+#### `listen_ask`
+
+```c
+bool listen_ask(const char *brain, const char *text);
+```
+
+A brain answers a text with no speech (a typed text, a test): LS_THINK, then LS_DONE (listen_answer).
+
+#### `listen_handler`
+
+```c
+void listen_handler(listen_handler_fn fn);
+```
+
+THE TALK KEY in an app: the handler gets the heard text and the code of the main brain ("@open chess", or a sentence) when it is not a command of the board. It gives true when it used it (no notice). NULL = none. An app sets it in its enter(); TFN OS clears it when the app closes.
 
 ## Other: notify.h
 
@@ -4758,6 +4972,496 @@ void sdr_persist_push(sdr_persist_t *p, const float *db, int n, int shift);
 
 One frame: a fade of all cells (shift: 5 = a fade of 1/32 a frame), then +1 at each point's level
 
+## Other: speech.h
+
+### `speech.h`
+
+#### `speech_offer`
+
+```c
+bool speech_offer(const speech_ops_t *ops);
+```
+
+A watcher gives its voice to TFN OS (call it in the init() of the watcher; TFN OS keeps a copy of ops). The voice stays until the watcher goes (a new version, a removal). False: this board has no voice, or the call is not from the init of a watcher.
+
+#### `speech_ready`
+
+```c
+bool speech_ready(void);
+```
+
+For the apps: a voice is ready (the app VOICE is installed, its data is on the card), and a text to say (it waits in a queue of 8 texts; the setting READ NOTICES ALOUD does not matter here). A board with no voice: false / nothing.
+
+#### `speech_say`
+
+```c
+void speech_say(const char *text);
+```
+
+(The comment of the declarations above applies.)
+
+#### `speech_stop`
+
+```c
+void speech_stop(void);
+```
+
+(The comment of the declarations above applies.)
+
+stop the text of now and the queue (not the reader below)
+
+#### `speech_make`
+
+```c
+bool speech_make(const char *text, const char *path);
+```
+
+VOICE FILES MADE AHEAD (a cache on the card). The voice is slower than real time (about 0.45 x on the 3.49), so a text that is known ahead (a line of a quest, an alarm) is made into a file before it is necessary, then played at once. The file (any name, the extension .tvc by custom) has a header with a check of its text. Queue the make of the voice of a text into a file (after the texts in the queue). False: no voice, a full queue.
+
+#### `speech_file_ok`
+
+```c
+bool speech_file_ok(const char *path, const char *text);
+```
+
+The file has the voice of this text (text NULL: of any text). It is false while the file is made.
+
+#### `speech_play_file`
+
+```c
+int speech_play_file(const char *path);
+```
+
+Play a voice file after the voice that plays now. Its length in ms, or 0 (no file, no memory). The app can close: the sound plays to its end. It plays also when the board is muted (an alarm uses it).
+
+#### `speech_read_open`
+
+```c
+bool speech_read_open(const speech_read_cfg_t *c);
+```
+
+THE READER: a long text (a book, an article) that the voice reads aloud. The text is a file on the card with one sentence (or a short part, at most 400 bytes) on each line. TFN OS makes the voice of the lines AHEAD of the play into the cache folder (one file each line, kept for the next time), and plays them in order. The play starts when the rest can follow with no stop (or when hold_s seconds are ready). One reader at a time; it goes on when the app closes (in the menu and with the screen off; it waits while a game shows). The voice of line L is the file <cache>/d<L / 100 in 3 digits>/<L in 5 digits>.tvc (for example /sdcard/x/c/d012/01234.tvc): an app can make all its lines ahead (play false, a big ahead_s) and later play one line with speech_play_file (a game, where the voice is not made).
+
+a new reader (the old one stops); false: no voice, no text
+
+#### `speech_read_play`
+
+```c
+void speech_read_play(bool on);
+```
+
+(The comment of the declarations above applies.)
+
+the play on / off (a pause; the make goes on)
+
+#### `speech_read_close`
+
+```c
+void speech_read_close(void);
+```
+
+(The comment of the declarations above applies.)
+
+stop the reader (the cache stays)
+
+#### `speech_read_get`
+
+```c
+void speech_read_get(speech_read_t *st);
+```
+
+(The comment of the declarations above applies.)
+
+## Other: tc_ir.h
+
+### `tc_ir.h`
+
+#### `tc_ir_plan`
+
+```c
+bool tc_ir_plan(const ird_code_t *c, int32_t *d, int max, tc_ir_plan_t *p);
+```
+
+A code of a known protocol (ird_decode / ird_make). False: no frame (UNKNOWN: use tc_ir_plan_raw).
+
+#### `tc_ir_plan_raw`
+
+```c
+bool tc_ir_plan_raw(const int32_t *raw, int nraw, int carrier_khz, int32_t *d, int max, tc_ir_plan_t *p);
+```
+
+The raw level times of a captured frame (an unknown protocol, or the exact copy of a remote)
+
+## Other: tc_master.h
+
+### `tc_master.h`
+
+#### `tcm_count`
+
+```c
+int tcm_count(void);
+```
+
+the paired companions
+
+#### `tcm_get`
+
+```c
+tcm_comp_t *tcm_get(int i);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_find`
+
+```c
+int tcm_find(const uint8_t mac[6]);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_online`
+
+```c
+bool tcm_online(int i);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_rename`
+
+```c
+void tcm_rename(int i, const char *name);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_forget`
+
+```c
+void tcm_forget(int i);
+```
+
+(The comment of the declarations above applies.)
+
+FORGET to the companion, and out of the list
+
+#### `tcm_found`
+
+```c
+int tcm_found(tcm_found_t *out, int max);
+```
+
+the search and the pairing
+
+the companions heard in the last 10 s (paired to this board: not here)
+
+#### `tcm_pair_start`
+
+```c
+bool tcm_pair_start(const uint8_t mac[6], const char *name);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_pair_state`
+
+```c
+int tcm_pair_state(void);
+```
+
+0: none; 1: the request goes out (the companion did not answer yet); 3: the companion waits for its BOOT key; 2: paired (tcm_pair_index); -1: no answer in time
+
+#### `tcm_pair_index`
+
+```c
+int tcm_pair_index(void);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_pair_cancel`
+
+```c
+void tcm_pair_cancel(void);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_info`
+
+```c
+bool tcm_info(int i);
+```
+
+THE REQUESTS: one at a time for each companion; a new one ends the old one
+
+#### `tcm_config`
+
+```c
+bool tcm_config(int i, const tc_wire_t *w, int n);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_watch`
+
+```c
+bool tcm_watch(int i, int pin, bool on);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_pulse`
+
+```c
+bool tcm_pulse(int i, int pin, int ms);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_capture`
+
+```c
+bool tcm_capture(int i, int pin, int secs, int gap_ms);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_capture_ready`
+
+```c
+bool tcm_capture_ready(int i);
+```
+
+(The comment of the declarations above applies.)
+
+the companion listens now (show "press a key of the remote")
+
+#### `tcm_send`
+
+```c
+bool tcm_send(int i, int pin, int carrier_khz, const int32_t *d, int n, int rep_at, int rep_ms);
+```
+
+Send level times (> 0 = on). carrier_khz: an IR LED (0: the wiring value); rep_ms > 0: while tcm_hold() comes, the companion sends again each rep_ms the level times from d[rep_at] (rep_at = n or 0: all of them).
+
+#### `tcm_hold`
+
+```c
+void tcm_hold(int i);
+```
+
+(The comment of the declarations above applies.)
+
+call it each 100 ms while the button is held
+
+#### `tcm_set`
+
+```c
+bool tcm_set(int i, int pin, int value, int ms);
+```
+
+A switch output (a relay, an LED) on (1) or off (0); ms > 0: a "press" (back to the old value after ms)
+
+#### `tcm_ota`
+
+```c
+bool tcm_ota(int i, const uint8_t *img, int n, int fw);
+```
+
+THE UPDATE BY RADIO: send a firmware image (img stays in memory until the request ends; tc_img_info checks it first). The companion starts again with it at the end (TCM_DONE). tcm_ota_done() = the bytes that the companion has.
+
+#### `tcm_ota_done`
+
+```c
+int tcm_ota_done(int i);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_value`
+
+```c
+bool tcm_value(int i, int pin, int *v, int *cnt);
+```
+
+The last value of a switch or analog module (TC_STATE): *v (a switch: 1 = active; analog: mV), *cnt (the count of the activations of a switch input). False: no value yet (or the companion is offline).
+
+#### `tcm_stop`
+
+```c
+void tcm_stop(int i);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tcm_req`
+
+```c
+int tcm_req(int i);
+```
+
+(The comment of the declarations above applies.)
+
+TCM_BUSY / TCM_DONE / TCM_FAIL (TCM_DONE when no request runs)
+
+#### `tcm_req_type`
+
+```c
+int tcm_req_type(int i);
+```
+
+(The comment of the declarations above applies.)
+
+TCM_R_*
+
+#### `tcm_req_code`
+
+```c
+int tcm_req_code(int i);
+```
+
+(The comment of the declarations above applies.)
+
+TC_E_* of a failed request
+
+#### `tcm_cfg_result`
+
+```c
+bool tcm_cfg_result(int i, uint8_t *err, uint8_t *warn, int *n);
+```
+
+the answer of TCM_R_CONFIG (also of a failed one): the result of each pin; true = all pins OK
+
+#### `tcm_frame`
+
+```c
+int tcm_frame(int32_t *d, int max, int *pin);
+```
+
+the frame of TCM_R_CAPTURE: the level times (> 0 a mark), the receiver pin, the gap that ended it (ms)
+
+## Other: tfncomp.h
+
+### `tfncomp.h`
+
+#### `tc_role_class`
+
+```c
+int tc_role_class(int role);
+```
+
+the classes of the roles
+
+#### `tc_role_rx`
+
+```c
+bool tc_role_rx(int role);
+```
+
+(The comment of the declarations above applies.)
+
+TC_C_PULSE_RX
+
+#### `tc_role_tx`
+
+```c
+bool tc_role_tx(int role);
+```
+
+(The comment of the declarations above applies.)
+
+TC_C_PULSE_TX
+
+#### `tc_role_pullup`
+
+```c
+bool tc_role_pullup(int role);
+```
+
+true: a switch input with the internal pull-up (BUTTON, CONTACT: active = LOW); MOTION: active = HIGH, no pull (TC_WF_INVERT turns the active level)
+
+#### `tc_pin_adc`
+
+```c
+bool tc_pin_adc(int chip, int gpio);
+```
+
+(The comment of the declarations above applies.)
+
+the pin has an ADC that works with the radio on
+
+#### `tc_role_name`
+
+```c
+const char *tc_role_name(int role);
+```
+
+(The comment of the declarations above applies.)
+
+"IR RECEIVER", ...
+
+#### `tc_err_name`
+
+```c
+const char *tc_err_name(int e);
+```
+
+(The comment of the declarations above applies.)
+
+a short text in English
+
+#### `tc_chip_name`
+
+```c
+const char *tc_chip_name(int chip);
+```
+
+THE PINS OF A CHIP (tc_pin_flags)
+
+#### `tc_chip_gpios`
+
+```c
+int tc_chip_gpios(int chip);
+```
+
+(The comment of the declarations above applies.)
+
+the count of GPIO numbers (the highest + 1)
+
+#### `tc_pin_flags`
+
+```c
+uint8_t tc_pin_flags(int chip, int gpio);
+```
+
+(The comment of the declarations above applies.)
+
+#### `tc_img_info`
+
+```c
+bool tc_img_info(const uint8_t *img, int n, int *chip, int *fw);
+```
+
+The facts of a companion firmware file (an ESP-IDF app image): its chip (TC_CHIP_*) and its version (the number of the version string). False: not an app image.
+
+#### `tc_vals_from_levels`
+
+```c
+int tc_vals_from_levels(const int32_t *d, int n, uint16_t *v, int max);
+```
+
+the level times > 0 a mark, < 0 a space (us) -> the 16-bit values. Returns the count of values (at most max).
+
+#### `tc_levels_from_vals`
+
+```c
+int tc_levels_from_vals(const uint16_t *v, int n, int32_t *d, int max);
+```
+
+The other way: the values of one level are one time again. Returns the count of level times.
+
 ## Other: tfphys.h
 
 ### `tfphys.h`
@@ -5398,6 +6102,7 @@ ESP-IDF functions that no built-in app calls. They come from `main/tfn_abi_extra
 | `llround` | none | 11 | the math of the C library (double): the SDR app (the frequencies in Hz) |
 | `log10` | none | 11 | the math of the C library (double): the SDR app (the frequency marks) |
 | `lround` | none | 11 | the math of the C library (double): the SDR app (the points of the frequencies) |
+| `net2_peer_info` | none | 33 | a core app as an app file on a kind with a small app slot: the name and the state of the friend in a duel |
 | `pow` | none | 11 | the math of the C library (double): the SDR app (the frequency marks) |
 | `uart_driver_delete` | `gpio` (USE THE PINS OF THE BOARD) | 14 | the UART driver of ESP-IDF: the SERIAL MONITOR app (a serial device on the free pins; the app deletes the driver in leave) |
 | `uart_driver_install` | `gpio` (USE THE PINS OF THE BOARD) | 14 | the UART driver of ESP-IDF: the SERIAL MONITOR app (a serial device on the free pins; the app deletes the driver in leave) |
@@ -5416,6 +6121,7 @@ ESP-IDF functions that no built-in app calls. They come from `main/tfn_abi_extra
 | `uart_set_word_length` | `gpio` (USE THE PINS OF THE BOARD) | 14 | the UART driver of ESP-IDF: the SERIAL MONITOR app (a serial device on the free pins; the app deletes the driver in leave) |
 | `uart_wait_tx_done` | `gpio` (USE THE PINS OF THE BOARD) | 14 | the UART driver of ESP-IDF: the SERIAL MONITOR app (a serial device on the free pins; the app deletes the driver in leave) |
 | `uart_write_bytes` | `gpio` (USE THE PINS OF THE BOARD) | 14 | the UART driver of ESP-IDF: the SERIAL MONITOR app (a serial device on the free pins; the app deletes the driver in leave) |
+| `ui_text` | none | 33 | the text of a kfont face at a place (a core app as an app file) |
 
 ## Compiler runtime (automatic)
 

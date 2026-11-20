@@ -73,6 +73,10 @@ extern const app_t app_menu;
 
 // Open an app (in main.c). The switch happens before the next frame.
 void app_open(const app_t *app);
+// Open an app with an argument (app_launch_arg() of that app gives it), and an app by its menu name (an installed app
+// file first; NULL: none)
+void app_open_arg(const app_t *app, const char *arg);
+const app_t *app_find(const char *name);
 const char *app_launch_arg(void);
 // THE POCKET MODE of an app (ON AIR: the user puts the board in a pocket and listens): ms > 0 = the screen
 // goes off after ms with no touch or key, whatever SCREEN SLEEP says, and a movement or the music does not wake it (a

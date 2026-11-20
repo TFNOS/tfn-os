@@ -4,10 +4,12 @@
 #include "tfn/theme.h"
 #include <stdio.h>
 #include <string.h>
+#include "alarm.h"
 #include "audio.h"
 #include "board.h"
 #include "gfx.h"
 #include "notify.h"
+#include "tfn_speech.h"
 #include "watch.h"
 #include "../libs/kscroll/kscroll.h"
 #include "set_round.h"
@@ -28,6 +30,10 @@ enum {
     RW_DND,
     RW_GAME,
     RW_BG,
+#if BOARD_TTS
+    RW_READ,   // READ NOTICES ALOUD (tfn_speech.h: the app VOICE)
+    RW_ALARM,  // SPEAK AT AN ALARM (alarm.c: the time, the label and the weather)
+#endif
     RW_APP
 };
 static char s_apps[NAPPS][NT_NAME];
@@ -113,7 +119,7 @@ static int pills(int r, int k, int *x, int *w)
         if (k) {
             return 0;
         }
-        *w = wide() ? 200 : 150;
+        *w = wide() ? 200 : 128;  // (the 320 x 240 frame: the name at its left needs 110 px: NOTIFICATIONS)
         *x = x1 - *w;
         return 1;
     }
@@ -164,6 +170,18 @@ static void value(int r, int k, char *b, int n, bool *on)
         snprintf(b, n, "%s", *on ? "A BANNER" : "NO BANNER");
         return;
     }
+#if BOARD_TTS
+    if (r == RW_READ) {
+        *on = speech_notices_on() && speech_ready();
+        snprintf(b, n, "%s", !speech_ready() ? "GET THE APP VOICE" : *on ? "ON" : "OFF");
+        return;
+    }
+    if (r == RW_ALARM) {
+        *on = alarm_voice_on() && speech_ready();
+        snprintf(b, n, "%s", !speech_ready() ? "GET THE APP VOICE" : *on ? "ON" : "OFF");
+        return;
+    }
+#endif
     if (r == RW_BG) {  // the background checks of the apps (watch.h)
         int e = watch_every();
         *on = e != 0;
@@ -197,6 +215,12 @@ static void toggle(int r, int k)
         notify_set_dnd((notify_dnd() + 1) % 3);
     } else if (r == RW_GAME) {
         notify_set_in_games(!notify_in_games());
+#if BOARD_TTS
+    } else if (r == RW_READ) {
+        speech_set_notices(!speech_notices_on());
+    } else if (r == RW_ALARM) {
+        alarm_voice_set(!alarm_voice_on());
+#endif
     } else if (r == RW_BG) {
         int e = watch_every();
         watch_set_every(e == 5 ? 10 : e == 10 ? 15 : e == 15 ? 30 : e == 30 ? 0 : 5);
@@ -306,10 +330,14 @@ static void render_round(void)
         if (top + rh < y0 || top > y1) {
             continue;
         }
-        const char *name = r == RW_ALL                              ? "ALL NOTIFICATIONS"
-                           : r == RW_DND                            ? "DO NOT DISTURB"
-                           : r == RW_GAME                           ? "IN GAMES"
-                           : r == RW_BG                             ? "BACKGROUND CHECKS"
+        const char *name = r == RW_ALL    ? "ALL NOTIFICATIONS"
+                           : r == RW_DND  ? "DO NOT DISTURB"
+                           : r == RW_GAME ? "IN GAMES"
+                           : r == RW_BG   ? "BACKGROUND CHECKS"
+#if BOARD_TTS
+                           : r == RW_READ  ? "READ NOTICES ALOUD"
+                           : r == RW_ALARM ? "SPEAK AT AN ALARM"
+#endif
                            : !strcmp(s_apps[r - RW_APP], NT_SYSTEM) ? "SYSTEM (UPDATES)"
                                                                     : s_apps[r - RW_APP];
         ui_rrect(RB_X - RS(6), top + 2, RB_W + RS(12), rh - 6, RS(12), THEME_NOTE_PAGE_LINE);
@@ -361,14 +389,24 @@ void notify_page_render(int64_t now)
         if (r == RW_APP) {
             gfx_fill_rect(BACK_W + 8, top - 1, gfx_w - BACK_W - 16, 1, THEME_NOTE_PAGE_LINE);
         }
-        const char *name = r == RW_ALL                              ? "ALL NOTIFICATIONS"
-                           : r == RW_DND                            ? "DO NOT DISTURB"
-                           : r == RW_GAME                           ? "IN GAMES"
-                           : r == RW_BG                             ? "BACKGROUND CHECKS"
+        const char *name = r == RW_ALL    ? "ALL NOTIFICATIONS"
+                           : r == RW_DND  ? "DO NOT DISTURB"
+                           : r == RW_GAME ? "IN GAMES"
+                           : r == RW_BG   ? "BACKGROUND CHECKS"
+#if BOARD_TTS
+                           : r == RW_READ  ? "READ NOTICES ALOUD"
+                           : r == RW_ALARM ? "SPEAK AT AN ALARM"
+#endif
                            : !strcmp(s_apps[r - RW_APP], NT_SYSTEM) ? "SYSTEM (UPDATES)"
                                                                     : s_apps[r - RW_APP];
         const int ty = wide() || r < RW_APP ? top + (rh - 14) / 2 : top + 8;
-        gfx_text(BACK_W + 10, ty, name, 2, THEME_NOTE_PAGE_TEXT);
+        int nx, nw;
+        if (r < RW_APP && pills(r, 0, &nx, &nw) > 0) {
+            // (the name and the pill on one line: the name in the room at the left of the pill)
+            set_name_fit(BACK_W + 10, ty, nx - 8 - (BACK_W + 10), name, THEME_NOTE_PAGE_TEXT);
+        } else {
+            gfx_text(BACK_W + 10, ty, name, 2, THEME_NOTE_PAGE_TEXT);
+        }
         for (int k = 0; k < 3; k++) {
             int px, pw;
             if (k >= pills(r, k, &px, &pw)) {

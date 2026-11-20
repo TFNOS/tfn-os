@@ -1,0 +1,571 @@
+/* The front page (index.html). It uses the tokens and the parts of site.css. The page is a row of chapters with a
+   real screen in each one; the band "on our test boards now" has the dark of a screen, because its work is not in the
+   release yet. */
+
+/* the first screen: the title over two columns: the words at the left, the 3.49 with STANDBY at the right */
+.home-hero {
+  padding: clamp(36px, 6vw, 80px) 0 clamp(28px, 4vw, 44px);
+}
+
+.release {
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  margin-bottom: 16px;
+}
+
+.home-hero h1 {
+  margin-bottom: clamp(22px, 3vw, 36px);
+  max-width: 25ch;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+}
+
+.home-hero .hero-sub {
+  font-size: 1.14rem;
+  max-width: 46ch;
+  margin-top: 4px;
+}
+
+.home-hero .hero-cta {
+  margin-top: 22px;
+}
+
+.hero-need {
+  margin: 14px 0 0;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  max-width: 44ch;
+}
+
+/* the board fills its column: the container gives the px of one mm */
+.hero-art {
+  margin: 0;
+  container-type: inline-size;
+}
+
+.hero-art .dev {
+  --mm: calc(100cqw / 102.5);
+  align-items: flex-start;
+}
+
+.hero-art figcaption {
+  margin-top: 16px;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+
+.trailer-link {
+  white-space: nowrap;
+}
+
+.runs-on {
+  margin: clamp(28px, 4vw, 44px) 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+/* a chapter: a title, a short text, real screens */
+.chapter {
+  padding: clamp(52px, 7vw, 92px) 0;
+  border-top: 1px solid var(--line);
+}
+
+.chapter-head {
+  max-width: 62ch;
+  margin-bottom: clamp(22px, 3vw, 34px);
+}
+
+.chapter-head > p {
+  color: var(--ink-2);
+  font-size: 1.08rem;
+}
+
+/* the hint for a mouse: a phone has no pointer that can point at a picture */
+@media (hover: none) {
+  .hover-hint {
+    display: none;
+  }
+}
+
+.chapter-more {
+  margin: 26px 0 0;
+  font-weight: 700;
+}
+
+/* a real screen with no board around it: a black glass with a thin bezel */
+.glass {
+  position: relative;
+  aspect-ratio: 640 / 172;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 0 4px var(--case-2);
+}
+
+.glass img,
+.glass video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.glass video {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.glass video.on {
+  opacity: 1;
+}
+
+/* the games: six real screens with a name and one line each */
+.games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px 26px;
+}
+
+.games b {
+  display: block;
+  margin-top: 14px;
+  font-family: var(--font-d);
+  font-stretch: 112%;
+  font-weight: 620;
+}
+
+.games span {
+  display: block;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+/* two columns: the words, and the picture */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+}
+
+.split-r > .chapter-head {
+  order: 2;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 18px;
+  margin: 22px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.facts dt {
+  font-weight: 700;
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+/* two boards and the radio between them: the words and the facts over the two boards */
+.radio-head {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: clamp(24px, 5vw, 64px);
+  align-items: start;
+}
+
+.radio-head .facts {
+  margin-top: 6px;
+}
+
+.pair {
+  margin: clamp(18px, 3vw, 30px) 0 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1fr);
+  align-items: center;
+  container-type: inline-size;
+}
+
+.pair .dev {
+  --mm: calc((100cqw - 96px) / 2 / 102.5);
+}
+
+.pair .air {
+  width: 96px;
+  height: auto;
+  margin-top: -36px;
+  color: var(--gold);
+}
+
+.pair figcaption {
+  grid-column: 1 / -1;
+  margin-top: 16px;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+
+/* the faces of STANDBY, one over the other */
+.faces {
+  display: grid;
+  gap: 20px;
+}
+
+.faces figure {
+  margin: 0;
+}
+
+.faces figcaption,
+.tool-shots figcaption {
+  margin-top: 9px;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+}
+
+/* the tools: a typeset index, and three screens */
+.tools {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: start;
+}
+
+.index {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 28px;
+}
+
+.index > div {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.index dt {
+  font-weight: 700;
+}
+
+.index dd {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+.tool-shots {
+  display: grid;
+  gap: 22px;
+}
+
+.tool-shots figure {
+  margin: 0;
+}
+
+/* signed and open: two columns of text */
+.cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(24px, 5vw, 64px);
+}
+
+.cols h3 {
+  margin-bottom: 10px;
+}
+
+.cols p {
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+
+/* the work that is not in the release yet: the dark of a screen */
+.next {
+  --ink: #eceef4;
+  --ink-2: #a9afbe;
+  --line: rgba(255, 255, 255, 0.14);
+  --link: #c4bfff;
+  --case-2: #262a35;
+  padding: clamp(56px, 8vw, 100px) 0;
+  background: var(--night);
+  color: var(--ink);
+  border-block: 1px solid var(--line);
+}
+
+.next .chapter-head h2 {
+  color: var(--ink);
+}
+
+.next-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(36px, 5vw, 56px) clamp(28px, 4vw, 48px);
+}
+
+.next-grid article h3 {
+  margin: 22px 0 8px;
+}
+
+.next-grid article p {
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 60ch;
+}
+
+.next-note {
+  margin: clamp(32px, 4vw, 44px) 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+/* the boards on one shelf, at the same scale (the sum of the case widths is 423 mm) */
+.shelf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px 20px;
+  padding: 8px 0 18px;
+  border-bottom: 2px solid var(--ink);
+  container-type: inline-size;
+}
+
+.shelf .dev {
+  --mm: calc((100cqw - 130px) / 423);
+}
+
+.shelf-note {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+/* one line for each board */
+.board-list {
+  margin-top: clamp(28px, 4vw, 44px);
+}
+
+.board-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.3fr) minmax(0, 2.4fr) minmax(0, 2.4fr) minmax(0, 3.2fr) minmax(0, 1.2fr);
+  gap: 6px 24px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 80px;
+}
+
+.board-row h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.board-row h3 span {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-b);
+  font-stretch: 100%;
+  font-weight: 400;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+}
+
+.board-row p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.board-row .b-note {
+  color: var(--ink-2);
+}
+
+.board-row .b-buy a {
+  display: inline-block;
+  margin-right: 10px;
+  font-weight: 700;
+}
+
+.board-row.later h3::after {
+  content: 'Install guide coming';
+  display: block;
+  margin-top: 6px;
+  width: max-content;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-family: var(--font-b);
+  font-stretch: 100%;
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+}
+
+/* the trailer: only after a click */
+.trailer {
+  width: min(1100px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  padding: 18px 20px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.trailer::backdrop {
+  background: rgba(6, 7, 12, 0.78);
+}
+
+.trailer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.trailer-head h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.trailer-x {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.trailer-screen {
+  aspect-ratio: 1280 / 344;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.trailer-screen video {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.trailer p {
+  margin: 12px 0 0;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+}
+
+@media (max-width: 1100px) {
+  .board-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .board-row h3 {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 980px) {
+  .hero-grid,
+  .split,
+  .tools,
+  .cols,
+  .radio-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .split-r > .chapter-head {
+    order: 0;
+  }
+
+  .games {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-art {
+    max-width: 680px;
+  }
+
+  .tool-shots {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .games,
+  .next-grid,
+  .index {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .board-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .facts dd {
+    margin-bottom: 8px;
+  }
+
+  /* the two boards go one over the other, the radio between them */
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .pair .dev {
+    --mm: calc(100cqw / 102.5);
+  }
+
+  .pair .air {
+    transform: rotate(90deg);
+    width: 44px;
+    margin: 6px 0;
+  }
+
+  .radio-head .facts {
+    margin-top: 0;
+  }
+
+  .shelf {
+    justify-content: center;
+    gap: 22px 16px;
+  }
+
+  .shelf .dev {
+    --mm: 1.45px;
+  }
+
+  .shelf .dev figcaption {
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass video {
+    transition: none;
+  }
+}

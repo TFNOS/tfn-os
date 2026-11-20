@@ -45,11 +45,11 @@ import tfn_pkg  # noqa: E402
 
 KINDS = ('lcd349', 'cores3', 'am18', 'watcher', 'tab5', 'am175')
 HEADER_LIBS = ('tfdraw', 'tficon', 'kscroll', 'jingle', 'quest_tilt', 't5view', 'sndrel', 'rndlay', 'tf3d', 'rndout',
-               'rndview', 'advhint')
+               'rndview', 'advhint', 'slowtap', 'tapui', 'hebcal', 'aatext', 'bidi')
 # the module libs: firmware modules (main/apps.json "modules"); their functions are ABI names, the package has only
 # their headers (an app includes "tfnet/tfnet.h" and calls the firmware), and the files of MODULE_SRC
 MODULE_LIBS = ('tfsfx', 'tfphys', 'tfnet', 'tfmqtt', 'zimread', 'zstd', 'rfpulse', 'rfdecode', 'irdecode', 'rfsrc',
-               'sdrdsp', 'strokefont', 'drumkit', 'midi_bg')
+               'sdrdsp', 'strokefont', 'drumkit', 'instr', 'midi_bg', 'tfncomp')
 # the parts of a module lib that the app compiles (the wiring sketch of I2C SCANNER and SERIAL MONITOR)
 MODULE_SRC = {'rfpulse': ('rfp_sketch.inc',)}
 # the source libs: an app includes their code (they are not firmware modules)

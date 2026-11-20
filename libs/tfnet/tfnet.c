@@ -468,7 +468,10 @@ static int read_head(tn_conn_t *c, tn_head_t *h, int timeout_ms, volatile bool *
         } else if (hstart(line, "content-length")) {
             int64_t L = 0;  // (no atoll in the ABI)
             while (*v >= '0' && *v <= '9') {
-                L = L * 10 + (*v++ - '0');
+                if (L < INT64_MAX / 10 - 1) {  // (more digits: a length that no body has; no overflow)
+                    L = L * 10 + (*v - '0');
+                }
+                v++;
             }
             h->length = L;
         } else if (hstart(line, "transfer-encoding")) {
@@ -880,7 +883,12 @@ static double num_at(const char *p, const char *e, const char **out)
             es = *p++ == '-' ? -1 : 1;
         }
         while (p < e && *p >= '0' && *p <= '9') {
-            ex = ex * 10 + (*p++ - '0');
+            // (a double has no exponent over 308: more digits change nothing. With no limit a long exponent overflowed
+            // the int, and the loop below ran up to 2^31 times: seconds of work for one number of a server)
+            if (ex < 1000) {
+                ex = ex * 10 + (*p - '0');
+            }
+            p++;
         }
         while (ex-- > 0) {
             v = es > 0 ? v * 10 : v / 10;
@@ -1035,7 +1043,10 @@ int tn_js_ints(tn_js_t a, int64_t *out, int max)
             }
             int64_t v = 0;
             while (p < e && *p >= '0' && *p <= '9') {
-                v = v * 10 + (*p++ - '0');
+                if (v < INT64_MAX / 10 - 1) {  // (more digits: no whole number of 64 bits; no overflow)
+                    v = v * 10 + (*p - '0');
+                }
+                p++;
             }
             while (p < e && *p != ',' && *p != ']') {
                 p++;  // (a fraction: dropped)

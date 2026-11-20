@@ -79,7 +79,7 @@ static const char PAGE_HEAD[] =
 #if CONFIG_TFN_EXTRA_STOCKS
         "<a href='/stocks'>Stocks</a>"
 #endif
-        "<a href='/apps'>Apps</a>"
+        "<a href='/apps'>Apps</a><a href='/companions'>Companions</a>"
 #if CONFIG_TFN_EXTRA_CHAT
         "<a href='/chat'>Chat</a>"
 #endif

@@ -95,9 +95,13 @@ static const con_cmd_t CON_CMDS[] = {
         {"touchraw", con_touchraw},
         {"touches", con_touches},
         {"quiet", con_quiet},
+        {"say", con_say},
+        {"listen", con_listen},
         {"snd", con_snd},
         {"tap", con_tap},
         {"ltap", con_tap},
+        {"ldown", con_tap},
+        {"lup", con_tap},
         {"clock", con_clock},
         {"standby", con_standby},
 #if CONFIG_TFN_EXTRA_OREF

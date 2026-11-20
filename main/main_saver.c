@@ -1,6 +1,7 @@
 // The screen saver of TFN OS: the dim and the off of the screen, the deep saver (the screen off), the wake, the
 // motion and the radio link that keep the screen on, the API of the screen (app.h).
 #include "main_priv.h"
+#include "tfn_listen.h"
 #include "tfn_web.h"
 #include "standby.h"
 
@@ -207,6 +208,14 @@ void mai_saver_update(int64_t t)
         mai_active_at = t;
         if (mai_saver != SAVER_ON) {
             mai_wake(t, "the app keeps the screen on");
+        }
+    }
+    // a turn of the ears (THE TALK KEY, a voice game): the screen stays on until its answer shows (a talk-key turn
+    // ends in the main loop of a screen that is on)
+    if (!mai_key_off && listen_awake()) {
+        mai_active_at = t;
+        if (mai_saver != SAVER_ON) {
+            mai_wake(t, "a talk");
         }
     }
     uint32_t timeout = SLEEP_SECONDS[g_settings.sleep] * 1000u;

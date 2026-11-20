@@ -1,0 +1,86 @@
+<style>
+.cc{max-width:900px;margin:0 auto;padding:0 12px 40px}
+.cc table{border-collapse:collapse;width:100%;margin:6px 0 14px}
+.cc td,.cc th{border-bottom:1px solid #2a3350;padding:5px 6px;text-align:left;font-size:14px;vertical-align:top}
+.cc th{color:#9aa4bd;font-weight:600}
+.cc .k{font-family:monospace;font-size:13px;color:#cfd6e6;word-break:break-all}
+.cc .bt{display:inline-block;margin:4px 8px 4px 0;padding:9px 14px;border-radius:8px;border:1px solid #3a4670;background:#22305a;color:#fff;cursor:pointer;font-size:15px}
+.cc .w{color:#f6b640}.cc .ok{color:#46d0ae}.cc .bad{color:#ec564c}
+.cc h3{margin:18px 0 4px}
+</style>
+<div class=cc>
+<h2>Companions</h2>
+<p>The TFN companions of this board and the keys of the app CONTROL. A backup keeps them safe: a learned remote can
+come back on this board or on a new one, also when the real remote is lost.</p>
+<div>
+<span class=bt onclick=backup()>DOWNLOAD A BACKUP</span>
+<label class=bt>RESTORE A BACKUP<input type=file accept=".json" style="display:none" onchange=restore(this.files[0])></label>
+</div>
+<p class=w>The backup has the pair keys of the companions: keep the file private.</p>
+<div id=st></div>
+<div id=out>Loading...</div>
+</div>
+<script>
+const IRN=["UNKNOWN","NEC","ONKYO","APPLE","SAMSUNG","SAMSUNG48","LG","SONY","RC5","RC6","PANASONIC","KASEIKYO","DENON KASEIKYO","SHARP KASEIKYO","JVC KASEIKYO","MITSUBISHI KASEIKYO","JVC","DENON","SHARP","BOSEWAVE","WHYNTER","PULSE DISTANCE","PULSE WIDTH"];
+const ROLE=["","IR RECEIVER","IR LED","315 RECEIVER","315 TRANSMITTER","433 RECEIVER","433 TRANSMITTER","RELAY","OUTPUT","BUTTON","MOTION","CONTACT","ANALOG"];
+const CHIP=["?","ESP32","ESP32-S3","ESP32-C3","ESP32-C6","ESP32-S2"];
+const RFK=["-","RCSWITCH","PWM","PPM","MANCHESTER","NRZ","RAW"];
+const ACT=["ON / OFF","ON","OFF","PRESS 0.5 s"];
+let F={};
+const $=i=>document.getElementById(i);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hex=(a)=>Array.from(a,b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+const mac=a=>Array.from(a,b=>b.toString(16).padStart(2,'0')).join(':').toUpperCase();
+function str(u,o,n){let s='';for(let i=0;i<n&&u[o+i];i++)s+=String.fromCharCode(u[o+i]);try{return decodeURIComponent(escape(s))}catch(e){return s}}
+async function get(f){const r=await fetch('/api/comp?f='+f);return r.ok?new Uint8Array(await r.arrayBuffer()):null}
+// the file of the companions (tc_master.c tcm_save): 'T' 'M' version n, n records of 136 bytes
+function comps(u){const o=[];if(!u||u.length<4||u[0]!=84||u[1]!=77)return o;const v=new DataView(u.buffer);
+ const rec=u[2]==1?48:136;for(let i=0;i<u[3]&&4+(i+1)*rec<=u.length;i++){const r=4+i*rec;
+ const c={mac:mac(u.slice(r,r+6)),name:str(u,r+6,17),chip:CHIP[u[r+39]]||'?',fw:rec>48&&u[r+48]?v.getUint16(r+50,true):'',mods:[]};
+ if(rec>48&&u[r+48]){const q=r+48,nw=u[q+55];for(let k=0;k<nw&&k<8;k++){const w=q+56+k*4;c.mods.push((ROLE[u[w+1]]||'?')+' GPIO '+u[w]+(u[w+2]&1?' (inverted)':''))}}
+ o.push(c)}return o}
+// the file of CONTROL (apps/control/rm_store.inc): version 1 or 2
+function remotes(u){const o=[];if(!u||u.length<5)return o;const v=new DataView(u.buffer);const mg=v.getUint32(0,true);
+ const v2=mg==0x524D3102;if(mg!=0x524D3101&&!v2)return o;let at=5;
+ for(let r=0;r<u[4];r++){const R={name:str(u,at,24),keys:[]};at+=24+6;const pin=u[at++];const nb=u[at++];R.ir=pin==255?'':'IR LED GPIO '+pin;
+  for(let k=0;k<nb;k++){const K={name:str(u,at,20)};at+=20;const kind=v2?u[at++]:0;
+   if(kind){const m=mac(u.slice(at,at+6)),p=u[at+6],a=u[at+7];at+=8;
+    if(kind==1)K.what='SWITCH '+ACT[a]+', GPIO '+p+' of '+m;
+    else if(kind==2)K.what='SENSOR, GPIO '+p+' of '+m;
+    else{const rk=u[at],pr=u[at+1],nbits=v.getUint16(at+2,true),bits=u.slice(at+4,at+4+Math.ceil(nbits/8)),ts=v.getUint16(at+20,true),gap=v.getUint32(at+24,true);at+=28;
+     const nraw=v.getUint16(at,true);at+=2;const raw=[];for(let i=0;i<nraw;i++)raw.push(rv(v.getUint16(at+i*2,true)));at+=nraw*2;
+     K.what='RF '+(a?'315':'433')+' MHz, '+RFK[rk]+(rk==1?' '+pr:'')+', '+nbits+' bits '+hex(bits)+', '+ts+' us, gap '+gap+' us (transmitter GPIO '+p+' of '+m+')';K.raw=raw}
+   }else{const proto=u[at],nbits=u[at+2]|u[at+3]<<8,addr=v.getUint32(at+4,true),cmd=v.getUint32(at+8,true);
+    const bits=u.slice(at+16,at+16+Math.ceil(nbits/8));at+=4+12+32+12+4;const khz=u[at++];const nraw=v.getUint16(at,true);at+=2;
+    const raw=[];for(let i=0;i<nraw;i++)raw.push(rv(v.getUint16(at+i*2,true)));at+=nraw*2;
+    K.what=nraw?'IR, an exact copy ('+nraw+' times), '+khz+' kHz':'IR '+(IRN[proto]||'?')+', address 0x'+addr.toString(16).toUpperCase()+', command 0x'+cmd.toString(16).toUpperCase()+', '+nbits+' bits '+hex(bits)+', '+khz+' kHz';
+    if(nraw)K.raw=raw}
+   R.keys.push(K)}
+  o.push(R)}return o}
+// a 16-bit level value: bit 15 = a mark (on), the time in us
+function rv(x){return x&0x8000?(x&0x7fff):-(x&0x7fff)}
+function show(){const C=comps(F.companions),R=remotes(F.remotes);let h='<h3>Companions ('+C.length+')</h3>';
+ if(!C.length)h+='<p>No companion is paired. The app COMPANIONS pairs one.</p>';
+ else{h+='<table><tr><th>Name</th><th>MAC</th><th>Chip</th><th>Firmware</th><th>Modules</th></tr>';
+  for(const c of C)h+='<tr><td>'+esc(c.name)+'</td><td class=k>'+c.mac+'</td><td>'+c.chip+'</td><td>'+c.fw+'</td><td>'+esc(c.mods.join(', '))+'</td></tr>';h+='</table>'}
+ h+='<h3>The remotes of CONTROL ('+R.length+')</h3>';
+ for(const r of R){h+='<b>'+esc(r.name)+'</b> <span class=w>'+esc(r.ir)+'</span><table><tr><th>Key</th><th>Code</th></tr>';
+  for(const k of r.keys)h+='<tr><td>'+esc(k.name)+'</td><td class=k>'+esc(k.what)+(k.raw?'<br>'+k.raw.join(' '):'')+'</td></tr>';h+='</table>'}
+ $('out').innerHTML=h}
+const b64=u=>{let s='';for(const b of u)s+=String.fromCharCode(b);return btoa(s)};
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+function backup(){const d={tfn_companion_backup:1,made:new Date().toISOString(),
+ readable:{companions:comps(F.companions),remotes:remotes(F.remotes)},
+ companions:F.companions?b64(F.companions):null,remotes:F.remotes?b64(F.remotes):null};
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,1)],{type:'application/json'}));
+ a.download='tfn_companions_'+new Date().toISOString().slice(0,10)+'.json';a.click()}
+async function put(f,u){const r=await fetch('/api/comp?f='+f,{method:'POST',body:u});const j=await r.json();return j}
+async function restore(file){if(!file)return;let d;try{d=JSON.parse(await file.text())}catch(e){$('st').innerHTML='<p class=bad>Not a backup file.</p>';return}
+ if(!d.tfn_companion_backup){$('st').innerHTML='<p class=bad>Not a backup of the companions.</p>';return}
+ const R=d.remotes?remotes(unb64(d.remotes)):[],C=d.companions?comps(unb64(d.companions)):[];
+ if(!confirm('Restore '+R.length+' remotes and '+C.length+' companions? The remotes and the companions of this board now are replaced.'))return;
+ let msg='';for(const f of ['remotes','companions'])if(d[f]){const j=await put(f,unb64(d[f]));msg+='<p class='+(j.ok?'ok':'bad')+'>'+f+': '+esc(j.msg)+'</p>'}
+ $('st').innerHTML=msg;load()}
+async function load(){F.companions=await get('companions');F.remotes=await get('remotes');show()}
+load();
+</script>

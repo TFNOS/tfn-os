@@ -27,6 +27,7 @@
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "midi_bg/midi_bg.h"
 #if __has_include("dc_music.h")
 #include "dc_music.h"
@@ -845,7 +846,7 @@ static void input(const input_event_t *ev)
 #endif
     input_main(ev);
 }
-static void input_main(const input_event_t *ev)
+static void input_main_ev(const input_event_t *ev)
 {
     if (!s_ok) {
         return;
@@ -897,6 +898,17 @@ static void input_main(const input_event_t *ev)
         break;
     default:
         break;
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title, the cards of the growth and the summary acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void input_main(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    input_main_ev(ev);
+    if (slow && (s_state == ST_TITLE || s_state == ST_CHOICE || s_state == ST_SUMMARY)) {
+        input_main_ev(&tap);
     }
 }
 static void update_main(int64_t now);

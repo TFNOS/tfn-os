@@ -166,7 +166,10 @@ def main(argv):
         if good:
             print("NOTE: %s takes from the build copy (git ignores it in this project): %s" % (build, ", ".join(good)))
         if os.path.exists(dep):
-            os.remove(dep)
+            try:
+                os.remove(dep)
+            except OSError:
+                pass  # (a file sync tool or a virus scanner can hold the file for a moment)
         if r.returncode:
             ok = False
             print((r.stdout + r.stderr)[-3000:])

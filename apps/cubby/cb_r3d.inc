@@ -49,6 +49,10 @@
 #endif
 #if CB_DY
 #define TLH 24  // (the Tab5: 360 rows = 15 tile rows; a triangle keeps its tile rows in 4 bits)
+#elif CB_WIDE
+#define TLH                                                                                                            \
+    32      // (the 3.49, round 3: 64 x 32 px; the big island has many triangles, each one costs a setup in each
+            // tile that it touches: 6 tile rows in place of 11)
 #else
 #define TLH 16
 #endif

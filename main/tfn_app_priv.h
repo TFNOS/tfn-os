@@ -91,8 +91,9 @@
 // a big PSRAM (the Tab5: 32 MB): the icon files and the decoded frames stay at an app load while the PSRAM has room,
 // and the prefetch task reads all icons at the start
 #define TFA_ICON_BIG (BOARD_PSRAM_MB >= 32)
-// the grid menu (BOARD_UI_GRID): a low task reads the icon files that the menu asks for (tfn_icon_ask)
-#define TFA_ICON_ASK (BOARD_UI_GRID && !TFA_ICON_BIG)
+// the menus (all boards but the Tab5): a low task reads the icon files that the menu asks for (tfn_icon_ask), so that a
+// scroll never waits for the card (on the 3.49 a read of an icon file took 50-190 ms in a frame of the menu)
+#define TFA_ICON_ASK (!TFA_ICON_BIG)
 // a task reads icon files: the flags of an icon that it reads now, the count of the rescans
 #define TFA_ICON_TASK (TFA_ICON_BIG || TFA_ICON_ASK)
 #define OWN_FILES     16
@@ -135,7 +136,9 @@ extern SemaphoreHandle_t tfa_lock;
 #define ICON_BUDGET    (12 * 1024 * 1024)  // (the Tab5: 32 MB PSRAM, about 23 MB free at the menu; 124 icons = ~9 MB)
 #define ICON_KEEP_FREE (6 * 1024 * 1024)   // the icons stay at an app load while more than this PSRAM is free
 #else
-#define ICON_BUDGET (1536 * 1024)
+// (8 MB PSRAM, about 6.5 MB free at the menu: the icons of a scroll of a long group and its read ahead stay; the load of
+// an app frees them all)
+#define ICON_BUDGET (3 * 1024 * 1024)
 #endif
 #define ICON_KEEP_MS 1500
 typedef struct {
@@ -225,6 +228,15 @@ uintptr_t tfa_resolve_sym(const char *name);
 void tfa_crash_key(const char *id, char key[16]);
 void tfa_fnv64(const char *s, uint32_t *lo, uint32_t *hi);
 void tfa_icon_files_free(void);
+void tfa_thumbs_free(void);
+void tfa_icons_lean_now(
+        void);  // (the voice starts with the screen off: the icon files and pictures go now)           // the still pictures of the icons go (tfn_icons.c)
+extern volatile bool tfa_icons_lean;  // the voice needs the PSRAM: the menu keeps few icon files (tfn_speech.c)
+void tfa_watch_lock(void);            // the lock of the watchers: no load, unload or check (tfn_watch.c)
+void tfa_watch_unlock(void);
 void tfa_mval(const char *txt, const char *key, char *out, int max);
 void tfa_seg_end_set(const uint8_t *file);
 void tfa_sha256_hex(const uint8_t *d, size_t n, char hex[65]);
+// the SHA-256 of a file, read in pieces (no block of the file size: an install also works while an app holds most of
+// the memory). false: no file, more than max bytes, or a read fault
+bool tfa_sha256_file(const char *path, size_t max, char hex[65]);

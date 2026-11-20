@@ -23,6 +23,7 @@
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "tfsfx/tfsfx.h"
 #include "tw_sfx.h"
 
@@ -2124,7 +2125,7 @@ static void input_main(const input_event_t *ev)
     }
     place_tap(x + s_vx, y + s_vy);
 }
-static void input(const input_event_t *ev)
+static void input_ev(const input_event_t *ev)
 {
     if (!s_pic) {
         return;
@@ -2136,6 +2137,18 @@ static void input(const input_event_t *ev)
     }
 #endif
     input_main(ev);
+}
+// a slow tap (a press of 350 - 900 ms) on each screen (the quest has no holds) acts as a tap (libs/slowtap), on the
+// round frame too
+static slowtap_t s_slowtap;
+static void input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    input_ev(ev);
+    if (slow) {
+        input_ev(&tap);
+    }
 }
 static void update_main(int64_t now);
 static void update(int64_t now)

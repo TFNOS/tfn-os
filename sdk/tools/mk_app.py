@@ -27,7 +27,9 @@
 # in its own folder, with the SDK package only).
 import argparse
 import json
+import filecmp
 import os
+import shutil
 import re
 import shlex
 import struct
@@ -57,13 +59,14 @@ def firmware_build(kind):
 ICON_KIND = {'tab5': 'cores3', 'am175': 'watcher'}     # (the AMOLED-1.75C draws the frames of the Watcher)
 
 
-def app_of(name):
+def app_of(name, kinds=None):
     j = json.load(open(os.path.join(ROOT, 'main', 'apps.json'), encoding='utf-8'))
     by = {a['name']: a for a in j['apps']}
     a = by.get(name) or next((x for x in j['apps'] if x['sym'] in (name, 'app_' + name.lower())), None)
     if not a:
         die('no app %s in main/apps.json' % name)
-    if a.get('core'):
+    # (a core app is in the firmware; "store_on" names the slim kinds where it is an app file)
+    if a.get('core') and not (kinds and set(kinds) <= set(a.get('store_on', []))):
         die('%s is a core app (%s): it stays in the firmware' % (a['name'], a.get('why_core', '')))
     # an app whose app_t is in the object of another app ("with": SUNSET in CRUISE): its own package from the sources
     # of that app (for example SUNSET as an app file of the slim firmware). The entry gives its app_t; the code of the
@@ -86,6 +89,19 @@ def store_desc(pid, folder, args):
         d = json.load(open(p, encoding='utf-8')).get(pid, {})
     en, he = args.desc or d.get('en', ''), args.desc_he or d.get('he', '')
     return tfn_pkg.desc_check(pid, en, he)
+
+
+# a source of main/ (a core app that is an app file on some kinds) compiles from its copy in
+# build_dev/work/main: the options of the DEV build find the headers there (the copy in main/ found main/tfn/ first:
+# two copies of one header, "conflicting types")
+def work_src(p):
+    w = os.path.join(ROOT, 'build_dev', 'work', 'main')
+    if os.path.dirname(os.path.abspath(p)) != os.path.join(ROOT, 'main') or not os.path.isdir(w):
+        return p
+    c = os.path.join(w, os.path.basename(p))
+    if not os.path.exists(c) or not filecmp.cmp(p, c, shallow=False):
+        shutil.copy2(p, c)
+    return c
 
 
 def src_path(s):
@@ -120,11 +136,13 @@ def flags_of(kind, src0):
             continue
         out.append(x)
     # (libs/ and third_party/ themselves: an app includes a lib in the SDK form "tfdraw/tfdraw.h"; a build made before
-    # main/CMakeLists.txt had them does not give them)
-    for top in ('libs', 'third_party'):
+    # main/CMakeLists.txt had them does not give them). They go FIRST: the options of the DEV build name the copies in
+    # build_dev/work, which are as old as the last DEV build (VOICE 1.0.137 took an old tinyvoca file from there).
+    for top in ('third_party', 'libs'):
         libs = '-I' + os.path.join(ROOT, top).replace('\\', '/')
-        if libs not in out:
-            out.append(libs)
+        if libs in out:
+            out.remove(libs)
+        out.insert(0, libs)
     return args[0], out + ['-fPIC', '-fvisibility=hidden', '-Wno-error', '@' + all_includes(kind, cc, out)], e['directory']
 
 
@@ -251,7 +269,7 @@ def build_elf(kind, a, srcs, out, entry='app_main', define='APP_SYM', sym=None, 
         _, fl, _ = flags_of(kind, s)
         o = os.path.join(out, os.path.splitext(os.path.basename(s))[0] + '.o')
         cc = gcc if s.endswith('.c') else pre + 'g++'
-        run([cc] + fl + ['-c', src_path(s), '-o', o], cwd)
+        run([cc] + fl + ['-c', work_src(src_path(s)), '-o', o], cwd)
         objs.append(o)
     eo = os.path.join(out, '_entry.o')
     run([gcc] + flags + ['-D%s=%s' % (define, sym or a['sym']), '-I', os.path.join(ROOT, 'main'), '-c',
@@ -379,7 +397,7 @@ def main():
             a['watch'] = {'srcs': [os.path.abspath(args.watch)], 'sym': args.watch_sym or 'watch_' + args.sym[4:],
                           'every': args.watch_every}
     else:
-        a, srcs = app_of(args.app)
+        a, srcs = app_of(args.app, args.kinds.split(',') if args.kinds else None)
     pid = a['sym'][4:]
     folder = os.path.dirname(src_path(srcs[0]))
     desc_en, desc_he = store_desc(pid, folder, args)

@@ -17,7 +17,11 @@
 //      back (when it is wrong: the old table goes back); a restart;
 //   4. with the slim table: it erases the new /data, formats it, unpacks the archive and checks each file.
 // Only step 3 has a short unsafe time: the erase and the write of one 4 KB sector (about 50 ms). A power cut exactly then
-// needs USB. NVS (settings store): lay_st (0 nothing, 1 packed, 2 the table is written), lay_len, lay_crc (the archive),
+// needs USB.
+// THE WIDE LAYOUT (partitions_wide.csv; the CoreS3): a slim board with a firmware for the wide table
+// changes the same way (the plan PLAN_WIDE): ota_0 0x10000 4.5 MB, ota_1 0x490000 4.5 MB, otadata 0x910000, /data
+// 0x920000 6.875 MB. The archive is at 0x390000 again (the slim ota_1, under the old otadata: 3.5 MB at most). The new
+// otadata is in the old /data: step 3 does not erase it (a failed table write keeps the old /data whole); step 4 does. NVS (settings store): lay_st (0 nothing, 1 packed, 2 the table is written), lay_len, lay_crc (the archive),
 // lay_test (a test stop at one step, one time).
 
 #include <string.h>
@@ -61,8 +65,23 @@ static const char *TAG = "layout";
 #define BUF          4096
 #define ARC_MAGIC    "TFNARC01"
 #define ARC_END      "TFNEND01"
-// (a firmware built for the slim table changes a board; a firmware for the old table never does)
-#define WANT_SLIM (strcmp(CONFIG_PARTITION_TABLE_CUSTOM_FILENAME, "partitions_slim.csv") == 0)
+// the table of this firmware: a firmware for the slim table changes an old board, a firmware for the wide table changes a
+// slim board; a firmware for the old table never changes a board
+#define WANT_SLIM    (strcmp(CONFIG_PARTITION_TABLE_CUSTOM_FILENAME, "partitions_slim.csv") == 0)
+#define WANT_WIDE    (strcmp(CONFIG_PARTITION_TABLE_CUSTOM_FILENAME, "partitions_wide.csv") == 0)
+#define WIDE_OTADATA 0x910000
+
+// one change: the new table, its otadata, the room of the archive, the otadata inside the old /data (erase in step 4)
+typedef struct {
+    const char *name;
+    const uint8_t *table;
+    uint32_t otadata;
+    uint32_t arc_cap;
+    bool late_otadata;
+} plan_t;
+static const plan_t PLAN_SLIM = {"slim", LAYOUT_SLIM_TABLE, SLIM_OTADATA, ARC_CAP, false};
+static const plan_t PLAN_WIDE = {"wide", LAYOUT_WIDE_TABLE, WIDE_OTADATA, SLIM_OTADATA - ARC_ADDR, true};
+static const plan_t *s_plan = &PLAN_SLIM;
 
 typedef struct {
     char magic[8];
@@ -142,8 +161,17 @@ int layout_now(void)
         od->address == SLIM_OTADATA && sg->address == 0x720000 && sg->size == 0x8E0000) {
         return LAYOUT_SLIM;
     }
+    if (o0->address == 0x10000 && o0->size == 0x480000 && o1->address == 0x490000 && o1->size == 0x480000 &&
+        od->address == WIDE_OTADATA && sg->address == 0x920000 && sg->size == 0x6E0000) {
+        return LAYOUT_WIDE;
+    }
     return LAYOUT_OTHER;
 }
+static const char *layout_name(int k)
+{
+    return k == LAYOUT_OLD ? "old" : k == LAYOUT_SLIM ? "slim" : k == LAYOUT_WIDE ? "wide" : "other";
+}
+
 static bool app_valid(void)
 {
     esp_ota_img_states_t st;
@@ -502,7 +530,7 @@ static bool arc_read(uint32_t len, uint32_t crc_all, bool unpack, const char *T)
 static uint32_t arc_cap(void)
 {
     uint32_t c = store_get("lay_cap", 0);  // (a test: a smaller room; the console "lay cap <bytes>")
-    return c && c < ARC_CAP ? c : ARC_CAP;
+    return c && c < s_plan->arc_cap ? c : s_plan->arc_cap;
 }
 
 static uint32_t stage(uint32_t *crc_out)
@@ -663,10 +691,11 @@ static void write_table(uint32_t len, uint32_t crc)
         return;
     }
     memset(nw, 0xFF, TABLE_LEN);
-    memcpy(nw, LAYOUT_SLIM_TABLE, LAYOUT_TABLE_USED);
+    memcpy(nw, s_plan->table, LAYOUT_TABLE_USED);
     screen(T, "THE NEW LAYOUT IS WRITTEN", 10);
+    // (the wide otadata is in the old /data: step 4 erases it)
     if (esp_flash_read(NULL, old, TABLE_ADDR, TABLE_LEN) != ESP_OK ||
-        esp_flash_erase_region(NULL, SLIM_OTADATA, 0x2000) != ESP_OK) {
+        (!s_plan->late_otadata && esp_flash_erase_region(NULL, s_plan->otadata, 0x2000) != ESP_OK)) {
         ESP_LOGE(TAG, "step 3: the flash did not answer: no change");
         goto out;
     }
@@ -674,7 +703,7 @@ static void write_table(uint32_t len, uint32_t crc)
     store_set("lay_crc", crc);
     store_set("lay_st", 2);
     test_stop(3);
-    ESP_LOGW(TAG, "step 3: the slim table goes to 0x8000 (about 50 ms)");
+    ESP_LOGW(TAG, "step 3: the %s table goes to 0x8000 (about 50 ms)", s_plan->name);
     bool good = false;
     for (int t = 0; t < 2 && !good; t++) {
         if (esp_flash_erase_region(NULL, TABLE_ADDR, 0x1000) == ESP_OK &&
@@ -690,7 +719,7 @@ static void write_table(uint32_t len, uint32_t crc)
         store_set("lay_st", 0);
         goto out;
     }
-    ESP_LOGW(TAG, "step 3 done: a restart with the slim table");
+    ESP_LOGW(TAG, "step 3 done: a restart with the %s table", s_plan->name);
     screen(T, "A RESTART", 100);
     esp_restart();
 out:
@@ -707,6 +736,10 @@ static void finish(void)
     const esp_partition_t *sg = part(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "storage");
     ESP_LOGW(TAG, "step 4: the archive (%lu bytes) goes into the new /data", (unsigned long)len);
     screen(T, "THE ARCHIVE IS CHECKED", 0);
+    if (s_plan->late_otadata) {
+        // (the otadata of the new table was a part of the old /data: blank = the bootloader starts ota_0, this one)
+        esp_flash_erase_region(NULL, s_plan->otadata, 0x2000);
+    }
     bool arc = arc_read(len, crc, false, T);
     if (!arc) {
         ESP_LOGE(TAG, "step 4: THE ARCHIVE IS DAMAGED: /data starts empty");
@@ -731,7 +764,7 @@ static void finish(void)
     store_set("lay_st", 0);
     store_set("lay_cap", 0);
     s_state = "done";
-    ESP_LOGW(TAG, "step 4 done: the slim layout, /data %u KB free", (unsigned)(storage_free() / 1024));
+    ESP_LOGW(TAG, "step 4 done: the %s layout, /data %u KB free", s_plan->name, (unsigned)(storage_free() / 1024));
 }
 
 // ---------------------------------------------------------------- the API
@@ -744,21 +777,19 @@ void layout_boot(void)
     }
     int k = layout_now();
     uint32_t st = store_get("lay_st", 0);
-    ESP_LOGI(TAG, "the layout: %s, the firmware is for the %s table, step %lu",
-             k == LAYOUT_OLD    ? "old"
-             : k == LAYOUT_SLIM ? "slim"
-                                : "other",
-             WANT_SLIM ? "slim" : "old", (unsigned long)st);
-    if (k == LAYOUT_OLD && !WANT_SLIM) {
-        return;
-    }
-    if (k == LAYOUT_SLIM && st != 2) {
+    const int want = WANT_WIDE ? LAYOUT_WIDE : WANT_SLIM ? LAYOUT_SLIM : LAYOUT_OLD;
+    s_plan = want == LAYOUT_WIDE ? &PLAN_WIDE : &PLAN_SLIM;
+    ESP_LOGI(TAG, "the layout: %s, the firmware is for the %s table, step %lu", layout_name(k), layout_name(want),
+             (unsigned long)st);
+    // a change: old -> slim, or slim -> wide (the board on the table of the firmware: step 4, or nothing)
+    const bool change = (k == LAYOUT_OLD && want == LAYOUT_SLIM) || (k == LAYOUT_SLIM && want == LAYOUT_WIDE);
+    if (k == want && st != 2) {
         if (st) {
             store_set("lay_st", 0);
         }
         return;
     }
-    if (k == LAYOUT_OTHER) {
+    if (k != want && !change) {
         return;
     }
     s_buf = heap_caps_malloc(BUF, MALLOC_CAP_DEFAULT);
@@ -766,11 +797,11 @@ void layout_boot(void)
     if (!s_buf || !s_wbuf) {
         goto out;
     }
-    if (k == LAYOUT_SLIM) {
+    if (k == want) {
         finish();
         goto out;
     }
-    // the old layout and a slim firmware: not at the first start after an OTA (it must mark itself good first)
+    // the change: not at the first start after an OTA (the firmware must mark itself good first)
     if (!app_valid()) {
         s_wait = true;
         goto out;
@@ -899,7 +930,7 @@ void layout_tick(int64_t now)
         s_state = "battery";
         return;
     }
-    if (storage_used() - dir_bytes(STORAGE_ROOT "/apps", 0) + 256 * 1024 > ARC_CAP) {
+    if (storage_used() - dir_bytes(STORAGE_ROOT "/apps", 0) + 256 * 1024 > s_plan->arc_cap) {
         s_state = "noroom";
         s_wait = false;
         ESP_LOGW(TAG, "/data has too many files for the archive: no change");
@@ -937,10 +968,10 @@ void layout_console(const char *args)
         return;
     }
     int k = layout_now();
-    printf("LAY layout=%s fw=%s st=%lu state=%s used=%lu cap=%u test=%lu\n",
-           k == LAYOUT_OLD    ? "old"
-           : k == LAYOUT_SLIM ? "slim"
-                              : "other",
-           WANT_SLIM ? "slim" : "old", (unsigned long)store_get("lay_st", 0), *layout_state() ? layout_state() : "-",
-           (unsigned long)storage_used(), ARC_CAP, (unsigned long)store_get("lay_test", 0));
+    printf("LAY layout=%s fw=%s st=%lu state=%s used=%lu cap=%lu test=%lu\n", layout_name(k),
+           WANT_WIDE   ? "wide"
+           : WANT_SLIM ? "slim"
+                       : "old",
+           (unsigned long)store_get("lay_st", 0), *layout_state() ? layout_state() : "-", (unsigned long)storage_used(),
+           (unsigned long)s_plan->arc_cap, (unsigned long)store_get("lay_test", 0));
 }

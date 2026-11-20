@@ -126,11 +126,16 @@ static void icon_file_free(int k)
     tfa_icon[k] = NULL;
 }
 
-// free the icon files that were not used for the longest time, until the files keep ICON_BUDGET at most (not keep)
+volatile bool tfa_icons_lean;
+
+// free the icon files that were not used for the longest time, until the files keep ICON_BUDGET at most (not keep);
+// while the voice is made (tfa_icons_lean) 512 KB at most. The Tab5 (TFA_ICON_BIG: 32 MB of PSRAM) keeps its budget:
+// the voice has enough PSRAM there, and a menu with trimmed icons reads them again (slow frames)
 static void icon_files_trim(int keep)
 {
     const uint32_t now = (uint32_t)(esp_timer_get_time() / 1000);
-    while (tfa_icon_bytes > ICON_BUDGET) {
+    const size_t budget = tfa_icons_lean && !TFA_ICON_BIG ? 512 * 1024 : ICON_BUDGET;
+    while (tfa_icon_bytes > budget) {
         int old = -1;
         for (int k = 0; k < TFN_MAX; k++) {
             if (tfa_icon[k] && k != keep && now - tfa_icon_used[k] > ICON_KEEP_MS &&
@@ -152,6 +157,7 @@ void tfa_icon_files_free(void)
         icon_file_free(k);
     }
     tfa_icon_bytes = 0;
+    tfa_thumbs_free();  // (the still pictures too: they come back from their file at the next menu)
 }
 
 void tfn_icon_cache_free(void)
@@ -222,10 +228,329 @@ void tfn_icon_plain(const char *name, int x, int y, int s)
 }
 
 #if TFA_ICON_ASK
-// THE ASK READER (the grid menu): the menu asks for the icon files that are not in memory; a low task reads them one at
-// a time (outside the lock, as the prefetch task of the Tab5), so that a frame of the menu never waits for the card.
-// The task ends after 3 s with no work (its 4 KB of internal RAM go back to the app that opens); the next ask starts it
-// again.
+// THE STILL PICTURES: a small picture (TH x TH, the first frame of the icon) of each installed app. The menu draws it
+// while the icon file is not in memory yet (a fast scroll, the first frames after an app), in place of a plain tile.
+// The reader task makes them (also for the icons that the menu did not show yet, while the menu is open), and keeps
+// them in a file on the card (THUMB_FILE: the next start and the return from an app read one file). The key of a
+// picture is the app id + the start of the SHA-256 of its app.elf (a new version makes a new picture). About 8 KB
+// each; they go at the load of an app (with the icon files) and come back from the file.
+#define TH          64
+#define THUMB_CLEAR 0x2108u  // (a pixel with no colour; a real pixel of this value moves by one bit)
+#define THUMB_FILE  "/sdcard/.tfn_thumbs.bin"
+#define THUMB_KEY   16
+static uint16_t *s_thumb[TFN_MAX];
+static bool s_thumb_no[TFN_MAX];      // no picture is possible (the icon is bad)
+static bool s_thumbs_loaded;          // the file was read for this list (or there is no card)
+static bool s_thumbs_dirty;           // a new picture since the last save
+static volatile int64_t s_menu_seen;  // ms: the last frame of a menu that asks for icons
+static uint32_t s_thumb_gen;          // + 1 at each free of the pictures (a load or a make for an old list goes)
+static bool s_thumbs_left = true;     // some entries may still have no picture
+
+void tfa_thumbs_free(void)
+{
+    LOCK();
+    s_thumb_gen++;
+    for (int k = 0; k < TFN_MAX; k++) {
+        heap_caps_free(s_thumb[k]);
+        s_thumb[k] = NULL;
+        s_thumb_no[k] = false;
+    }
+    s_thumbs_loaded = false;
+    s_thumbs_dirty = false;
+    s_thumbs_left = true;
+    s_menu_seen = 0;  // (an app loads: the pictures come back only when a menu asks for icons again)
+    UNLOCK();
+}
+
+static inline void px_rgb(uint16_t v, int *r, int *g, int *b)
+{
+    const uint16_t c = (uint16_t)((v >> 8) | (v << 8));
+    *r = (c >> 11) & 31;
+    *g = (c >> 5) & 63;
+    *b = c & 31;
+}
+
+// the still picture of an icon file (its first frame, a box mean to TH x TH); NULL: no memory or a bad file
+static uint16_t *thumb_make(const uint8_t *b, size_t blen)
+{
+    if (!tfn_icon_ok(b, blen)) {
+        return NULL;
+    }
+    const int size = rd16(b + 4), colors = rd16(b + 10);
+    const uint16_t *pal = (const uint16_t *)(b + 12);
+    const size_t off = 12 + (size_t)colors * 2;
+    if (off + 4 > blen) {
+        return NULL;
+    }
+    const uint32_t len = rd32(b + off);
+    if (len > blen - off - 4) {
+        return NULL;
+    }
+    uint8_t *idx = heap_caps_malloc((size_t)size * size, MALLOC_CAP_SPIRAM);
+    uint16_t *t = heap_caps_malloc(TH * TH * 2, MALLOC_CAP_SPIRAM);
+    if (!idx || !t) {
+        heap_caps_free(idx);
+        heap_caps_free(t);
+        return NULL;
+    }
+    const uint8_t *p = b + off + 4, *q = p + len;
+    int n = 0;
+    const int total = size * size;
+    while (p < q && n < total) {
+        const int c = *p++;
+        if (c < 128) {
+            for (int i = 0; i <= c && p < q && n < total; i++) {
+                idx[n++] = *p++;
+            }
+        } else if (p < q) {
+            int r = 257 - c;
+            const uint8_t v = *p++;
+            while (r-- > 0 && n < total) {
+                idx[n++] = v;
+            }
+        }
+    }
+    if (n < total) {
+        memset(idx + n, 0, (size_t)(total - n));
+    }
+    for (int ty = 0; ty < TH; ty++) {
+        const int y0 = ty * size / TH, y1 = (ty + 1) * size / TH > y0 ? (ty + 1) * size / TH : y0 + 1;
+        for (int tx = 0; tx < TH; tx++) {
+            const int x0 = tx * size / TH, x1 = (tx + 1) * size / TH > x0 ? (tx + 1) * size / TH : x0 + 1;
+            int sr = 0, sg = 0, sb = 0, on = 0, all = 0;
+            for (int y = y0; y < y1; y++) {
+                for (int x = x0; x < x1; x++) {
+                    const uint8_t v = idx[y * size + x];
+                    all++;
+                    if (v && v <= colors) {
+                        int r, g, bb;
+                        px_rgb(pal[v - 1], &r, &g, &bb);
+                        sr += r;
+                        sg += g;
+                        sb += bb;
+                        on++;
+                    }
+                }
+            }
+            uint16_t out = THUMB_CLEAR;
+            if (on && on * 2 >= all) {
+                const uint16_t c = (uint16_t)(((sr / on) << 11) | ((sg / on) << 5) | (sb / on));
+                out = (uint16_t)((c >> 8) | (c << 8));
+                if (out == THUMB_CLEAR) {
+                    out ^= 0x0100;  // (the lowest bit of the blue)
+                }
+            }
+            t[ty * TH + tx] = out;
+        }
+    }
+    heap_caps_free(idx);
+    return t;
+}
+
+// the still picture of entry k at x, y, size s (clipped); false: none
+static bool thumb_draw(int k, int x, int y, int s)
+{
+    const uint16_t *t = s_thumb[k];
+    if (!t || s <= 0) {
+        return false;
+    }
+    const int x0 = x < 0 ? -x : 0, y0 = y < 0 ? -y : 0;
+    int x1 = x + s > gfx_w ? gfx_w - x : s;
+    const int y1 = y + s > gfx_h ? gfx_h - y : s;
+    static uint8_t xm[512];
+    if (x1 > 512) {
+        x1 = 512;
+    }
+    for (int dx = x0; dx < x1; dx++) {
+        xm[dx] = (uint8_t)(dx * TH / s);
+    }
+    for (int dy = y0; dy < y1; dy++) {
+        const uint16_t *row = t + (dy * TH / s) * TH;
+        uint16_t *dst = g_fb + (y + dy) * gfx_w + x;
+        for (int dx = x0; dx < x1; dx++) {
+            const uint16_t v = row[xm[dx]];
+            if (v != THUMB_CLEAR) {
+                dst[dx] = v;
+            }
+        }
+    }
+    return true;
+}
+
+// put the picture t of entry k in its place (the lock); false: an old list, or one is there (the caller frees t)
+static bool thumb_put(int k, uint16_t *t, uint32_t gen, bool dirty)
+{
+    bool ok = false;
+    LOCK();
+    if (gen == s_thumb_gen && k >= 0 && k < tfa_n && !s_thumb[k]) {
+        s_thumb[k] = t;
+        s_thumbs_dirty |= dirty;
+        ok = true;
+    }
+    UNLOCK();
+    return ok;
+}
+
+// the pictures of the file (THUMB_FILE: "TFT1", the count, TH; then for each: the id (24), the key (16), TH x TH pixels)
+static void thumbs_load(void)
+{
+    const uint32_t gen = s_thumb_gen;
+    s_thumbs_loaded = true;
+    if (!board_sd_mounted()) {
+        return;
+    }
+    FILE *f = fopen(THUMB_FILE, "rb");
+    if (!f) {
+        return;
+    }
+    uint32_t h[3];
+    if (fread(h, 4, 3, f) != 3 || memcmp(h, "TFT1", 4) || h[2] != TH || h[1] > 1024) {
+        fclose(f);
+        return;
+    }
+    int got = 0;
+    for (uint32_t i = 0; i < h[1]; i++) {
+        char id[24], key[THUMB_KEY];
+        if (fread(id, 1, 24, f) != 24 || fread(key, 1, THUMB_KEY, f) != THUMB_KEY) {
+            break;
+        }
+        id[23] = 0;
+        int k = -1;
+        LOCK();
+        for (int j = 0; j < tfa_n && gen == s_thumb_gen; j++) {
+            if (!s_thumb[j] && !strcmp(tfa_e[j].id, id) && !strncmp(tfa_e[j].elf_sha, key, THUMB_KEY)) {
+                k = j;
+                break;
+            }
+        }
+        UNLOCK();
+        uint16_t *t = k >= 0 ? heap_caps_malloc(TH * TH * 2, MALLOC_CAP_SPIRAM) : NULL;
+        if (!t) {
+            if (fseek(f, TH * TH * 2, SEEK_CUR)) {
+                break;
+            }
+            continue;
+        }
+        if (fread(t, 2, TH * TH, f) != TH * TH || !thumb_put(k, t, gen, false)) {
+            heap_caps_free(t);
+            continue;
+        }
+        got++;
+    }
+    fclose(f);
+    ESP_LOGI(TAG, "%d still icon pictures from the card", got);
+}
+
+// the pictures in the file (a new file, then a rename: a stop in the write keeps the old file)
+static void thumbs_save(void)
+{
+    s_thumbs_dirty = false;
+    if (!board_sd_mounted()) {
+        return;
+    }
+    const uint32_t gen = s_thumb_gen;
+    uint16_t *buf = heap_caps_malloc(TH * TH * 2, MALLOC_CAP_SPIRAM);
+    FILE *f = buf ? fopen(THUMB_FILE ".new", "wb") : NULL;
+    if (!f) {
+        heap_caps_free(buf);
+        return;
+    }
+    uint32_t h[3] = {0, 0, TH};
+    memcpy(h, "TFT1", 4);
+    bool ok = fwrite(h, 4, 3, f) == 3;
+    for (int k = 0; k < TFN_MAX && ok; k++) {
+        char id[24] = {0}, key[THUMB_KEY] = {0};
+        bool have = false;
+        LOCK();
+        if (gen == s_thumb_gen && k < tfa_n && s_thumb[k]) {
+            memcpy(buf, s_thumb[k], TH * TH * 2);
+            memcpy(id, tfa_e[k].id, sizeof id);  // (both 24 bytes, the id ends with a 0)
+            id[23] = 0;
+            memcpy(key, tfa_e[k].elf_sha, THUMB_KEY);
+            have = true;
+        }
+        UNLOCK();
+        if (have) {
+            ok = fwrite(id, 1, 24, f) == 24 && fwrite(key, 1, THUMB_KEY, f) == THUMB_KEY &&
+                 fwrite(buf, 2, TH * TH, f) == TH * TH;
+            h[1]++;
+        }
+    }
+    ok = ok && !fseek(f, 0, SEEK_SET) && fwrite(h, 4, 3, f) == 3;
+    ok = !fclose(f) && ok;
+    heap_caps_free(buf);
+    if (ok && gen == s_thumb_gen) {
+        unlink(THUMB_FILE);
+        ok = !rename(THUMB_FILE ".new", THUMB_FILE);
+    } else {
+        ok = false;
+    }
+    if (!ok) {
+        unlink(THUMB_FILE ".new");
+        return;
+    }
+    ESP_LOGI(TAG, "%u still icon pictures saved", (unsigned)h[1]);
+}
+
+// a menu asked for icons in the last 2 s (else an app runs: the PSRAM is its own)
+static bool menu_now(void)
+{
+    return esp_timer_get_time() / 1000 - s_menu_seen <= 2000;
+}
+
+// one picture that is missing (while a menu is open): true = work was done
+static bool thumb_step(void)
+{
+    if (!menu_now() || tfa_icons_lean) {
+        return false;  // (no menu: an app runs; its card reads come first)
+    }
+    const uint32_t gen = s_thumb_gen;
+    char path[64];
+    int k = -1;
+    uint16_t *t = NULL;
+    LOCK();
+    for (int j = 0; j < tfa_n; j++) {
+        if (!s_thumb[j] && !s_thumb_no[j] && !tfa_icon_bad[j] && !tfa_icon_busy[j]) {
+            k = j;
+            break;
+        }
+    }
+    if (k >= 0 && tfa_icon[k]) {
+        t = thumb_make(tfa_icon[k], tfa_icon_len[k]);  // (the file is in memory: no read; a few ms in the lock)
+        s_thumb_no[k] = !t;
+    } else if (k >= 0) {
+        snprintf(path, sizeof path, "%s/icon.bin", tfa_e[k].dir);
+    }
+    if (k < 0) {
+        s_thumbs_left = false;
+    }
+    UNLOCK();
+    if (k < 0) {
+        return false;
+    }
+    if (!t && !s_thumb_no[k]) {
+        uint8_t *b = NULL;
+        size_t len = 0;
+        if (tfa_read_all(path, &b, &len, 2 << 20)) {
+            t = thumb_make(b, len);
+        }
+        free(b);
+        LOCK();
+        if (gen == s_thumb_gen && k < tfa_n && !t) {
+            s_thumb_no[k] = true;
+        }
+        UNLOCK();
+    }
+    if (t && !thumb_put(k, t, gen, true)) {
+        heap_caps_free(t);
+    }
+    return true;
+}
+
+// THE ASK READER (the menus): the menu asks for the icon files that are not in memory; a low task reads them one at a
+// time (outside the lock, as the prefetch task of the Tab5), so that a frame of the menu never waits for the card.
+// With no ask, it makes the missing still pictures and saves them. The task ends after 3 s with no work (its 4 KB of
+// internal RAM go back to the app that opens); the next ask starts it again.
 #define ASK_Q 16
 static bool s_ask_on, s_missed, s_ask_task;
 static QueueHandle_t s_ask_q;
@@ -236,9 +561,28 @@ typedef struct {
 static void icon_ask_task(void *arg)
 {
     (void)arg;
+    int idle = 0;
     for (;;) {
+        // (while the voice is made, tfa_icons_lean, the still pictures stay out: 1.1 MB of PSRAM for its model)
+        // (only for a menu: after an app load the task can run 3 s more, and the 144 pictures, 1.1 MB in 8 KB
+        // pieces, stayed in the PSRAM of the app)
+        if (!s_thumbs_loaded && !tfa_icons_lean && menu_now()) {
+            thumbs_load();  // (first: the menu shows the pictures at once)
+        }
         ask_t a;
-        if (xQueueReceive(s_ask_q, &a, pdMS_TO_TICKS(3000)) != pdTRUE) {
+        if (xQueueReceive(s_ask_q, &a, pdMS_TO_TICKS(100)) != pdTRUE) {
+            if (!tfa_icons_lean && thumb_step()) {
+                idle = 0;
+                vTaskDelay(pdMS_TO_TICKS(150));  // (a calm pace: on the CoreS3 the card and the LCD share one bus)
+                continue;
+            }
+            if (s_thumbs_dirty) {
+                thumbs_save();
+                continue;
+            }
+            if (++idle < 30) {
+                continue;  // (3 s)
+            }
             LOCK();
             const bool end = uxQueueMessagesWaiting(s_ask_q) == 0;
             if (end) {
@@ -250,6 +594,10 @@ static void icon_ask_task(void *arg)
             }
             continue;
         }
+        idle = 0;
+        if (a.k < 0) {
+            continue;  // (only a start of the task)
+        }
         char path[64];
         LOCK();
         const bool want = a.gen == tfa_icon_gen && a.k < tfa_n && !tfa_icon[a.k] && !tfa_icon_bad[a.k];
@@ -258,6 +606,8 @@ static void icon_ask_task(void *arg)
         } else {
             tfa_icon_busy[a.k] = false;
         }
+        const uint32_t tgen = s_thumb_gen;
+        const bool need_thumb = want && !s_thumb[a.k];
         UNLOCK();
         if (!want) {
             continue;
@@ -265,6 +615,10 @@ static void icon_ask_task(void *arg)
         uint8_t *b = NULL;
         size_t len = 0;
         const bool ok = tfa_read_all(path, &b, &len, 2 << 20) && tfn_icon_ok(b, len);
+        uint16_t *t = ok && need_thumb ? thumb_make(b, len) : NULL;
+        if (t && !thumb_put(a.k, t, tgen, true)) {
+            heap_caps_free(t);
+        }
         LOCK();
         if (a.gen == tfa_icon_gen && !tfa_icon[a.k]) {
             if (ok) {
@@ -282,29 +636,50 @@ static void icon_ask_task(void *arg)
         free(b);
     }
 }
+static bool icon_ask(int k, bool draw);
 void tfn_icon_ask(bool on)
 {
     s_ask_on = on;
+    if (on) {
+        s_menu_seen = esp_timer_get_time() / 1000;
+        if (!s_ask_task && (!s_thumbs_loaded || s_thumbs_dirty || s_thumbs_left) && tfa_n > 0) {
+            (void)icon_ask(-1, false);  // (the task starts: the file of the pictures, the missing ones)
+        }
+    }
 }
 bool tfn_icon_missed(void)
 {
     // (the trim of the files that the task read: here, in the task of the menu, so that no file goes while an icon
     // draws from it)
     LOCK();
+    static bool lean_done;
+    if (tfa_icons_lean && !lean_done) {
+        tfa_icon_files_free();  // (the voice starts: its model needs the PSRAM; the pictures come back later)
+    }
+    lean_done = tfa_icons_lean;
     icon_files_trim(-1);
     UNLOCK();
     const bool m = s_missed;
     s_missed = false;
     return m;
 }
-// true: the read of the icon k goes to the task (the caller draws a plain tile)
-static bool icon_ask(int k)
+// the voice starts while the screen is off: the menu draws no frame (so tfn_icon_missed does not come, and no icon
+// draws now): the icon files and the still pictures go at once (the model of the voice needs the PSRAM)
+void tfa_icons_lean_now(void)
+{
+    LOCK();
+    tfa_icon_files_free();
+    UNLOCK();
+}
+
+// true: the read of the icon k goes to the task (the caller draws a plain tile; draw = false: a read ahead only)
+static bool icon_ask(int k, bool draw)
 {
     if (!s_ask_on) {
         return false;
     }
-    s_missed = true;
-    if (tfa_icon_busy[k]) {
+    s_missed |= draw;
+    if (k >= 0 && tfa_icon_busy[k]) {
         return true;
     }
     LOCK();
@@ -312,12 +687,17 @@ static bool icon_ask(int k)
         s_ask_q = xQueueCreate(ASK_Q, sizeof(ask_t));
     }
     if (s_ask_q && !s_ask_task) {
-        // (the stack in internal RAM: some icons are in the flash (/data), and a flash read turns the cache off)
-        s_ask_task = xTaskCreatePinnedToCore(icon_ask_task, "iconask", 4096, NULL, 1, NULL, 0) == pdPASS;
+        // (the stack in internal RAM: some icons are in the flash (/data), and a flash read turns the cache off.
+        // Core 1, below the LCD, the sound and the touch: on core 0 at the priority of the menu, the two tasks took
+        // turns, and each frame of a scroll took about two times as long while a file came from the card)
+        s_ask_task = xTaskCreatePinnedToCore(icon_ask_task, "iconask", 4096, NULL, 1, NULL, 1) == pdPASS;
     }
     // (a full queue: the icon asks again in a later frame)
     const ask_t a = {k, tfa_icon_gen};
-    tfa_icon_busy[k] = s_ask_task && xQueueSend(s_ask_q, &a, 0) == pdTRUE;
+    const bool sent = s_ask_task && xQueueSend(s_ask_q, &a, 0) == pdTRUE;
+    if (k >= 0) {
+        tfa_icon_busy[k] = sent;
+    }
     const bool ok = s_ask_q != NULL;
     UNLOCK();
     if (!ok) {
@@ -325,7 +705,45 @@ static bool icon_ask(int k)
     }
     return ok;
 }
+#else
+// (the Tab5: its prefetch task reads all icons at the start)
+void tfa_thumbs_free(void)
+{
+}
+void tfn_icon_ask(bool on)
+{
+    (void)on;
+}
+bool tfn_icon_missed(void)
+{
+    return false;
+}
+// (the voice of the Tab5 needs no icon memory: the menu keeps its icon files)
+void tfa_icons_lean_now(void)
+{
+}
 #endif
+
+void tfn_icon_want(const app_t *a)
+{
+#if TFA_ICON_ASK
+    if (!s_ask_on || tfa_n <= 0) {
+        return;
+    }
+    const char *p = (const char *)a, *e0 = (const char *)&tfa_e[0].stub;
+    if (p < e0 || p >= e0 + (size_t)tfa_n * sizeof tfa_e[0] || (size_t)(p - e0) % sizeof tfa_e[0]) {
+        return;  // (a built-in app: no icon file)
+    }
+    const int k = (int)((size_t)(p - e0) / sizeof tfa_e[0]);
+    if (tfa_icon[k]) {
+        tfa_icon_used[k] = (uint32_t)(esp_timer_get_time() / 1000);  // (near the view: the trim keeps it)
+    } else if (!tfa_icon_bad[k]) {
+        (void)icon_ask(k, false);
+    }
+#else
+    (void)a;
+#endif
+}
 
 static void icon_draw(int k, int x, int y, int s)
 {
@@ -333,8 +751,10 @@ static void icon_draw(int k, int x, int y, int s)
         return;
     }
 #if TFA_ICON_ASK
-    if (!tfa_icon[k] && !tfa_icon_bad[k] && icon_ask(k)) {
-        tfn_icon_plain(tfa_e[k].name, x, y, s);
+    if (!tfa_icon[k] && !tfa_icon_bad[k] && icon_ask(k, true)) {
+        if (!thumb_draw(k, x, y, s)) {
+            tfn_icon_plain(tfa_e[k].name, x, y, s);
+        }
         return;
     }
 #endif
@@ -408,21 +828,24 @@ static void icon_draw(int k, int x, int y, int s)
     s_icon_still = false;
 }
 
-// one icon function for each place of the list (an app_t has no context pointer): icon_0 .. icon_159
+// one icon function for each place of the list (an app_t has no context pointer): icon_0 .. icon_255
 // clang-format off
 #define ICONF(k) static void icon_##k(int x, int y, int s) { icon_draw(k, x, y, s); }
 #define ICONF10(t) ICONF(t##0) ICONF(t##1) ICONF(t##2) ICONF(t##3) ICONF(t##4) ICONF(t##5) ICONF(t##6) ICONF(t##7) \
                    ICONF(t##8) ICONF(t##9)
 ICONF(0) ICONF(1) ICONF(2) ICONF(3) ICONF(4) ICONF(5) ICONF(6) ICONF(7) ICONF(8) ICONF(9)
 ICONF10(1) ICONF10(2) ICONF10(3) ICONF10(4) ICONF10(5) ICONF10(6) ICONF10(7) ICONF10(8) ICONF10(9) ICONF10(10)
-ICONF10(11) ICONF10(12) ICONF10(13) ICONF10(14) ICONF10(15)
-_Static_assert(TFN_MAX == 160, "one ICONF and one ICON_FNS entry for each place of the list");
+ICONF10(11) ICONF10(12) ICONF10(13) ICONF10(14) ICONF10(15) ICONF10(16) ICONF10(17) ICONF10(18) ICONF10(19)
+ICONF10(20) ICONF10(21) ICONF10(22) ICONF10(23) ICONF10(24)
+ICONF(250) ICONF(251) ICONF(252) ICONF(253) ICONF(254) ICONF(255)
+_Static_assert(TFN_MAX == 256, "one ICONF and one ICON_FNS entry for each place of the list");
 #define IFN10(t) icon_##t##0, icon_##t##1, icon_##t##2, icon_##t##3, icon_##t##4, icon_##t##5, icon_##t##6, icon_##t##7, \
                  icon_##t##8, icon_##t##9
 void (*const tfa_icon_fns[TFN_MAX])(int, int, int) = {
     icon_0, icon_1, icon_2, icon_3, icon_4, icon_5, icon_6, icon_7, icon_8, icon_9,
     IFN10(1), IFN10(2), IFN10(3), IFN10(4), IFN10(5), IFN10(6), IFN10(7), IFN10(8), IFN10(9), IFN10(10),
-    IFN10(11), IFN10(12), IFN10(13), IFN10(14), IFN10(15)};
+    IFN10(11), IFN10(12), IFN10(13), IFN10(14), IFN10(15), IFN10(16), IFN10(17), IFN10(18), IFN10(19), IFN10(20),
+    IFN10(21), IFN10(22), IFN10(23), IFN10(24), icon_250, icon_251, icon_252, icon_253, icon_254, icon_255};
 // clang-format on
 void tfa_stub_enter(int64_t now)
 {

@@ -1,0 +1,15 @@
+{
+ "tfn_app": 1,
+ "name": "CHESS CLOCK",
+ "sym": "app_chessclock",
+ "group": "UTIL",
+ "emoji": "⏱️",
+ "new": true,
+ "srcs": [
+  "app_chessclock.c"
+ ],
+ "store": {
+  "en": "A chess clock for two players: the board lies between them, and each half of the screen is the key of one player. Fischer, Bronstein or sudden death; 1+0 to 90+30 or your own time; tenths and a tick under 10 s.",
+  "he": "שעון שחמט לשני שחקנים: הלוח מונח ביניהם, וכל חצי של המסך הוא הכפתור של שחקן אחד. פישר, ברונשטיין או מוות פתאומי; מ-1+0 עד 90+30 או זמן משלך; עשיריות ותקתוק מתחת ל-10 שניות."
+ }
+}

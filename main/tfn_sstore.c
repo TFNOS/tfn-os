@@ -522,6 +522,45 @@ bool tfn_sstore_install(const char *id, int place, void (*progress)(int pct), ch
     return ok;
 }
 
+bool tfn_sstore_get(const char *rel, uint8_t **buf, size_t *n, size_t max, char *msg, int len)
+{
+    msg[0] = 0;
+    *buf = NULL;
+    *n = 0;
+    if (wifi_state() != WIFI_CONNECTED) {
+        snprintf(msg, len, "NO WIFI");
+        return false;
+    }
+    ss_load();
+    ss_lock();
+    ss_get_t g = {.url = s_ss.u[0], .max = max, .grow = true};
+    bool ok = tfn_ss_url_ok(s_ss.url) && tfn_ss_join(s_ss.u[0], SS_URL_MAX, s_ss.url, rel);
+    if (ok) {
+        ss_run(&g, 1, 0, NULL);
+        ok = ss_got(&g, msg, len);
+    } else {
+        snprintf(msg, len, "NO STORE URL");
+    }
+    ss_unlock();
+    if (!ok) {
+        free(g.buf);
+        return false;
+    }
+    *buf = g.buf;
+    *n = g.got;
+    return true;
+}
+
+bool tfn_sstore_store_signed(const uint8_t *m, size_t n, const uint8_t *sig, size_t sl, char *msg, int len)
+{
+    ss_lock();
+    ss_get_t g = {.buf = (uint8_t *)sig, .got = sl};
+    uint8_t pk[TFN_PUB_PK];
+    const bool ok = ss_index_key(m, n, &g, pk, msg, len);
+    ss_unlock();
+    return ok;
+}
+
 uint8_t *tfn_sstore_icon(const char *id, size_t *len)
 {
     tfn_pub_ops_t o;

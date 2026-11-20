@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "HOP",
+ "sym": "app_hop",
+ "group": "GAMES",
+ "emoji": "🦘",
+ "srcs": [
+  "app_hop.c"
+ ],
+ "store": {
+  "en": "A vertical platform game. The blob bounces by itself. Tilt the board to move left and right, and tap the middle to shoot monsters above you. Springs and a jetpack help you climb past a meadow, clouds, a sunset and space.",
+  "he": "משחק פלטפורמה אנכי. הכדור קופץ לבד. הטו את הלוח כדי לזוז ימינה ושמאלה, וגעו באמצע כדי לירות במפלצות שמעליכם. קפיצים ותרמיל סילון עוזרים לטפס דרך אחו, עננים, שקיעה וחלל."
+ }
+}

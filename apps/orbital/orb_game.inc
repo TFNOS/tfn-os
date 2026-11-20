@@ -90,7 +90,8 @@ static inline bool rndl(void)
 // a key of the bottom arc: k = 0 .. 3 from the left (each a bit higher at the ends)
 static box_t box_arc(int k)
 {
-    int w = SW * 15 / 100, g = SW / 100, x0 = SW / 2 - 2 * w - g - g / 2;
+    // (16 %: 74 px on the 1.75C, room for the TETHER word in KF_NAME)
+    int w = SW * 16 / 100, g = SW / 100, x0 = SW / 2 - 2 * w - g - g / 2;
     int x = x0 + k * (w + g) + (k >= 2 ? 2 * g : 0);
     int y = SH * 73 / 100 - (k == 0 || k == 3 ? SH * 5 / 100 : 0);
     box_t b = {x, y, w, w};

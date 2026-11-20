@@ -85,6 +85,10 @@
 // the size of the PSRAM (MB): the icon budgets of the menu (tfn_app_priv.h); 32 or more = the icons stay at an app
 // load, and a task reads all icons at the start
 #define BOARD_PSRAM_MB 8
+// the voice (tfn/speech.h, the store app VOICE): 1 = the board can read text aloud (tiny-voca needs an octal PSRAM
+// and its model on an SD card); here: a quad PSRAM (slower than the octal PSRAM of the 3.49) and an SD card slot: the
+// voice and the ears of TALK run, more slowly
+#define BOARD_TTS 1
 // the I2S pins of the codecs (the speaker and the microphones)
 #define BOARD_I2S_MCLK GPIO_NUM_0
 #define BOARD_I2S_BCLK GPIO_NUM_34

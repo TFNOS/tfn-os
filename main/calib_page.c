@@ -594,18 +594,21 @@ static void tilt_render(int64_t now)
     reset_button(bx, by, bw, bh, now);
     bool wide = gfx_w > 400;
     gfx_text(BACK_W + 8, 8, wide ? "TILT CALIBRATE" : "TILT CALIB.", 2, THEME_CALIB_TEXT);
-    // (the text stays out of the RESET button: on the 3.49 the first line is short, on the CoreS3 it is below it)
-    gfx_text(BACK_W + 8, wide ? 28 : 60,
-             wide ? "PUT THE BOARD ON EACH OF ITS 6 SIDES, STILL FOR 1 S." : "PUT THE BOARD ON EACH OF ITS 6 SIDES,", 1,
-             THEME_CALIB_TILT_HELP);
-    gfx_text(BACK_W + 8, wide ? 40 : 72,
-             wide ? "SCREEN UP, SCREEN DOWN, EACH LONG EDGE, EACH SHORT END. A CLICK FOR EACH SIDE."
-                  : "STILL FOR 1 S (A CLICK FOR EACH SIDE).",
-             1, THEME_CALIB_TILT_HELP);
+    // (the text stays out of the RESET button: on the 3.49 at its left, on the CoreS3 below it; the lines break at a
+    // space, and the sides go down when the text needs more lines)
+    const int hy = wide ? 28 : 58, hw = (wide ? bx - 8 : gfx_w - 8) - (BACK_W + 8);
+    const int hn = set_wrap(BACK_W + 8, hy, hw, 12,
+                            wide ? "PUT THE BOARD ON EACH OF ITS 6 SIDES, STILL FOR 1 S. SCREEN UP, SCREEN DOWN, EACH "
+                                   "LONG EDGE, EACH SHORT END. A CLICK FOR EACH SIDE."
+                                 : "PUT THE BOARD ON EACH OF ITS 6 SIDES, STILL FOR 1 S (A CLICK FOR EACH SIDE).",
+                            1, THEME_CALIB_TILT_HELP, false);
     static const char *const NAME[6] = {"+X", "-X", "+Y", "-Y", "+Z", "-Z"};
     int cols = wide ? 6 : 3, gap = 6;
     int w = (gfx_w - BACK_W - 12 - (cols - 1) * gap) / cols, h = wide ? 40 : 44;
-    int y0 = wide ? 56 : 86;
+    int y0 = hy + 12 * hn + 4;
+    if (y0 < (wide ? 56 : 86)) {
+        y0 = wide ? 56 : 86;
+    }
     for (int i = 0; i < 6; i++) {
         int x = BACK_W + 6 + (i % cols) * (w + gap), y = y0 + (i / cols) * (h + gap);
         gfx_fill_rect(x, y, w, h, s_have[i] ? THEME_CALIB_SIDE_DONE : THEME_CALIB_SIDE);

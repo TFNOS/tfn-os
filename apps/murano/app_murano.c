@@ -45,6 +45,7 @@ static const tune_note_t MU_GO[] = {
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "midi_bg/midi_bg.h"
 #include "mu_music.h"
 #include "tfsfx/tfsfx.h"
@@ -189,7 +190,8 @@ static inline bool rl(void)
 static box_t card_box(void)
 {
     if (rl()) {
-        box_t b = {SW / 2 - SW * 22 / 100, SH * 11 / 100, SW * 44 / 100, 56};
+        // (the round: a bigger card with KF_NAME text; the top cap has the room)
+        box_t b = {SW / 2 - SW * 25 / 100, SH * 10 / 100, SW * 50 / 100, 74};
         return b;
     }
     box_t b = {SW - (longl() ? 204 : 158), 4, longl() ? 200 : 154, 52};
@@ -845,11 +847,12 @@ static void text_plate_c(const kfont_t *f, int cx, int base, const char *t, uint
 }
 static void pill(int cx, int y, const char *t, bool on)
 {
-    int w = ui_text_w(&KF_LABEL, t) + 14, h = KF_LABEL.line + 4;
+    const kfont_t *f = rl() ? &KF_NAME : &KF_LABEL;  // (the round: the bigger face)
+    int w = ui_text_w(f, t) + 14, h = f->line + 4;
     int x = clampi(cx - w / 2, 2, SW - w - 2);
     y = clampi(y, 2, SH - h - 2);
     rect_a(x, y, w, h, h / 2, on ? rgb(70, 30, 8) : rgb(10, 7, 5), 205);
-    ui_text_c(&KF_LABEL, x + w / 2, y + KF_LABEL.asc + 2, t, on ? col(CR(HOT, 10)) : col(CR(PARCH, 5)));
+    ui_text_c(f, x + w / 2, y + f->asc + 2, t, on ? col(CR(HOT, 10)) : col(CR(PARCH, 5)));
 }
 static const char *msg_text(int m)
 {
@@ -898,8 +901,8 @@ static void draw_card(void)
     }
     // the sketch: the order in ink (the mouth up), and the glass now in red chalk
     const prof_t *O = &g->O.P, *P = &g->prof;
-    float sc = 40.0f / fmaxf(O->L, 44);
-    int sx = b.x + 24, sy = b.y + 5;
+    float sc = (rl() ? 52.0f : 40.0f) / fmaxf(O->L, 44);
+    int sx = b.x + (rl() ? 33 : 24), sy = b.y + (rl() ? 9 : 5);
     uint16_t ink = rgb(36, 24, 14), chalk = rgb(168, 52, 30);
     for (int a = 0; a < O->n; a++) {
         float r = O->r[a] * sc;
@@ -921,7 +924,10 @@ static void draw_card(void)
         fb_set16((int)lroundf(sx + v - r), y, chalk);
         fb_set16((int)lroundf(sx + v + r), y, chalk);
     }
-    int tx = b.x + 50, tw = b.w - 56;
+    int tx = b.x + (rl() ? 68 : 50), tw = b.w - (rl() ? 74 : 56);
+    // (the lines of the card: KF_NAME on the round, KF_LABEL on the other frames)
+    const kfont_t *cf = rl() ? &KF_NAME : &KF_LABEL;
+    const int L1 = rl() ? 22 : 13, L2 = rl() ? 44 : 30, L3 = rl() ? 65 : 45;
     char t[64];
     if (g->O.day > NDAYS) {
         snprintf(t, sizeof t, "%s", TR("MARKET DAY", "יום שוק"));
@@ -931,8 +937,8 @@ static void draw_card(void)
         snprintf(t, sizeof t, "DAY %d: %s", g->O.day, g->O.skill[0]);
     }
     // (a Hebrew line stands at the right end of the text place)
-#define CARD_TEXT(base, str, c) text_l(&KF_LABEL, s_lang ? b.x + b.w - 6 - ui_text_w(&KF_LABEL, str) : tx, base, str, c)
-    CARD_TEXT(b.y + 13, t, rgb(120, 40, 20));
+#define CARD_TEXT(base, str, c) text_l(cf, s_lang ? b.x + b.w - 6 - ui_text_w(cf, str) : tx, base, str, c)
+    CARD_TEXT(b.y + L1, t, rgb(120, 40, 20));
     bool small = !longl();
     if (small) {
         snprintf(t, sizeof t, "%s %d%%", TR("MATCH", "התאמה"), (int)lroundf(g->score * 100));
@@ -944,21 +950,21 @@ static void draw_card(void)
         text_l(&KF_LABEL, s_lang ? tx : b.x + b.w - 6 - ui_text_w(&KF_LABEL, t), b.y + 13, t, mc);
     }
     if (s_sell_t > 0) {
-        CARD_TEXT(b.y + 30, TR("TAP AGAIN:", "הקש שוב"), rgb(30, 96, 40));
-        CARD_TEXT(b.y + 45, TR("SELL IT", "כדי למכור"), rgb(30, 96, 40));
+        CARD_TEXT(b.y + L2, TR("TAP AGAIN:", "הקש שוב"), rgb(30, 96, 40));
+        CARD_TEXT(b.y + L3, TR("SELL IT", "כדי למכור"), rgb(30, 96, 40));
     } else {
         // the order: one line, or two lines at a space
         const char *w = small ? g->O.shortw[s_lang] : g->O.what[s_lang];
         char l1[48], l2[48];
         snprintf(l1, sizeof l1, "%s", w);
         l2[0] = 0;
-        if (ui_text_w(&KF_LABEL, l1) > tw) {
+        if (ui_text_w(cf, l1) > tw) {
             int n = (int)strlen(w), cut = -1;
             for (int i = 0; i < n; i++) {
                 if (w[i] == ' ') {
                     char tmp[48];
                     snprintf(tmp, sizeof tmp, "%.*s", i, w);
-                    if (ui_text_w(&KF_LABEL, tmp) <= tw) {
+                    if (ui_text_w(cf, tmp) <= tw) {
                         cut = i;
                     }
                 }
@@ -968,11 +974,11 @@ static void draw_card(void)
                 snprintf(l2, sizeof l2, "%s", w + cut + 1);
             }
         }
-        CARD_TEXT(b.y + 30, l1, ink);
+        CARD_TEXT(b.y + L2, l1, ink);
         if (small) {
-            CARD_TEXT(b.y + 45, t, mc);
+            CARD_TEXT(b.y + L3, t, mc);
         } else if (l2[0]) {
-            CARD_TEXT(b.y + 45, l2, ink);
+            CARD_TEXT(b.y + L3, l2, ink);
         }
 #undef CARD_TEXT
     }
@@ -1017,7 +1023,8 @@ static void draw_labels(void)
         pill(SW / 2, rl() ? SH * 855 / 1000 : SH - 24,
              help && g->flick_t <= 0 ? TR("SWIPE: TURN", "החלק: סובב") : TR("TURN", "סובב"), g->flick_t > 0);
     }
-    int py = longl() ? (int)s_scr.tipY - 70 : rl() ? SH * 27 / 100 : 64;
+    // (the round: under the heat bar of the card)
+    int py = longl() ? (int)s_scr.tipY - 70 : rl() ? card_box().y + card_box().h + 12 : 64;
     // (the label of the jacks waits under a message: the tongs on the glass show the pinch)
     if (!msg_on && i->jack) {
         pill((int)(s_scr.tipX + s_scr.ax * i->jack_a), py, TR("PINCH", "צבוט"), true);
@@ -1044,10 +1051,11 @@ static void draw_buttons(void)
     box_t b = blow_btn();
     ui_circle(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, g->last.blow ? col(CR(HOT, 7)) : col(CR(BRASS, 3)), 230);
     ui_ring(b.x + b.w / 2, b.y + b.h / 2, b.w / 2 - 1, 3, col(CR(BRASS, 6)), 255);
-    ui_text_c(&KF_LABEL, b.x + b.w / 2, b.y + b.h / 2 + 5, TR("BLOW", "נשוף"), rgb(255, 244, 220));
+    const kfont_t *bf = rl() ? &KF_NAME : &KF_LABEL;  // (the round: the bigger face)
+    ui_text_c(bf, b.x + b.w / 2, b.y + b.h / 2 + (rl() ? 6 : 5), TR("BLOW", "נשוף"), rgb(255, 244, 220));
     box_t h = heat_btn();
     ui_rbox(h.x, h.y, h.w, h.h, 10, g->last.reheat ? col(CR(HOT, 6)) : rgb(60, 26, 12), col(CR(HOT, 6)), 2);
-    ui_text_c(&KF_LABEL, h.x + h.w / 2, h.y + h.h / 2 + 5, TR("REHEAT", "חמם"), rgb(255, 230, 190));
+    ui_text_c(bf, h.x + h.w / 2, h.y + h.h / 2 + (rl() ? 6 : 5), TR("REHEAT", "חמם"), rgb(255, 230, 190));
 }
 static void draw_reveal_text(void)
 {
@@ -1198,8 +1206,11 @@ static void draw_title(void)
         } else {
             snprintf(t, sizeof t, "%s", TR("MARKET", "שוק"));
         }
-        ui_text_c(longl() && d <= NDAYS ? &KF_NAME : &KF_LABEL, b.x + b.w / 2, b.y + (longl() ? 22 : 20), t,
-                  open ? rgb(255, 236, 200) : rgb(110, 96, 86));
+        ui_text_c((longl() && d <= NDAYS) || rl() ? &KF_NAME : &KF_LABEL, b.x + b.w / 2,
+                  b.y + (longl() ? 22
+                         : rl()  ? 23
+                                 : 20),
+                  t, open ? rgb(255, 236, 200) : rgb(110, 96, 86));
         for (int k = 0; k < 3 && open && d <= NDAYS; k++) {
             ui_circle(b.x + b.w / 2 - 12 + k * 12, b.y + b.h - 10, 4,
                       k < s_stars[d] ? col(CR(LAMP, 3)) : rgb(70, 56, 44), 255);
@@ -1442,8 +1453,16 @@ static void mu_enter(int64_t now)
             s_hand_a[k] = heap_caps_malloc(HAND_W * HAND_H, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         }
     }
-    if (!s_world || !s_dawn || !s_bgc || !G || !s_hand[2] || !s_hand_a[2]) {
+    bool hands = true;
+    for (int k = 0; k < 3; k++) {
+        hands = hands && s_hand[k] && s_hand_a[k];
+    }
+    if (!s_world || !s_dawn || !s_bgc || !G || !hands) {
         ESP_LOGE(TAG, "no memory");
+        // (with no G, update() and input() do nothing and render() shows NO MEMORY: no step paints into a missing
+        // buffer; leave() frees the others)
+        heap_caps_free(G);
+        G = NULL;
         return;
     }
     s_load = 0;  // (the painting of the workshop: one step in each frame, mu_update)
@@ -1554,7 +1573,7 @@ static void mu_leave(void)
         s_hand_a[k] = NULL;
     }
 }
-static void mu_input(const input_event_t *ev)
+static void mu_input_ev(const input_event_t *ev)
 {
     if (!G || s_load < LOAD_STEPS) {
         return;
@@ -1619,6 +1638,17 @@ static void mu_input(const input_event_t *ev)
             s_sel = s_day <= NDAYS ? s_day : DAY_MARKET;
             title_go();
         }
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title and the cards of the reveal acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void mu_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    mu_input_ev(ev);
+    if (slow && (G && (s_gs == GS_TITLE || G->phase == PH_REVEAL))) {
+        mu_input_ev(&tap);
     }
 }
 static void load_step(void);

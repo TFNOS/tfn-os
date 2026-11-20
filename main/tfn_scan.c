@@ -173,6 +173,7 @@ static void do_rescan_locked(void)
         tfa_icon_bad[k] = false;
     }
     tfa_icon_bytes = 0;
+    tfa_thumbs_free();  // (the list changes: the places of the still pictures too)
     for (int i = 0; i < DEC_SLOTS; i++) {
         tfa_dec[i].b = NULL;  // (the icons go: no slot keeps their place)
     }

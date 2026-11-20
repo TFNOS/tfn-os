@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "TILT",
+ "sym": "app_tilt",
+ "group": "GAMES",
+ "emoji": "⚖️",
+ "srcs": [
+  "app_tilt.c"
+ ],
+ "store": {
+  "en": "A maze in a long tube. Tilt the board to roll the ball down to the green end. Holes send the ball back to the last checkpoint, and each level has a longer maze. Hold the board as you like: its start position counts as flat.",
+  "he": "מבוך בצינור ארוך. הטו את הלוח כדי לגלגל את הכדור אל הקצה הירוק. בורות מחזירים את הכדור לנקודת הביקורת האחרונה, וכל שלב מביא מבוך ארוך יותר. אחזו את הלוח כרצונכם: מצב ההתחלה נחשב ישר."
+ }
+}

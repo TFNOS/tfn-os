@@ -1,0 +1,48 @@
+// RF DECODER: the texts in English and Hebrew (s_he). The technical names (MHz, PWM, RCSWITCH, hex) stay in English.
+// The task: the app task reads them (a part of app_rfdec.c). The memory: a constant table in the app file.
+enum {
+    T_CONNECT,
+    T_VCC,
+    T_GND,
+    T_DATA,
+    T_CONNECTED,
+    T_DEMO,
+    T_NOPINS,
+    T_QUIET,
+    T_ALIVE,
+    T_HIGH,
+    T_EDGES,
+    T_WAIT,
+    T_NOCODE,
+    T_BACK,
+    T_REPEATS,
+    T_AGO,
+    T_FAIL,
+    T_CLEARED,
+    T_TWO_DATA,
+    T_SPAN,
+    T_N
+};
+static const char *const TEXT[T_N][2] = {
+        {"CONNECT THE RECEIVER", "חברו את המקלט"},
+        {"VCC", "VCC"},
+        {"GND", "GND"},
+        {"DATA", "DATA"},
+        {"CONNECTED", "מחובר"},
+        {"DEMO", "הדגמה"},
+        {"THIS BOARD HAS NO PINS FOR A MODULE", "ללוח הזה אין פינים למודול"},
+        {"NO SIGNAL ON THE PIN", "אין אות על הפין"},
+        {"A RECEIVER IS ON THE PIN", "יש מקלט על הפין"},
+        {"THE PIN STAYS HIGH: CHECK THE WIRES", "הפין נשאר גבוה: בדקו את החוטים"},
+        {"EDGES A SECOND", "שינויים בשנייה"},
+        {"PRESS A REMOTE NEAR THE RECEIVER", "לחצו על שלט ליד המקלט"},
+        {"NO CODE YET", "עדיין אין קוד"},
+        {"BACK", "חזרה"},
+        {"REPEATS", "חזרות"},
+        {"AGO", "לפני"},
+        {"THE RECEIVER FAILED", "המקלט נכשל"},
+        {"THE LIST IS EMPTY", "הרשימה ריקה"},
+        {"USE ONE DATA PIN", "פין DATA אחד"},
+        {"THE LAST", "האחרונות"},
+};
+#define TX(id) TEXT[id][s_he ? 1 : 0]

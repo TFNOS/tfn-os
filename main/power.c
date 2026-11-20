@@ -24,8 +24,51 @@
 #include "web_server.h"
 #include <math.h>
 #include "driver/temperature_sensor.h"
+#include "freertos/semphr.h"
+#include "esp_task_wdt.h"
 
 static const char *TAG = "power";
+
+// ---------------------------------------------------------------- the idle watch of core 1 (power_idle1_hold)
+#if defined(CONFIG_ESP_TASK_WDT_INIT) && defined(CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1)
+#ifndef CONFIG_FREERTOS_UNICORE
+#define PW_IDLE1_WATCH 1
+#endif
+#endif
+#if PW_IDLE1_WATCH
+static StaticSemaphore_t s_idle1_mx_buf;
+static SemaphoreHandle_t s_idle1_mx;  // (made in power_init: esp_task_wdt_reconfigure() takes one caller at a time)
+static int s_idle1_n;
+#endif
+
+void power_idle1_hold(bool hold)
+{
+#if PW_IDLE1_WATCH
+    if (!s_idle1_mx) {
+        return;
+    }
+    xSemaphoreTake(s_idle1_mx, portMAX_DELAY);
+    const int was = s_idle1_n;
+    s_idle1_n = hold ? s_idle1_n + 1 : (s_idle1_n > 0 ? s_idle1_n - 1 : 0);
+    if ((was == 0) != (s_idle1_n == 0)) {
+        esp_task_wdt_config_t c = {
+                .timeout_ms = CONFIG_ESP_TASK_WDT_TIMEOUT_S * 1000,
+                .idle_core_mask = s_idle1_n ? 0u : 2u,
+                .trigger_panic = false,
+        };
+#ifdef CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0
+        c.idle_core_mask |= 1u;
+#endif
+#ifdef CONFIG_ESP_TASK_WDT_PANIC
+        c.trigger_panic = true;
+#endif
+        esp_task_wdt_reconfigure(&c);
+    }
+    xSemaphoreGive(s_idle1_mx);
+#else
+    (void)hold;
+#endif
+}
 
 const uint16_t POWER_OFF_MIN[POWER_OFF_CHOICES] = {0, 15, 30, 60, 120, 240};
 const char *const POWER_OFF_NAMES[POWER_OFF_CHOICES] = {"NEVER", "15 MIN", "30 MIN", "1 HOUR", "2 HOURS", "4 HOURS"};
@@ -426,6 +469,9 @@ static void sample(bool force)
 
 void power_init(void)
 {
+#if PW_IDLE1_WATCH
+    s_idle1_mx = xSemaphoreCreateMutexStatic(&s_idle1_mx_buf);
+#endif
     s_mode_at = tfn_now_ms();
     src_restore();
 #if CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS

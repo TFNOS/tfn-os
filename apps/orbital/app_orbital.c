@@ -33,6 +33,7 @@
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "midi_bg/midi_bg.h"
 #include "orb_music.h"
 #include "tfsfx/tfsfx.h"
@@ -204,7 +205,7 @@ static void orb_leave(void)
     s_sunspr = NULL;
     s_loaded = false;
 }
-static void orb_input(const input_event_t *ev)
+static void orb_input_ev(const input_event_t *ev)
 {
     if (!s_loaded) {
         return;
@@ -268,6 +269,17 @@ static void orb_input(const input_event_t *ev)
             }
             return;
         }
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title, the brief and the cards acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void orb_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    orb_input_ev(ev);
+    if (slow && (s_state != ST_PLAY)) {
+        orb_input_ev(&tap);
     }
 }
 static void orb_update(int64_t now)

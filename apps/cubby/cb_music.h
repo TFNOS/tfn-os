@@ -24,7 +24,7 @@
 // the game keeps the other 16 synth voices for its sound effects and the motor drone.
 enum {
     CBM_TITLE,       // CUBBY, 156 BPM, 49 s
-    CBM_ISLAND,      // SUNDROP COVE, 160 BPM, 78 s
+    CBM_ISLAND,      // SUNDROP ISLE, 160 BPM, 90 s
     CBM_J_SUNDROP,   // SUNDROP, 160 BPM, 3.0 s (play once)
     CBM_J_SPLASH,    // SPLASH, 160 BPM, 1.5 s (play once)
     CBM_J_WIN,       // WIN, 160 BPM, 4.5 s (play once)

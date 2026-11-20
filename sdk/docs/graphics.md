@@ -99,6 +99,10 @@ zlib) into the app. The board blits sprites, tiles and palettes.
   them into `art.bin` (RGB565, alpha, palette pictures for the far layers).
 - DEAD PIXEL, STATION X, RADIO NEPTUNE (pixel-art quests), JUNGLE RUN (the Atari 2600 look, by code with sprite
   tables).
+- DETECTIVE: a "graphic noir" numpy painter (`apps/detective/tools/dt_paint.py`): a height field and a side light
+  for each part, 4 soft bands of a colour ramp, a rim light, the bars of the blinds, ink lines; 8-bit layers with one
+  palette (the room, the body, the head, the eye and mouth variants) that the board samples with a live camera; the
+  palette gives the lamp flicker, a flash and the grey of the end (`apps/detective/dt_scene.c`).
 - PIXEL STAGE (a test): a LIVING pixel-art picture. One painted picture is split on the PC into depth
   layers with an effect code for each px (flame, smoke, cloud, tree, glow) and the fire light; the board animates the
   effect px at 15 Hz, flickers the light through the colour table and draws the screen with a parallax and a free zoom

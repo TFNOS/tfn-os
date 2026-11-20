@@ -42,6 +42,7 @@
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "tfsfx/tfsfx.h"
 #include "kt_sfx.h"
 #include "kt_music.h"
@@ -1125,7 +1126,7 @@ static void kt_leave(void)
     kt_free_all();
     s_ok = false;
 }
-static void kt_input(const input_event_t *ev)
+static void kt_input_ev(const input_event_t *ev)
 {
     if (!s_ok) {
         return;
@@ -1156,6 +1157,17 @@ static void kt_input(const input_event_t *ev)
     if (s_gs == GS_RESULTS && ev->kind == IN_TAP && s_gt > 1.2f) {
         fx(FX_PICK, 70, 1.0f);
         to_title();
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title and the results acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void kt_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    kt_input_ev(ev);
+    if (slow && (s_gs == GS_TITLE || s_gs == GS_RESULTS)) {
+        kt_input_ev(&tap);
     }
 }
 static void kt_update(int64_t now)
@@ -1198,7 +1210,7 @@ static void kt_render(int64_t now)
 {
     if (!s_ok) {
         gfx_fill(rgb(20, 30, 60));
-        gfx_text_center(OH / 2 - 4, "NO MEMORY", rgb(255, 255, 255), 2);
+        gfx_text_center(OH / 2 - 4, "NO MEMORY", 2, rgb(255, 255, 255));
         return;
     }
     int64_t th = PF_T();

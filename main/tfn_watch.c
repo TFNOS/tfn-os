@@ -1,5 +1,7 @@
 // TFN OS: the watchers (watch.h: watch.elf of an app on the watch task) and the secret store (main/tfn_app.c has the rest; tfn_app_priv.h).
 #include "tfn_app_priv.h"
+#include "tfn_speech.h"
+#include "tfn_listen.h"
 
 static const char *TAG = "tfn";
 
@@ -52,12 +54,27 @@ const char *tfn_watch_app_now(void)
     return tfa_wcur >= 0 && tfa_on_watch_task() ? tfa_w[tfa_wcur].name : NULL;
 }
 
+void tfa_watch_lock(void)
+{
+    if (s_wlock) {
+        xSemaphoreTake(s_wlock, portMAX_DELAY);
+    }
+}
+void tfa_watch_unlock(void)
+{
+    if (s_wlock) {
+        xSemaphoreGive(s_wlock);
+    }
+}
+
 static void watch_unload(int w)
 {
     wslot_t *W = &tfa_w[w];
     if (!W->on) {
         return;
     }
+    tfa_speech_slot_gone(w);  // (a voice module: it closes before its code goes)
+    tfa_listen_slot_gone(w);  // (the ears of TALK: the same)
     esp_elf_deinit(&W->elf);
     size_t bytes = 0;
     int n = tfa_own_release_o(&W->own, &bytes);

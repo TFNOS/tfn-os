@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "BITS",
+ "sym": "app_bits",
+ "group": "UTIL",
+ "emoji": "💾",
+ "srcs": [
+  "app_bits.c"
+ ],
+ "store": {
+  "en": "Learn how computers work. BINARY has 8 bit switches, and GATES shows the truth tables. BUILD has 12 puzzles, from NOT to a full adder. CPU runs a tiny 6502-like processor with 8 program lines and 16 bytes of memory.",
+  "he": "לומדים איך מחשבים עובדים. ב-BINARY יש 8 מתגי סיביות, וב-GATES טבלאות אמת. ב-BUILD יש 12 חידות, מ-NOT ועד מחבר מלא. ב-CPU רץ מעבד קטן בסגנון 6502 עם 8 שורות תוכנית ו-16 בתים של זיכרון."
+ }
+}

@@ -312,6 +312,43 @@ static void ai_drive(kart_t *k, float dt)
     }
 }
 
+// the walls: back onto the track side of the wall, the speed into the wall goes away
+static void kart_wall(kart_t *k, float dt)
+{
+    float lim = WALL_D - 0.78f;
+    if (absf(k->d) > lim) {
+        float side = k->d > 0 ? 1.0f : -1.0f, over = absf(k->d) - lim;
+        const trow_t *t = &s_tr[k->hint];
+        v3 n = V3(t->tz * side, 0, -t->tx * side);  // out of the track
+        k->x -= n.x * over;
+        k->z -= n.z * over;
+        float vn = k->vx * n.x + k->vz * n.z;
+        if (vn > 0) {
+            k->vx -= n.x * vn * 1.3f;
+            k->vz -= n.z * vn * 1.3f;
+            if (vn > 1.5f) {
+                // (a hit: a part of the speed goes)
+                k->vx *= 0.86f;
+                k->vz *= 0.86f;
+                fx_wall(k, vn);
+            } else {
+                // (a scrape: a small loss only. Before, each frame of a scrape took 14 % of the speed, so a kart that
+                // touched the wall at a small angle stopped there)
+                k->vx *= 0.995f;
+                k->vz *= 0.995f;
+            }
+            // (a steep angle: the kart turns along the barrier, to the way of the race after a hit head-on. The steer
+            // needs speed, so before, a kart that faced the wall stayed there)
+            v3 hd = fwd_of(k->yaw);
+            float into = hd.x * n.x + hd.z * n.z;
+            if (into > 0.35f) {
+                float want = hd.x * t->tx + hd.z * t->tz >= -0.25f ? fatan2(t->tx, t->tz) : fatan2(-t->tx, -t->tz);
+                k->yaw = wrap_pi(k->yaw + wrap_pi(want - k->yaw) * clampf(dt * 5.0f * into, 0, 1));
+            }
+        }
+        k->d = side * lim;
+    }
+}
 // one physics step of kart k (the input of the person is in steer_in)
 static void kart_step(kart_t *k, float dt, bool racing)
 {
@@ -426,26 +463,7 @@ static void kart_step(kart_t *k, float dt, bool racing)
         ds += s_ntr;
     }
     k->prog += ds;
-    // the walls: back onto the track side of the wall, the speed into the wall goes away
-    float lim = WALL_D - 0.78f;
-    if (absf(k->d) > lim) {
-        float side = k->d > 0 ? 1.0f : -1.0f, over = absf(k->d) - lim;
-        const trow_t *t = &s_tr[k->hint];
-        v3 n = V3(t->tz * side, 0, -t->tx * side);  // out of the track
-        k->x -= n.x * over;
-        k->z -= n.z * over;
-        float vn = k->vx * n.x + k->vz * n.z;
-        if (vn > 0) {
-            k->vx -= n.x * vn * 1.3f;
-            k->vz -= n.z * vn * 1.3f;
-            k->vx *= 0.86f;
-            k->vz *= 0.86f;
-            if (vn > 1.5f) {
-                fx_wall(k, vn);
-            }
-        }
-        k->d = side * lim;
-    }
+    kart_wall(k, dt);
     // the ink behind the kart (each row that the back passed)
     if (racing && !k->done) {
         int rear = (int)ifloor(k->prog - 0.9f);

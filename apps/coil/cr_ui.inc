@@ -119,6 +119,16 @@ static void snd_gate(void)
 {
     fx(523, 1046, 300, W_TRI, 34);
 }
+// The short tunes. They are static: the audio task reads the notes while the tune plays, after the call is complete
+// (an array on the stack of the caller is gone then, and the notes become random data).
+static const tune_note_t CR_T_INTRO[] = {JN(0, 110, J_C5, W_TRI, 34), JN(120, 110, J_E5, W_TRI, 34),
+                                         JN(240, 200, J_G5, W_TRI, 38)};
+static const tune_note_t CR_T_WIN[] = {JN(0, 100, J_G4, W_TRI, 36), JN(110, 100, J_C5, W_TRI, 38),
+                                       JN(220, 100, J_E5, W_TRI, 40), JN(330, 160, J_G5, W_TRI, 42),
+                                       JSL(500, 420, J_C6, 0, W_SINE, 40)};
+static const tune_note_t CR_T_OPEN[] = {JN(0, 100, J_C5, W_TRI, 36), JN(110, 100, J_G4, W_TRI, 34),
+                                        JN(220, 100, J_C5, W_TRI, 36), JN(330, 100, J_E5, W_TRI, 38),
+                                        JSL(450, 380, J_G5, 2, W_SINE, 40)};
 
 // ---------------------------------------------------------------- the music (MIDI pieces, cr_music.c)
 static int s_mus_track = -1;
@@ -434,8 +444,7 @@ static void intro_go(int lv)
     cam_x = s_intro_x0;
     cam_y = s_intro_y0;
     mus_loop(lv < 7 ? CRM_RIDE1 : CRM_RIDE2);
-    JPLAY(((const tune_note_t[]){JN(0, 110, J_C5, W_TRI, 34), JN(120, 110, J_E5, W_TRI, 34),
-                                 JN(240, 200, J_G5, W_TRI, 38)}));
+    JPLAY(CR_T_INTRO);
 }
 static void play_go(void)
 {
@@ -492,9 +501,7 @@ static void result_go(void)
         s_sp_dirty = true;
     }
     slowmo(0.5f, 0.6f);
-    JPLAY(((const tune_note_t[]){JN(0, 100, J_G4, W_TRI, 36), JN(110, 100, J_C5, W_TRI, 38),
-                                 JN(220, 100, J_E5, W_TRI, 40), JN(330, 160, J_G5, W_TRI, 42),
-                                 JSL(500, 420, J_C6, 0, W_SINE, 40)}));
+    JPLAY(CR_T_WIN);
 }
 static int next_level(void)
 {
@@ -1083,9 +1090,7 @@ static void cr_enter(int64_t now)
     } else {
         s_auto = 0;
     }
-    JPLAY(((const tune_note_t[]){JN(0, 100, J_C5, W_TRI, 36), JN(110, 100, J_G4, W_TRI, 34),
-                                 JN(220, 100, J_C5, W_TRI, 36), JN(330, 100, J_E5, W_TRI, 38),
-                                 JSL(450, 380, J_G5, 2, W_SINE, 40)}));
+    JPLAY(CR_T_OPEN);
 }
 static void cr_leave(void)
 {
@@ -1095,7 +1100,7 @@ static void cr_leave(void)
     audio_drone(0, 0, 0, W_PULSE);
     midi_bg_end();
 }
-static void cr_input(const input_event_t *ev)
+static void cr_input_ev(const input_event_t *ev)
 {
     int x = ev->x, y = ev->y;
     switch (s_st) {
@@ -1182,6 +1187,17 @@ static void cr_input(const input_event_t *ev)
             again_go();
         }
         return;
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title, the levels, the intro and the cards acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void cr_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    cr_input_ev(ev);
+    if (slow && (s_st != ST_PLAY)) {
+        cr_input_ev(&tap);
     }
 }
 static void cr_update_in(int64_t now);

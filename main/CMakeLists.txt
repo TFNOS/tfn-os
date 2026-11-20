@@ -13,7 +13,7 @@
 # the build folder: -D ARCADE_SELECT= (empty) goes back to the "on" flags. Use your own build folder for a test set.
 #
 # The web pages in the firmware (EMBED_TXTFILES); apps.cmake names the pages of the extras that are off.
-set(ARCADE_EMBED "web/ha.html" "web/apps.html")
+set(ARCADE_EMBED "web/ha.html" "web/apps.html" "web/comp.html")
 # (the early pass of ESP-IDF reads only the requirements of idf_component_register: no generator there)
 if(CMAKE_BUILD_EARLY_EXPANSION)
     set(ARCADE_SRCS)

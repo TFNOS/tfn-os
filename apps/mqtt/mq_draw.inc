@@ -474,8 +474,10 @@ static void draw_start(void)
         top_cap(NULL, "", C_DIM, false, NULL, NULL);
         tfd_text_c(&KF_BIG, s_W / 2, s_top_h - 22, "MQTT", C_TEXT, s_W);
     } else {
+        // (the name at the left end: the middle of the top edge is the pull zone of the panel, its grip covered it)
         tfd_rect(0, 0, s_W, s_top_h, C_PANEL, 256);
-        tfd_text_c(&KF_NAME, s_W / 2, s_top_h / 2 + 6, "MQTT", C_TEXT, s_W);
+        tfd_rect(0, s_top_h, s_W, 1, C_LINE, 256);
+        txt_l(&KF_NAME, 12, s_top_h / 2 + 6, "MQTT", C_TEXT, s_W / 2 - 40);
     }
     const int g = 10, y = s_top_h + g;
     const int h = s_H - y - g;

@@ -1,13 +1,8 @@
-// The small parts of the pages: the theme button, the screens of the shelf, the screen choice of each board card and
-// the app tabs. The pages work with no script; the script only adds these parts.
+// The small parts of the pages: the theme button, the short videos of the game screens (they play only while a mouse
+// points at a screen) and the trailer (it loads only after a click). The pages work with no script; the script only
+// adds these parts.
 
-const SHOTS = 'img/screens/';
-const CYCLE_MS = 3600;
 const THEMES = ['auto', 'light', 'dark'];
-
-function shotUrl(name) {
-  return SHOTS + name + '.webp';
-}
 
 function savedTheme() {
   try {
@@ -43,154 +38,83 @@ export function initTheme() {
   }
 }
 
-// Show the next picture: a second img fades in over the first one, then takes its place.
-function showShot(screen, name) {
-  const cur = screen.querySelector('img:last-of-type');
-  if (!cur || cur.dataset.shot === name) {
-    return;
-  }
-  const next = cur.cloneNode();
-  next.dataset.shot = name;
-  next.classList.add('off');
-  next.src = shotUrl(name);
-  next.alt = '';
-  next.onload = () => {
-    requestAnimationFrame(() => {
-      next.classList.remove('off');
-    });
-    // (only the pictures before this one go: with fast clicks a newer picture is already there, and the timer of
-    // each picture removed all the others, so two timers removed both pictures and the screen was black)
-    setTimeout(() => {
-      while (next.isConnected && next.previousElementSibling) {
-        next.previousElementSibling.remove();
-      }
-    }, 800);
-  };
-  screen.appendChild(next);
+// True when the page can play a short video for a pointer: a mouse (a phone has no hover), no "reduce motion", and
+// no "save data" of the browser.
+export function clipsOk() {
+  const m = (q) => window.matchMedia(q).matches;
+  const saveData = navigator.connection && navigator.connection.saveData;
+  return m('(hover: hover) and (pointer: fine)') && !m('(prefers-reduced-motion: reduce)') && !saveData;
 }
 
-function initShelf() {
-  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const figs = Array.from(document.querySelectorAll('[data-shots]'));
-  if (still || !figs.length) {
-    return;
-  }
-  const visible = new Set();
-  const io = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.isIntersecting) {
-        visible.add(e.target);
-      } else {
-        visible.delete(e.target);
-      }
+// A screen with data-clip="<the mp4 file>" gets a muted video over its picture while the mouse points at it. The video
+// loads at the first point (about 20 to 200 KB), not with the page.
+export function addClip(box, src) {
+  let video = null;
+  box.addEventListener('pointerenter', () => {
+    if (!video) {
+      video = document.createElement('video');
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.setAttribute('aria-hidden', 'true');
+      video.src = src;
+      video.addEventListener('playing', () => video.classList.add('on'));
+      box.appendChild(video);
+    }
+    video.play().catch(() => {});
+  });
+  box.addEventListener('pointerleave', () => {
+    if (video) {
+      video.pause();
+      video.classList.remove('on');
     }
   });
-  figs.forEach((f) => io.observe(f));
-  let tick = 0;
-  setInterval(() => {
-    tick++;
-    figs.forEach((f, i) => {
-      if (!visible.has(f) || document.hidden || (tick + i) % 2) {
-        return;
-      }
-      const list = f.dataset.shots.split(' ');
-      const step = Math.floor((tick + i) / 2) % list.length;
-      showShot(f.querySelector('.dev-screen'), list[step]);
-    });
-  }, CYCLE_MS / 2);
 }
 
-function initThumbs() {
-  for (const box of document.querySelectorAll('[data-thumbs]')) {
-    const screen = box.parentElement.querySelector('.dev-screen');
-    const names = box.dataset.thumbs.split(' ');
-    names.forEach((name, i) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
-      b.setAttribute('aria-label', 'Screen ' + (i + 1) + ' of ' + names.length);
-      const im = document.createElement('img');
-      im.src = shotUrl(name);
-      im.alt = '';
-      im.loading = 'lazy';
-      b.appendChild(im);
-      b.addEventListener('click', () => {
-        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', 'false'));
-        b.setAttribute('aria-pressed', 'true');
-        showShot(screen, name);
-      });
-      box.appendChild(b);
-    });
-  }
-}
-
-function initTabs() {
-  const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
-  const pick = (tab) => {
-    for (const t of tabs) {
-      const on = t === tab;
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-      t.tabIndex = on ? 0 : -1;
-      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
-    }
-  };
-  tabs.forEach((t, i) => {
-    t.addEventListener('click', () => pick(t));
-    t.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-        const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
-        pick(n);
-        n.focus();
-      }
-    });
-  });
-}
-
-// The trailer: one video (the sharp copy at the shape of the 3.49 screen). The background of the hero is a canvas that
-// draws the frames of the same video (one download, the same moment); CSS makes it dark and soft. The button turns on
-// the sound. With "reduce motion", nothing moves until the user plays the video (the poster picture stays behind).
-function initReel() {
-  const reel = document.querySelector('[data-reel]');
-  const bg = document.querySelector('[data-reel-bg]');
-  const snd = document.querySelector('[data-reel-snd]');
-  if (!reel) {
+function initClips() {
+  if (!clipsOk()) {
     return;
   }
-  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (still) {
-    reel.removeAttribute('autoplay');
-    reel.pause();
-    reel.setAttribute('controls', '');
+  for (const box of document.querySelectorAll('[data-clip]')) {
+    addClip(box, box.dataset.clip);
   }
-  if (bg && !still) {
-    const ctx = bg.getContext('2d');
-    let last = 0;
-    const draw = (t) => {
-      // (about 20 frames a second is enough for a soft background)
-      if (!reel.paused && reel.readyState >= 2 && t - last > 45) {
-        last = t;
-        ctx.drawImage(reel, 0, 0, bg.width, bg.height);
-        bg.parentElement.classList.add('live');
-      }
-      requestAnimationFrame(draw);
-    };
-    requestAnimationFrame(draw);
+}
+
+// The trailer: the link opens a window with the video; the video file loads only now. With no script, the link
+// opens the video file.
+function initTrailer() {
+  const dlg = document.getElementById('trailer');
+  if (!dlg || typeof dlg.showModal !== 'function') {
+    return;
   }
-  if (snd) {
-    snd.addEventListener('click', () => {
-      const on = reel.muted;
-      reel.muted = !on;
-      if (on && reel.paused) {
-        reel.play().catch(() => {});
+  const video = dlg.querySelector('video');
+  for (const a of document.querySelectorAll('[data-trailer]')) {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!video.getAttribute('src')) {
+        // (the poster too loads only now: a poster in the page loads with the page)
+        if (video.dataset.poster) {
+          video.poster = video.dataset.poster;
+        }
+        video.src = a.getAttribute('href');
       }
-      snd.setAttribute('aria-pressed', on ? 'true' : 'false');
-      snd.textContent = on ? 'Sound off' : 'Sound on';
+      dlg.showModal();
+      video.play().catch(() => {});
     });
   }
+  const close = () => dlg.close();
+  for (const b of dlg.querySelectorAll('[data-trailer-close]')) {
+    b.addEventListener('click', close);
+  }
+  dlg.addEventListener('click', (e) => {
+    if (e.target === dlg) {
+      close();
+    }
+  });
+  dlg.addEventListener('close', () => video.pause());
 }
 
 initTheme();
-initShelf();
-initThumbs();
-initTabs();
-initReel();
+initClips();
+initTrailer();

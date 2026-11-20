@@ -1,0 +1,10 @@
+# Name,     Type, SubType, Offset,   Size
+# THE WIDE LAYOUT (for the board kinds with an SD card: the CoreS3): two app slots of
+# 4.5 MB (the slim slots of 3.5 MB were full) and /data of 6.9 MB (the SD card keeps the big files). nvs and phy_init do
+# not move (the settings stay). A slim board changes itself at the first start of a wide firmware (main/layout.c).
+nvs,        data, nvs,     0x9000,   0x6000
+phy_init,   data, phy,     0xf000,   0x1000
+ota_0,      app,  ota_0,   0x10000,  0x480000
+ota_1,      app,  ota_1,   0x490000, 0x480000
+otadata,    data, ota,     0x910000, 0x2000
+storage,    data, fat,     0x920000, 0x6E0000

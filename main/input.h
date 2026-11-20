@@ -98,6 +98,8 @@ static inline int input_consent_event(input_consent_t *c, const input_event_t *e
 
 // Remove all queued events.
 void input_flush(void);
+// An event of a touch waits in the queue (input_get() would give one)
+bool input_pending(void);
 // The keys of a keyboard (the Tab5 keyboard driver, tab5_kbd.c) for main.c: a queue of 128 (INK_* + INM_* << 16)
 void input_key_push(int key, int mods);
 bool input_key_pop(int *key, int *mods);

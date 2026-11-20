@@ -34,6 +34,7 @@ static const tune_note_t SIMON_OPEN[] = {
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 
 static int s_lang = 1;
 #define T(en, he) (s_lang ? (he) : (en))
@@ -710,7 +711,7 @@ static int pad_at(int x, int y)
     }
     return -1;
 }
-static void input(const input_event_t *ev)
+static void input_ev(const input_event_t *ev)
 {
     if (ev->kind == IN_TAP) {
         const int id = button_at(ev->x, ev->y);
@@ -746,6 +747,17 @@ static void input(const input_event_t *ev)
     press(p, ev->x, ev->y);
 }
 
+// a slow tap (a press of 350 - 900 ms) on the buttons of the title and the card acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    input_ev(ev);
+    if (slow && (s_g.g == G_TITLE || s_g.g == G_CARD)) {
+        input_ev(&tap);
+    }
+}
 // ---------------------------------------------------------------- the panel
 enum {
     PI_GOAL,

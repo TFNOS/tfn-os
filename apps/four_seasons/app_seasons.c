@@ -23,6 +23,7 @@
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #include "miniz.h"
 #include "midi_bg/midi_bg.h"
 #include "fs_music.h"
@@ -1680,7 +1681,7 @@ static void tap_play(int x, int y)
         act(best);
     }
 }
-static void input(const input_event_t *ev)
+static void input_ev(const input_event_t *ev)
 {
     if (!s_ok) {
         return;
@@ -1757,6 +1758,17 @@ static void input(const input_event_t *ev)
         break;
     default:
         break;
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on each screen (a drag keeps its rules) acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    input_ev(ev);
+    if (slow) {
+        input_ev(&tap);
     }
 }
 static void update(int64_t now)

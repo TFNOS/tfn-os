@@ -1,0 +1,6 @@
+{
+ "companions": {
+  "en": "Pair and set up your TFN companions: small ESP32 boards with modules (IR, 315 / 433 MHz, relays, buttons, motion, door and analog sensors). Tell which module is on which pin and test each one live. CONTROL uses them. English and Hebrew.",
+  "he": "חיבור והגדרה של מלווי TFN: לוחות ESP32 קטנים עם רכיבים (IR, 315 / 433 מגה-הרץ, ממסרים, לחצנים, חיישני תנועה, דלת ואנלוגיים). בוחרים איזה רכיב על איזה פין ובודקים כל אחד בזמן אמת. שליטה משתמשת בהם. אנגלית ועברית."
+ }
+}

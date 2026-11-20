@@ -1,0 +1,19 @@
+{
+ "tfn_app": 1,
+ "name": "INTEGRALS",
+ "sym": "app_integral",
+ "group": "UTIL",
+ "emoji": "∫",
+ "new": true,
+ "srcs": [
+  "app_integral.c",
+  "ig_font.c",
+  "ig_data.c",
+  "ig_sfx.c"
+ ],
+ "idf": "all",
+ "store": {
+  "en": "The techniques of integration, step by step: substitution, parts, partial fractions, trig, King's rule, Feynman's trick, the Gaussian integral and more, in 60 lessons with worked examples. Change a number and see each step and the area change. English and Hebrew.",
+  "he": "שיטות האינטגרציה, צעד אחר צעד: הצבה, חלקים, שברים חלקיים, טריגונומטריה, כלל המלך, הטריק של פיינמן, האינטגרל של גאוס ועוד, ב-60 שיעורים עם דוגמאות. שנו מספר וראו כל צעד והשטח משתנים. אנגלית ועברית."
+ }
+}

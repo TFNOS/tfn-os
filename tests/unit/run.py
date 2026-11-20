@@ -62,6 +62,8 @@ SYSUI_SRCS = ['main/sysui.c', 'main/app_settings.c', 'main/kfont.c', FAKE_SYSUI 
 ROUND_KIND = {'name': 'test_sysui_ask_round', 'defs': ['-DCONFIG_TFN_TARGET_AMOLED175=1']}
 # (the test, the sources that it compiles with, the arguments of the run[, the include folders before main/[, the
 # options of the build: 'name' = the name of the program, 'defs' = more arguments of the compiler]])
+COMP_SRCS = ['libs/tfncomp/tfncomp.c', 'libs/tfncomp/tc_x25519.c', 'libs/tfncomp/tc_master.c', 'libs/tfncomp/tc_ir.c',
+             'libs/irdecode/irdecode.c', 'companion/main/comp_core.c']
 TESTS = [
     ('test_web_util.c', ['main/web_util.c'], []),
     ('test_ui_hit.c', [], []),
@@ -83,7 +85,11 @@ TESTS = [
     ('test_sysui_ask.c', SYSUI_SRCS, [], [FAKE_SYSUI]),
     ('test_sysui_ask.c', SYSUI_SRCS, [], [FAKE_SYSUI], ROUND_KIND),
     ('test_setup_pages.c', ['main/tfn_pub_page.c', 'main/pool_page.c', 'main/tfn_pub_core.c'], [], [FAKE_SYSUI]),
-    ('test_tfn_web.c', ['main/tfn_web.c'], [os.path.join(tempfile.gettempdir(), 'tfn_unit_web')], [FAKE_WEB]),
+    ('test_tfn_web.c', ['main/tfn_web.c'], [os.path.join(tempfile.gettempdir(), 'tfn_unit_web')], [FAKE_WEB],
+     {'name': 'test_tfn_web', 'defs': ['-DFS_ROOT="c"']}),
+    # the TFN COMPANION: the protocol (libs/tfncomp), then the companion core and the master side on a fake radio
+    ('test_tfncomp.c', ['libs/tfncomp/tfncomp.c', 'libs/tfncomp/tc_x25519.c'], [], ['libs']),
+    ('test_companion.c', COMP_SRCS, ['25', '7'], ['libs', 'companion/main']),
 ]
 
 # the Python tests of the pools, of the WiFi install of the SDK and of the developer tools (each prints one line that

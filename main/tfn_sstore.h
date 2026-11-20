@@ -95,3 +95,8 @@ bool tfn_sstore_set(int mode, const char *url, char *msg, int len);
 int tfn_sstore_catalog(tfn_cat_t *out, int max, char *msg, int len);
 bool tfn_sstore_install(const char *id, int place, void (*progress)(int pct), char *msg, int len);
 uint8_t *tfn_sstore_icon(const char *id, size_t *len);
+// One file of the static store (rel: a path under its URL, "compfw/index.txt") into PSRAM (*buf: free it with free);
+// max = the biggest size. False: msg has the fault.
+bool tfn_sstore_get(const char *rel, uint8_t **buf, size_t *n, size_t max, char *msg, int len);
+// A signature (64 bytes, r || s) of a built-in key or an added STORE key over m. False: msg has the fault.
+bool tfn_sstore_store_signed(const uint8_t *m, size_t n, const uint8_t *sig, size_t sl, char *msg, int len);

@@ -311,7 +311,15 @@ static void hm_render_edit(int64_t now)
         hm_render_tile(pki, x, y, t, false, now);
     }
 }
+static void home_render_inner(int64_t now);
 void men_home_render(int64_t now)
+{
+    tfn_icon_ask(true);  // (no card read in a frame of the menu: tfn_icons.c)
+    home_render_inner(now);
+    tfn_icon_ask(false);
+    (void)tfn_icon_missed();  // (also the trim of the icon files that the task read)
+}
+static void home_render_inner(int64_t now)
 {
     if (men_hm == HM_NAME) {
         kbd_render(now);

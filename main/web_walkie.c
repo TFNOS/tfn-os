@@ -8,6 +8,8 @@
 // board; /api/walkie?set=hear_them|they_hear_me&on=0|1 sets a switch (as a tap on the board).
 
 #include <stdio.h>
+#include "tfn_speech.h"
+#include "alarm.h"
 #include "web_util.h"
 #include "tfn_extras.h"
 #include "tfn_util.h"
@@ -505,8 +507,29 @@ static void ctl_levels(const char *q)
     }
 }
 
+// (from tfn_listen.h: its other names clash with the WALKIE listen of this file)
+void listen_console(const char *a, const char *b);
+
 static esp_err_t api_ctl(httpd_req_t *req)
 {
+    // say=<text>: the voice says it (tfn_speech.h; tests). A long query: its own buffers (the web server has one task)
+    static char sq[400], sv[320];
+    if (httpd_req_get_url_query_str(req, sq, sizeof sq) == ESP_OK &&
+        httpd_query_key_value(sq, "say", sv, sizeof sv) == ESP_OK) {
+        url_decode(sv);
+        speech_say(sv);
+    }
+    // listen=<the words of the console "listen">: a test of the ears with no console port (for example
+    // "file /sdcard/talk/test/q01.raw", then "down", then "up"); the result is in the log (the Tab5: /api/evlog)
+    if (httpd_req_get_url_query_str(req, sq, sizeof sq) == ESP_OK &&
+        httpd_query_key_value(sq, "listen", sv, sizeof sv) == ESP_OK) {
+        url_decode(sv);
+        char *b = strchr(sv, ' ');
+        if (b) {
+            *b++ = 0;
+        }
+        listen_console(sv, b);
+    }
     char q[96], v[32];
     if (httpd_req_get_url_query_str(req, q, sizeof q) == ESP_OK) {
         int x1, y1, x2, y2;
@@ -535,6 +558,13 @@ static esp_err_t api_ctl(httpd_req_t *req)
         if (httpd_query_key_value(q, "menu", v, sizeof v) == ESP_OK) {
             app_open(&app_menu);
             app_screen_wake();
+        }
+        // the voice (tfn_speech.h): say_ntc=1|0 = READ NOTICES ALOUD; say=<text> (its own longer query below)
+        if (httpd_query_key_value(q, "say_ntc", v, sizeof v) == ESP_OK) {
+            speech_set_notices(atoi(v) != 0);
+        }
+        if (httpd_query_key_value(q, "say_alarm", v, sizeof v) == ESP_OK) {  // (SPEAK AT AN ALARM: alarm.h)
+            alarm_voice_set(atoi(v) != 0);
         }
         // quiet=1: the speaker off (silent tests from the PC), quiet=0: the settings again (as the console "quiet")
         if (httpd_query_key_value(q, "quiet", v, sizeof v) == ESP_OK) {
@@ -588,9 +618,12 @@ static esp_err_t api_ctl(httpd_req_t *req)
     const app_t *a = app_current();
     json_str(app, sizeof app, a ? a->name : "");
     // ("bright", "vol", "mute": the manager shows its BRIGHTNESS and VOLUME controls only when they are here)
+    int fmax, fslow;
+    app_frame_stats(&fmax, &fslow);
     int n = snprintf(b, CB,
-                     "{\"app\":\"%s\",\"screen\":\"%s\",\"fps\":%.1f,\"bright\":%d,\"vol\":%d,\"mute\":%s,\"apps\":[",
-                     app, app_screen_state(), (double)app_fps(), g_settings.brightness, g_settings.volume,
+                     "{\"app\":\"%s\",\"screen\":\"%s\",\"fps\":%.1f,\"frame_max\":%d,\"frames_slow\":%d,"
+                     "\"bright\":%d,\"vol\":%d,\"mute\":%s,\"apps\":[",
+                     app, app_screen_state(), (double)app_fps(), fmax, fslow, g_settings.brightness, g_settings.volume,
                      g_settings.mute ? "true" : "false");
     const char **names = heap_caps_malloc(NM * sizeof(char *), MALLOC_CAP_SPIRAM);
     uint8_t *cats = heap_caps_malloc(NM, MALLOC_CAP_SPIRAM);

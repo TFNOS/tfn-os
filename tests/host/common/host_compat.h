@@ -19,4 +19,25 @@ static inline int host_mkdir1(const char *path)
 #define HOST_MKDIR_PICK(a, b, name, ...) name
 #define mkdir(...) HOST_MKDIR_PICK(__VA_ARGS__, mkdir, host_mkdir1)(__VA_ARGS__)
 #endif
+// NOMEM=1 of build.sh (HOST_NOMEM): malloc, calloc and realloc of the firmware and of the apps go through a failure
+// hook (tests/host/nomem.c: FUZZ_NOMEM_NTH, FUZZ_NOMEM), for the test of the paths of a NULL result. The test frame
+// (fuzz.c, stubs.c, nomem.c) uses the real functions: an #undef at its start.
+#if defined(HOST_NOMEM) && !defined(__cplusplus)
+int host_nomem_fail(size_t n);
+static inline void *host_nm_malloc(size_t n)
+{
+    return host_nomem_fail(n) ? NULL : malloc(n);
+}
+static inline void *host_nm_calloc(size_t a, size_t b)
+{
+    return host_nomem_fail(a * b) ? NULL : calloc(a, b);
+}
+static inline void *host_nm_realloc(void *p, size_t n)
+{
+    return host_nomem_fail(n) ? NULL : realloc(p, n);
+}
+#define malloc(n)     host_nm_malloc(n)
+#define calloc(a, b)  host_nm_calloc(a, b)
+#define realloc(p, n) host_nm_realloc(p, n)
+#endif
 #endif

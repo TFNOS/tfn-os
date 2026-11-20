@@ -7,6 +7,7 @@ import {
   parseUsbfs, STORE_KEYS, trustedKey, usbTarget, verCmp, verifySig,
 } from '../js/store/core.js';
 import { BoardLink } from '../js/store/usb.js';
+import { readFileSync, existsSync } from 'node:fs';
 
 const fails = [];
 function expect(cond, what) {
@@ -294,6 +295,29 @@ async function usbCase(opts, card) {
   expect(/BAD_REQUEST/.test(r3.err) && !r3.fb.installed.dice, 'usb: TFN OS 1.0.0 with no card refuses the board path');
   const r4 = await usbCase({ card: true, board: true, drop: 1 }, true);
   expect(!r4.err && r4.same, 'usb: a lost put line goes again, and the file is the same');
+}
+
+// The previews and the small icons of the site (media/apps): each file of media.json and icons.json is there, and
+// its "v" is the start of the SHA-256 of its files (the page adds "?v=<v>" to the address; a long cache needs it).
+{
+  const dir = new URL('../media/apps/', import.meta.url);
+  const file = (n) => new Uint8Array(readFileSync(new URL(n, dir)));
+  const icons = JSON.parse(readFileSync(new URL('icons.json', dir), 'utf8')).icons;
+  let good = Array.isArray(icons) && icons.length > 0;
+  for (const x of icons) {
+    const ok = /^[0-9a-f]{64}$/.test(x.of) && /^[a-z0-9_]+-icon(-[0-9a-f]{8})?\.webp$/.test(x.file) &&
+      existsSync(new URL(x.file, dir)) && (await sha256Hex(file(x.file))).startsWith(x.v) && x.size > 0 &&
+      x.frames > 0 && x.ms > 0;
+    good = good && ok;
+  }
+  expect(good, 'media: each small icon of icons.json is there, with its v');
+  const media = JSON.parse(readFileSync(new URL('media.json', dir), 'utf8'));
+  let mgood = Object.keys(media).length > 0;
+  for (const m of Object.values(media)) {
+    const all = new Uint8Array([...file(m.anim), ...file(m.poster)]);
+    mgood = mgood && /\.mp4$/.test(m.anim) && (await sha256Hex(all)).startsWith(m.v);
+  }
+  expect(mgood, 'media: each preview of media.json is there, with its v');
 }
 
 console.log(fails.length ? 'STORE PAGE TESTS FAILED: ' + fails.length : 'STORE PAGE TESTS OK');

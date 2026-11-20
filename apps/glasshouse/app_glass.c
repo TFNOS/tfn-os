@@ -1376,7 +1376,13 @@ static void item_set(int id, int v)
         music_want(GLM_TITLE);
     }
 }
-static const pitems_t PANEL = {ITEMS, 5, item_shown, NULL, item_set, NULL, NULL};
+// the panel went away: the position of the board now is the zero of the tilt look again (the board can be in another
+// position after a pull of the panel)
+static void item_resume(void)
+{
+    imu_set_level();
+}
+static const pitems_t PANEL = {ITEMS, 5, item_shown, NULL, item_set, NULL, item_resume};
 
 // ================================================================ the app
 static void leave(void);

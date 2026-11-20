@@ -1,0 +1,19 @@
+{
+ "tfn_app": 1,
+ "name": "TRIVIA",
+ "sym": "app_trivia",
+ "group": "GAMES",
+ "emoji": "❓",
+ "new": true,
+ "srcs": [
+  "app_trivia.c",
+  "tv_bank.c",
+  "tv_art.c",
+  "tv_sfx.c"
+ ],
+ "idf": "all",
+ "store": {
+  "en": "A trivia game in Hebrew: 684 questions, 12 subjects, 3 levels. Each round has 10 questions with a timer; speed and a streak give more points, and no question comes again before you see all of its level. Play alone, with a friend on one board, or on two boards.",
+  "he": "משחק טריוויה בעברית: 684 שאלות ב-12 נושאים וב-3 רמות. בכל סבב 10 שאלות עם שעון; תשובה מהירה ורצף נותנים יותר נקודות, ושאלה לא חוזרת עד שרואים את כל השאלות של הרמה. משחקים לבד, עם חבר על לוח אחד, או על שני לוחות."
+ }
+}

@@ -144,7 +144,12 @@ mf_text_oc(&MF_N34, gfx_w / 2, 52, b, rgb(255, 240, 200), rgb(30, 16, 40), 2, 1)
 ### The Rubik faces (`kfont.h`): English and Hebrew
 
 Five faces with Latin and Hebrew letters (UTF-8). Draw them with `ui_text_c()` (x = the centre) and measure them with
-`ui_text_w()`. The function lays out a line with Hebrew from the right.
+`ui_text_w()`. The function lays out a line with Hebrew from the right, by the Unicode Bidirectional Algorithm
+(`libs/bidi/bidi.h`): a Latin phrase ("TFN SOUND") or a number ("-5", "10:30") keeps its own order, a bracket or a
+colon goes to the side where it belongs, and a bracket of a right-to-left part shows its mirror. So write each Hebrew
+text in its logical order, as you type it: never turn a bracket or the words of a Latin phrase round to make them look
+right. An app that draws a Hebrew line with its own font can include `bidi/bidi.h` and draw the letters in the order
+of `bidi_order()`.
 
 | Font | Height of the capitals | Line |
 | --- | --- | --- |

@@ -29,6 +29,7 @@
 #include "kbd.h"
 #include "kfont.h"
 #include "uikit.h"
+#include "set_text.h"  // (the text of the keyboard: anti-aliased faces in place of the dot font)
 
 #if BOARD_BAR_SCREEN
 #define KB_W    640
@@ -755,6 +756,22 @@ static void key_label(char k, char *lab, int n)
     }
 }
 
+// A sign in place of a word that is too wide for its key (the narrow keys of the 320 x 240 frame): SHIFT is an arrow
+// up, SPACE is the shape of a space bar. cx, cy: the middle of the key.
+static void key_sign(char k, int cx, int cy, uint16_t c)
+{
+    if (k == K_SHIFT) {
+        for (int i = 0; i < 6; i++) {
+            gfx_fill_rect(cx - i, cy - 6 + i, 2 * i + 1, 1, c);
+        }
+        gfx_fill_rect(cx - 2, cy, 5, 6, c);
+        return;
+    }
+    gfx_fill_rect(cx - 8, cy + 2, 17, 2, c);
+    gfx_fill_rect(cx - 8, cy - 3, 2, 5, c);
+    gfx_fill_rect(cx + 7, cy - 3, 2, 5, c);
+}
+
 // THE PREVIEW: a big copy of the key under the finger, above the key (over the top line for the top row), joined to
 // the key by a stem. The secret text shows its key too (as on a phone): the finger needs to see what it types.
 static void draw_preview(void)
@@ -963,7 +980,9 @@ void kbd_render(int64_t now)
                 key_label(k, lab, sizeof lab);
             }
             int sc = (special ? 1 : 2) + KB_BIG;
-            if (ascii_only(lab)) {
+            if (special && (k == K_SHIFT || k == K_SPACE) && gfx_text_width(lab, sc) > KEY_W - 2 * KEY_GAP - 2) {
+                key_sign(k, x + KEY_W / 2, y + KEY_H / 2, fg);
+            } else if (ascii_only(lab)) {
                 gfx_text_center_in(x, KEY_W, y + (KEY_H - 7 * sc) / 2, lab, sc, fg);
             } else {
                 ui_text_c(KB_BIG ? &KF_BIG : &KF_NAME, x + KEY_W / 2, y + KEY_H / 2 + 7, lab, fg);

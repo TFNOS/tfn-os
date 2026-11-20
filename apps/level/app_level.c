@@ -33,6 +33,59 @@
 #include "tfn/imu.h"
 #include "tfn/input.h"
 #include "tfn/settings.h"
+#include "aatext/aatext.h"
+#include "interfont/stocks_font.inc"  // the Inter digits of STOCKS: SF_N26, SF_N34, SF_P60, SF_P80
+
+// THE TEXT (the 5 x 7 dot font of gfx_text is rough): the labels in the Bungee faces of the firmware (libs/aatext),
+// the numbers of the readouts (scale 3 and more: the LCD look) in the Inter digits of about the same height: 3 = SF_N26,
+// 4 = SF_N34, 5 to 7 = SF_P60, 8 and more = SF_P80. The digits keep the middle of the dot line. A text with a letter
+// (">9999", "PX/MM") stays in the Bungee face.
+static const mfont_t *lv_num_face(const char *s, int k)
+{
+    if (k < 3 || !*s) {
+        return NULL;
+    }
+    for (const char *p = s; *p; p++) {
+        if (!((*p >= '0' && *p <= '9') || *p == '.' || *p == '-' || *p == '+' || *p == ' ')) {
+            return NULL;
+        }
+    }
+    return k == 3 ? &SF_N26 : k == 4 ? &SF_N34 : k <= 7 ? &SF_P60 : &SF_P80;
+}
+static int lv_w(const char *s, int k)
+{
+    const mfont_t *f = lv_num_face(s, k);
+    return f ? aat_fw(f, s) : aat_w(s, k);
+}
+// the top of the digits of s in the dot line from y of scale k (the degree sign sits there)
+static int lv_num_top(const char *s, int y, int k)
+{
+    const mfont_t *f = lv_num_face(s, k);
+    const mglyph_t *g = f ? mf_glyph(f, '0') : NULL;
+    return g ? y + (7 * k + g->oy + 1) / 2 : y;
+}
+static void lv_text(int x, int y, const char *s, int k, uint16_t c)
+{
+    const mfont_t *f = lv_num_face(s, k);
+    if (!f) {
+        aat_text(x, y, s, k, c);
+        return;
+    }
+    const mglyph_t *g = mf_glyph(f, '0');
+    aat_draw(f, x, y + (7 * k + (g ? -g->oy : f->asc) + 1) / 2, s, c);
+}
+static void lv_text_center_in(int x, int w, int y, const char *s, int k, uint16_t c)
+{
+    lv_text(x + (w - lv_w(s, k)) / 2, y, s, k, c);
+}
+static void lv_text_center(int y, const char *s, int k, uint16_t c)
+{
+    lv_text_center_in(0, gfx_w, y, s, k, c);
+}
+#define gfx_text           lv_text
+#define gfx_text_width     lv_w
+#define gfx_text_center    lv_text_center
+#define gfx_text_center_in lv_text_center_in
 
 #define RAD2DEG   57.2957795f
 #define DEG2RAD   0.0174532925f
@@ -423,7 +476,7 @@ static void level_init(void)
         s_brush[i].tone = (int8_t)(((r >> 20) & 1) ? 1 : -1);
     }
     s_unit = (int)store_get("lvl_unit", U_DEG);
-    if (s_unit >= N_UNITS) {
+    if (s_unit < 0 || s_unit >= N_UNITS) {
         s_unit = U_DEG;
     }
     s_sound = store_get("lvl_snd", 1) != 0;
@@ -1385,7 +1438,7 @@ static void value_text(int x, int y, int w, float deg, int unit, int scale, uint
     int tx = x + (w - tw - (unit == U_DEG ? 3 * scale : 0)) / 2;
     gfx_text(tx, y, buf, scale, c);
     if (unit == U_DEG) {
-        degree_sign(tx + tw + 2, y, scale, c);
+        degree_sign(tx + tw + 2, lv_num_top(buf, y, scale), scale, c);
     }
 }
 

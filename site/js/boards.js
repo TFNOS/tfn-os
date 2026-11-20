@@ -13,7 +13,7 @@ export const BOARDS = [
     flashMB: 16,
     usb: [{ vid: ESPRESSIF_VID, pid: 0x1001 }],
     screen: '640 x 172 bar',
-    shot: 'img/screens/349_menu.webp',
+    shot: 'img/screens/board_lcd349.webp',
     web: true,
   },
   {
@@ -24,7 +24,7 @@ export const BOARDS = [
     flashMB: 16,
     usb: [{ vid: ESPRESSIF_VID, pid: 0x1001 }],
     screen: '320 x 240',
-    shot: 'img/screens/s3_menu.webp',
+    shot: 'img/screens/board_cores3.webp',
     web: true,
   },
   {
@@ -35,7 +35,7 @@ export const BOARDS = [
     flashMB: 16,
     usb: [{ vid: ESPRESSIF_VID, pid: 0x1001 }],
     screen: '368 x 448 AMOLED',
-    shot: 'img/screens/am18_murano.webp',
+    shot: 'img/screens/board_am18.webp',
     web: true,
   },
   {
@@ -46,7 +46,7 @@ export const BOARDS = [
     flashMB: 32,
     usb: [{ vid: ESPRESSIF_VID, pid: 0x1001 }],
     screen: '466 x 466 round AMOLED',
-    shot: 'img/screens/a175_menu.webp',
+    shot: 'img/screens/board_am175.webp',
     web: true,
   },
   {
@@ -57,7 +57,7 @@ export const BOARDS = [
     flashMB: 32,
     usb: [{ vid: WCH_VID, pid: 0x55d2 }],
     screen: '412 x 412 round',
-    shot: 'img/screens/wt_menu.webp',
+    shot: 'img/screens/board_watcher.webp',
     web: true,
   },
   {
@@ -68,7 +68,7 @@ export const BOARDS = [
     flashMB: 16,
     usb: [{ vid: ESPRESSIF_VID, pid: 0x1001 }],
     screen: '1280 x 720',
-    shot: 'img/screens/t5_menu.webp',
+    shot: 'img/screens/board_tab5.webp',
     web: false,
   },
 ];

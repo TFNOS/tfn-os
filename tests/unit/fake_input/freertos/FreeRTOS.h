@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 typedef int BaseType_t;
+typedef unsigned UBaseType_t;
 typedef uint32_t TickType_t;
 typedef int portMUX_TYPE;
 #define pdTRUE                       1

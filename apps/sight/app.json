@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "SIGHT",
+ "sym": "app_sight",
+ "group": "UTIL",
+ "emoji": "👁️",
+ "srcs": [
+  "app_sight.c"
+ ],
+ "store": {
+  "en": "Learn to read music and train your ear. LEARN shows a note on the staff, and you answer on the piano keys. SPEED asks for fast answers. EAR trains intervals and chords. SING uses the microphone to find the note that you sing or play.",
+  "he": "לומדים לקרוא תווים ומאמנים את האוזן. ב-LEARN מופיע תו על החמשה, ועונים על קלידי הפסנתר. ב-SPEED צריך לענות מהר. ב-EAR מתאמנים על מרווחים ואקורדים. ב-SING המיקרופון מזהה את התו שאתם שרים או מנגנים."
+ }
+}

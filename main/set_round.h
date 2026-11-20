@@ -10,6 +10,7 @@
 #include "gfx.h"
 #include "uikit.h"
 #include "tfn/theme.h"
+#include "set_text.h"  // (the text of the pages: anti-aliased faces in place of the dot font, on all boards)
 
 // (the values are macros on all boards: a page of another board uses them only in a branch that is never taken)
 #define RS(v)     ((v) * gfx_w / 466)

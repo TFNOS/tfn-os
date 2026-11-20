@@ -247,6 +247,11 @@ static void text_c(const kfont_t *f, int cx, int base, const char *s, uint16_t c
         tc_draw(e, f, cx - e->w / 2, base, c);
     }
 }
+// the face of the small labels: the round frame (466 px on the 1.75C: 0.095 mm a px) gets the next bigger face
+static const kfont_t *lbl_f(void)
+{
+    return rndl() ? &KF_NAME : &KF_LABEL;
+}
 // a text with a dark plate under it (in the middle of the box)
 static void text_plate_c(const kfont_t *f, int cx, int base, const char *s, uint16_t c, int wmax)
 {
@@ -474,7 +479,8 @@ static void draw_bracket(void)
         u[0] = 0;
     }
     // (the name and the distance at the side of the bracket: the right side, or the left side when there is no room)
-    int w = ctext_w(&KF_LABEL, t), wu = ctext_w(&KF_LABEL, u);
+    const kfont_t *lf = lbl_f();
+    int w = ctext_w(lf, t), wu = ctext_w(lf, u);
     if (wu > w) {
         w = wu;
     }
@@ -482,9 +488,9 @@ static void draw_bracket(void)
     bool at_r = x1 + 8 + w <= right || x0 - 8 - w < 4;
     int lx = at_r ? (int)x1 + 8 + w / 2 : (int)x0 - 8 - w / 2;
     int ty = (int)clampf(sy - 2, (longl() ? 60 : rndl() ? SH * 22 / 100 : 56), rndl() ? SH * 66 / 100 : SH - 34);
-    ctext_c(&KF_LABEL, lx, ty, t, c);
+    ctext_c(lf, lx, ty, t, c);
     if (u[0]) {
-        ctext_c(&KF_LABEL, lx, ty + 15, u, inr ? C_CYA : rgb(255, 240, 220));
+        ctext_c(lf, lx, ty + lf->line - 2, u, inr ? C_CYA : rgb(255, 240, 220));
     }
 }
 // the ring of the nose: the markers that the nose snaps to, and the nose itself
@@ -628,8 +634,17 @@ static void key_paint(int key, uint32_t id, int w, int h)
         tfd_rect(0, 0, w, h, tf, 256);
         rframe(0, 0, w, h, KC_R, te, 240, 2.0f);
         const char *tl = st == TH_ON ? TR("LET GO", "שחררו") : st == TH_FLY ? "..." : TR("TETHER", "כבל");
-        ctext_c(longl() ? &KF_BIG : &KF_NAME, w / 2, h / 2 + (longl() ? 9 : 6), tl,
-                st == TH_NONE && !inr ? rgb(150, 170, 176) : C_WHT);
+        // (a word that does not fit with 4 px at each side takes the small face: TETHER is 65 px in KF_NAME, the key
+        // of the round frame 74 px on the 1.75C and 65 px on the Watcher)
+        const kfont_t *kf = longl() ? &KF_BIG : &KF_NAME;
+        if (!longl() && ui_text_w(kf, tl) > w - 8) {
+            kf = &KF_LABEL;
+        }
+        ctext_c(kf, w / 2,
+                h / 2 + (longl()          ? 9
+                         : kf == &KF_NAME ? 6
+                                          : 5),
+                tl, st == TH_NONE && !inr ? rgb(150, 170, 176) : C_WHT);
         if (st == TH_ON && longl()) {
             ctext_c(&KF_LABEL, w / 2, h - 4, TR("HOLD 1 S", "החזיקו שנייה"), rgb(170, 220, 230));
         }
@@ -825,12 +840,13 @@ static void draw_hud(void)
         snprintf(s3, sizeof s3, "x%d", (int)(s_rate + 0.5f));
         snprintf(s2, sizeof s2, TR("%d KM", "%d ק״מ"), (int)body_alt(&B[0]));
     }
-    int w1 = ctext_w(&KF_LABEL, s1);
-    ctext_c(&KF_LABEL, rtl ? bx - 6 - w1 / 2 : bx + bw + 6 + w1 / 2, iy, s1, C_AMB);
-    int w3 = ctext_w(&KF_LABEL, s3);
-    ctext_c(&KF_LABEL, rtl ? ix0 + w3 / 2 : ix1 - w3 / 2, iy, s3, rgb(255, 228, 196));
+    const kfont_t *lf = lbl_f();
+    int w1 = ctext_w(lf, s1);
+    ctext_c(lf, rtl ? bx - 6 - w1 / 2 : bx + bw + 6 + w1 / 2, iy, s1, C_AMB);
+    int w3 = ctext_w(lf, s3);
+    ctext_c(lf, rtl ? ix0 + w3 / 2 : ix1 - w3 / 2, iy, s3, rgb(255, 228, 196));
     int m0 = rtl ? ix0 + w3 + 8 : bx + bw + 12 + w1, m1 = rtl ? bx - 12 - w1 : ix1 - w3 - 8;
-    ctext_c(&KF_LABEL, (m0 + m1) / 2, iy, s2, rgb(255, 228, 196));
+    ctext_c(lf, (m0 + m1) / 2, iy, s2, rgb(255, 228, 196));
     tq = esp_timer_get_time();
     draw_keys();
     s_prof[7] += esp_timer_get_time() - tq;
@@ -953,9 +969,10 @@ static void draw_title(void)
         text_c(&KF_TITLE, SW / 2, ry + 42, "ORBITAL", C_AMB, tw);
         text_c(&KF_NAME, SW / 2, ry + 68, TR("A RESCUE TUG IN LOW ORBIT", "גוררת חילוץ במסלול נמוך"), C_WHT, tw);
         snprintf(t, sizeof t, TR("%d OF %d STARS", "%d מתוך %d כוכבים"), stars_total(), NMIS * 3);
-        text_c(&KF_LABEL, SW / 2, ry + 94, t, rgb(255, 214, 140), tw);
-        text_c(&KF_LABEL, SW / 2, SH * 83 / 100, TR("MORE IN THE PANEL: PULL DOWN", "עוד בלוח: משכו למטה"),
-               rgb(170, 160, 150), SW * 60 / 100);
+        text_c(&KF_NAME, SW / 2, ry + 96, t, rgb(255, 214, 140), tw);
+        // (over the planet: on a dark plate, so that the land under it does not hide the letters)
+        text_plate_c(&KF_LABEL, SW / 2, SH * 83 / 100, TR("MORE IN THE PANEL: PULL DOWN", "עוד בלוח: משכו למטה"),
+                     rgb(190, 180, 170), SW * 60 / 100);
     } else {
         text_s(&KF_TITLE, tx0, tx1, L ? 48 : 42, "ORBITAL", C_AMB);
         text_s(&KF_NAME, tx0, tx1, L ? 74 : 66, TR("A RESCUE TUG IN LOW ORBIT", "גוררת חילוץ במסלול נמוך"), C_WHT);

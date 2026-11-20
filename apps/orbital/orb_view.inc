@@ -223,6 +223,11 @@ static void planet_make(void)
         s_city = orb_alloc((size_t)TEX_A * TEX_D);
     }
     if (!s_tex || !s_city) {
+        // (no memory: no planet. The two go together: draw_planet reads both when s_tex is there)
+        orb_free(s_tex);
+        s_tex = NULL;
+        orb_free(s_city);
+        s_city = NULL;
         return;
     }
     for (int i = 0; i <= 256; i++) {

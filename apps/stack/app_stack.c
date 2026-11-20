@@ -5,6 +5,8 @@
 // A block slides from side to side above the tower. Touch the screen to drop it.
 // The part that hangs over the edge falls off. A drop that is almost exact
 // counts as perfect: after 3 perfect drops in a row, the block grows again.
+// The feel: the tower drops a little at each landing, the score jumps, a perfect drop gives sparks, the cut part
+// falls away from the tower, a miss shakes the view. The big words and numbers use the Bungee faces (mfont.h).
 
 #include <math.h>
 #include <stdio.h>
@@ -15,7 +17,9 @@
 #include "tfn/board.h"
 #include "tfn/tunes.h"
 #include "tfn/gfx.h"
+#include "tfn/mfont.h"
 #include "tfn/settings.h"
+#include "tfn/sysui.h"
 
 #if BOARD_BAR_SCREEN
 #define SCR_W      172
@@ -78,7 +82,7 @@
 #define SPEED_N    7.0f
 #define SPEED_MAX  350.0f
 #define SCORE_Y    8
-#define COMBO_Y    42
+#define COMBO_Y    48
 #endif
 #ifndef COMBO_S
 #define COMBO_S 2
@@ -91,15 +95,23 @@
 #define TY        (K_RND ? 44 : 0)  // (the round frame: the text rows of the CoreS3 lower, in the circle)
 #define MAX_SLABS 600
 #define N_DEBRIS  8
+#define N_SPARK   32
+#define SPARK_PX  (BOARD_UI_TABLET ? 4 : 3)  // the size of a spark
 
 typedef struct {
     float x, w;
 } slab_t;
+// a part that falls: y is in the units of the tower (the screen y with no scroll), so it does not jump when the
+// view scrolls
 typedef struct {
-    float x, y, w, vy;
+    float x, y, w, vx, vy;
     int idx;
     bool on;
 } debris_t;
+typedef struct {
+    float x, y, vx, vy, life;  // y: the units of the tower; life: s left
+    uint16_t c;
+} spark_t;
 typedef enum {
     ST_TITLE,
     ST_PLAY,
@@ -116,8 +128,10 @@ static int s_hue0;
 static float s_scroll, s_scroll_target;
 static uint32_t s_best;
 static bool s_new_best;
-static int64_t s_last, s_over_at, s_perfect_at;
+static int64_t s_last, s_over_at, s_perfect_at, s_land_at;
 static uint16_t s_c_text, s_c_accent;
+static spark_t s_spark[N_SPARK];
+static float s_shake;  // the shake of the view after a miss (px, it decays)
 
 // ---------------------------------------------------------------- helpers
 
@@ -159,19 +173,55 @@ static void next_block(void)
     s_scroll_target = tower_top > (BASE_Y - TOP_Y) ? tower_top - (BASE_Y - TOP_Y) : 0;
 }
 
-static void add_debris(float x, float w, int idx)
+// the y of the top edge of block i in the units of the tower (no scroll)
+static float slab_wy(int i)
+{
+    return (float)(BASE_Y - (i + 1) * SLAB_H);
+}
+
+static float frnd(float lo, float hi)
+{
+    return lo + (hi - lo) * (float)(esp_random() % 1000) / 1000.0f;
+}
+
+// a part that falls; dir: -1 = to the left of the tower, 1 = to the right (it falls away from the tower)
+static void add_debris(float x, float w, int idx, float dir)
 {
     for (int i = 0; i < N_DEBRIS; i++) {
         if (!s_debris[i].on) {
-            s_debris[i] = (debris_t){.x = x, .y = (float)slab_y(idx), .w = w, .vy = 0, .idx = idx, .on = true};
+            s_debris[i] = (debris_t){.x = x,
+                                     .y = slab_wy(idx),
+                                     .w = w,
+                                     .vx = dir * frnd(20, 45),
+                                     .vy = -frnd(40, 90),
+                                     .idx = idx,
+                                     .on = true};
             return;
         }
+    }
+}
+
+// n sparks at the point x, y (the units of the tower), up and to the side dir (-1, 1; 0 = both sides)
+static void add_sparks(float x, float y, int n, float dir, uint16_t c)
+{
+    for (int i = 0; i < N_SPARK && n > 0; i++) {
+        spark_t *p = &s_spark[i];
+        if (p->life > 0) {
+            continue;
+        }
+        float d = dir != 0 ? dir : (n & 1 ? 1.0f : -1.0f);
+        *p = (spark_t){
+                .x = x, .y = y, .vx = d * frnd(30, 140), .vy = -frnd(80, 260), .life = frnd(0.35f, 0.7f), .c = c};
+        n--;
     }
 }
 
 static void start_game(int64_t now)
 {
     memset(s_debris, 0, sizeof(s_debris));
+    memset(s_spark, 0, sizeof(s_spark));
+    s_shake = 0;
+    s_land_at = 0;
     s_hue0 = (int)(esp_random() % 360);
     s_slab[0] = (slab_t){(SCR_W - BASE_W) / 2.0f, BASE_W};
     s_n = 1;
@@ -186,7 +236,9 @@ static void game_over(int64_t now)
 {
     s_state = ST_OVER;
     s_over_at = now;
-    add_debris(s_mx, s_mw, s_n);
+    const slab_t *top = &s_slab[s_n - 1];
+    add_debris(s_mx, s_mw, s_n, s_mx + s_mw / 2 < top->x + top->w / 2 ? -1.0f : 1.0f);
+    s_shake = BOARD_BAR_SCREEN ? 7.0f : 6.0f;
     sfx_play(SFX_GAME_OVER);
     uint32_t score = (uint32_t)(s_n - 1);
     s_new_best = score > s_best;
@@ -245,15 +297,22 @@ static void drop(int64_t now)
         uint16_t f = (uint16_t)(523.0f * powf(2.0f, semis / 12.0f));
         sfx_tone(f, f, 160, W_PULSE, 22);
         sfx_tone(f / 2, f / 2, 160, W_TRI, 60);
+        // sparks from the two top corners (more for a longer row of perfect drops)
+        int n = 5 + (s_combo > 5 ? 5 : s_combo);
+        float wy = slab_wy(s_n);
+        add_sparks(nb.x, wy, n, -1, rgb(255, 250, 220));
+        add_sparks(nb.x + nb.w, wy, n, 1, slab_color(s_n, 60));
     } else {
         s_combo = 0;
         nb.x = l;
         nb.w = r - l;
-        // the part that hangs over
+        // the part that hangs over: it falls away from the tower; crumbs at the cut
         if (s_mx < l) {
-            add_debris(s_mx, l - s_mx, s_n);
+            add_debris(s_mx, l - s_mx, s_n, -1);
+            add_sparks(l, slab_wy(s_n) + SLAB_H / 2, 4, -1, slab_color(s_n, 30));
         } else {
-            add_debris(r, s_mx + s_mw - r, s_n);
+            add_debris(r, s_mx + s_mw - r, s_n, 1);
+            add_sparks(r, slab_wy(s_n) + SLAB_H / 2, 4, 1, slab_color(s_n, 30));
         }
         sfx_play(SFX_CUT);
         sfx_play(SFX_PLACE);
@@ -261,6 +320,7 @@ static void drop(int64_t now)
     if (s_n < MAX_SLABS) {
         s_slab[s_n++] = nb;
     }
+    s_land_at = now;
     next_block();
 }
 
@@ -277,9 +337,28 @@ static void stack_init(void)
     s_state = ST_TITLE;
 }
 
+// the settings panel: RESTART (a hold of 1 s, only in a game: the tower is lost)
+static const pitem_t STK_ITEMS[] = {
+        {PI_ACT2, 0, 0, 0, {"RESTART", "מחדש"}, NULL, NULL},
+};
+static bool stk_item_shown(int id)
+{
+    (void)id;
+    return s_state == ST_PLAY;
+}
+static void stk_item_set(int id, int v)
+{
+    (void)id;
+    (void)v;
+    start_game(s_last);
+    tune_play(TUNE_STACK);
+}
+static const pitems_t STK_PANEL = {STK_ITEMS, 1, stk_item_shown, NULL, stk_item_set, NULL, NULL};
+
 static void stack_enter(int64_t now)
 {
     s_last = now;
+    sysui_panel_items(&STK_PANEL);
 }
 
 static void stack_input_v(const input_event_t *ev);
@@ -343,17 +422,34 @@ static void stack_update(int64_t now)
         debris_t *d = &s_debris[i];
         if (d->on) {
             d->vy += 1400 * dt;
+            d->x += d->vx * dt;
             d->y += d->vy * dt;
-            if (d->y > SCR_H + 40) {
+            if (d->y + s_scroll > SCR_H + 40) {
                 d->on = false;
             }
         }
     }
+    for (int i = 0; i < N_SPARK; i++) {
+        spark_t *p = &s_spark[i];
+        if (p->life > 0) {
+            p->life -= dt;
+            p->vy += 900 * dt;
+            p->x += p->vx * dt;
+            p->y += p->vy * dt;
+        }
+    }
+    s_shake -= s_shake * (dt * 9 > 1 ? 1 : dt * 9);
+    if (s_shake < 0.3f) {
+        s_shake = 0;
+    }
 }
+
+static int s_ox, s_oy;  // the offset of the world in this frame (the shake, the landing)
 
 static void draw_slab(float x, int y, float w, int idx)
 {
-    int ix = (int)x, iw = (int)(w + 0.5f);
+    int ix = (int)x + s_ox, iw = (int)(w + 0.5f);
+    y += s_oy;
     gfx_fill_rect(ix, y, iw, SLAB_H, slab_color(idx, 0));
     gfx_fill_rect(ix, y, iw, 3, slab_color(idx, 40));
     gfx_fill_rect(ix, y + SLAB_H - 3, iw, 3, slab_color(idx, -70));
@@ -375,6 +471,19 @@ static void stack_render(int64_t now)
     stack_draw(now);
 #endif
 }
+// a big word of the game: a Bungee face with a dark outline and a shadow, in the middle; top = the top of the
+// capitals (big text and numbers look rough in the dot font)
+static void stk_word(const mfont_t *f, int top, const char *s, uint16_t col)
+{
+    mf_text_oc(f, SCR_W / 2, top + f->asc, s, col, rgb(16, 12, 28), 2, 1);
+}
+
+// a line of small text (Rubik) in the middle
+static void stk_line(int top, const char *s, uint16_t col)
+{
+    mf_text_oc(&MF_LABEL, SCR_W / 2, top + MF_LABEL.asc, s, col, rgb(16, 12, 28), 1, 0);
+}
+
 static void stack_draw(int64_t now)
 {
     // background: its colour moves with the height of the tower
@@ -382,6 +491,13 @@ static void stack_draw(int64_t now)
     for (int y = 0; y < SCR_H; y += 8) {
         gfx_fill_rect(0, y, SCR_W, 8, hsv(h + y / 40, 110, 70 - y * 40 / SCR_H));
     }
+
+    // the offset of the world: the shake after a miss, and the tower goes down a little at each landing
+    s_ox = (int)(s_shake * fsin((float)now * 0.07f));
+    s_oy = (int)(s_shake * 0.5f * fcos((float)now * 0.11f));
+    int land = s_land_at ? (int)(now - s_land_at) : 1000;
+    int thud = land < 140 ? (BOARD_BAR_SCREEN ? 4 : 3) * (140 - land) / 140 : 0;
+    s_oy += thud;
 
     // tower (only the visible blocks)
     for (int i = 0; i < s_n; i++) {
@@ -395,107 +511,119 @@ static void stack_draw(int64_t now)
         draw_slab(s_slab[i].x, y, s_slab[i].w, i);
     }
     // under the base block: the ground
-    int gy = slab_y(0) + SLAB_H;
+    int gy = slab_y(0) + SLAB_H + s_oy;
     if (gy < SCR_H) {
         gfx_fill_rect(0, gy, SCR_W, SCR_H - gy, rgb(30, 30, 44));
     }
+    s_oy -= thud;  // (the moving block and the parts that fall do not take the landing)
 
     if (s_state == ST_PLAY) {
         draw_slab(s_mx, slab_y(s_n), s_mw, s_n);
         if (now - s_perfect_at < 350 && s_n > 1) {
             int grow = (int)((now - s_perfect_at) / 25);
             const slab_t *t = &s_slab[s_n - 1];
-            gfx_frame_rect((int)t->x - grow, slab_y(s_n - 1) - grow, (int)t->w + 2 * grow, SLAB_H + 2 * grow, 1,
-                           s_c_text);
+            gfx_frame_rect((int)t->x - grow + s_ox, slab_y(s_n - 1) - grow + s_oy + thud, (int)t->w + 2 * grow,
+                           SLAB_H + 2 * grow, 1, s_c_text);
+            if (now - s_perfect_at < 110) {
+                // a short white flash on the block that landed exactly
+                gfx_fill_rect((int)t->x + s_ox, slab_y(s_n - 1) + s_oy + thud, (int)(t->w + 0.5f), SLAB_H,
+                              rgb(255, 255, 240));
+            }
         }
     }
     for (int i = 0; i < N_DEBRIS; i++) {
         const debris_t *d = &s_debris[i];
         if (d->on) {
-            draw_slab(d->x, (int)d->y, d->w, d->idx);
+            draw_slab(d->x, (int)(d->y + s_scroll), d->w, d->idx);
+        }
+    }
+    for (int i = 0; i < N_SPARK; i++) {
+        const spark_t *p = &s_spark[i];
+        if (p->life > 0) {
+            int sz = p->life > 0.2f ? SPARK_PX : SPARK_PX - 1;
+            gfx_fill_rect((int)p->x + s_ox - sz / 2, (int)(p->y + s_scroll) + s_oy - sz / 2, sz, sz, p->c);
         }
     }
 
     char buf[24];
     if (s_state != ST_TITLE) {
         snprintf(buf, sizeof(buf), "%d", s_n - 1);
-#if BOARD_BAR_SCREEN || BOARD_UI_TABLET
-        gfx_text_center(SCORE_Y, buf, 6, s_c_text);
-#else
-        gfx_text_center(SCORE_Y, buf, 4, s_c_text);
-#endif
+        // the score jumps up at each landing, and it is gold for a moment after a perfect drop
+        int pop = land < 160 ? 7 * (160 - land) / 160 : 0;
+        uint16_t sc = (now - s_perfect_at < 300 && s_combo > 0) ? s_c_accent : s_c_text;
+        stk_word(&MF_N34, SCORE_Y - pop, buf, sc);
         if (s_combo >= 2 && s_state == ST_PLAY) {
             snprintf(buf, sizeof(buf), "PERFECT X%d", s_combo);
-            gfx_text_center(COMBO_Y, buf, COMBO_S, s_c_accent);
+            stk_word(BOARD_UI_TABLET ? &MF_N20 : &MF_N16, COMBO_Y, buf, s_c_accent);
         }
     }
 #if BOARD_UI_TABLET
     // the Tab5: the CoreS3 texts, 1.5 times lower and bigger
     if (s_state == ST_TITLE) {
-        gfx_text_center(50, "STACK", 8, s_c_text);
-        gfx_text_center(130, "TOUCH TO DROP THE BLOCK", 3, s_c_text);
+        stk_word(&MF_N34, 50, "STACK", s_c_text);
+        stk_word(&MF_N20, 130, "TOUCH TO DROP THE BLOCK", s_c_text);
         snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-        gfx_text_center(172, buf, 3, s_c_accent);
+        stk_word(&MF_N20, 172, buf, s_c_accent);
         if (((now / 450) & 1) == 0) {
-            gfx_text_center(222, "TAP TO START", 3, s_c_text);
+            stk_word(&MF_N20, 222, "TAP TO START", s_c_text);
         }
     } else if (s_state == ST_OVER) {
         gfx_darken_rect(0, 72, SCR_W, 204, 1);
-        gfx_text_center(90, "GAME OVER", 6, rgb(255, 110, 110));
+        stk_word(&MF_N34, 90, "GAME OVER", rgb(255, 110, 110));
         if (s_new_best) {
-            gfx_text_center(160, "NEW BEST!", 3, s_c_accent);
+            stk_word(&MF_N20, 160, "NEW BEST!", s_c_accent);
         } else {
             snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-            gfx_text_center(160, buf, 3, s_c_text);
+            stk_word(&MF_N20, 160, buf, s_c_text);
         }
         if (now - s_over_at > 900 && ((now / 450) & 1) == 0) {
-            gfx_text_center(219, "TAP TO PLAY", 3, s_c_text);
+            stk_word(&MF_N20, 219, "TAP TO PLAY", s_c_text);
         }
     }
 #elif !BOARD_BAR_SCREEN
     if (s_state == ST_TITLE) {
-        gfx_text_center(36 + TY, "STACK", 5, s_c_text);
-        gfx_text_center(88 + TY, "TOUCH TO DROP THE BLOCK", 2, s_c_text);
+        stk_word(&MF_N34, 36 + TY, "STACK", s_c_text);
+        stk_line(88 + TY, "TOUCH TO DROP THE BLOCK", s_c_text);
         snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-        gfx_text_center(116 + TY, buf, 2, s_c_accent);
+        stk_word(&MF_N20, 114 + TY, buf, s_c_accent);
         if (((now / 450) & 1) == 0) {
-            gfx_text_center(150 + TY, "TAP TO START", 2, s_c_text);
+            stk_word(&MF_N16, 150 + TY, "TAP TO START", s_c_text);
         }
     } else if (s_state == ST_OVER) {
         gfx_darken_rect(0, 48 + TY, SCR_W, 136, 1);
-        gfx_text_center(60 + TY, "GAME OVER", 4, rgb(255, 110, 110));
+        stk_word(&MF_N28, 60 + TY, "GAME OVER", rgb(255, 110, 110));
         if (s_new_best) {
-            gfx_text_center(106 + TY, "NEW BEST!", 2, s_c_accent);
+            stk_word(&MF_N20, 104 + TY, "NEW BEST!", s_c_accent);
         } else {
             snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-            gfx_text_center(106 + TY, buf, 2, s_c_text);
+            stk_word(&MF_N20, 104 + TY, buf, s_c_text);
         }
         if (now - s_over_at > 900 && ((now / 450) & 1) == 0) {
-            gfx_text_center(146 + TY, "TAP TO PLAY", 2, s_c_text);
+            stk_word(&MF_N16, 146 + TY, "TAP TO PLAY", s_c_text);
         }
     }
 #else
     if (s_state == ST_TITLE) {
-        gfx_text_center(120, "STACK", 5, s_c_text);
-        gfx_text_center(190, "TOUCH TO DROP", 2, s_c_text);
-        gfx_text_center(212, "THE BLOCK", 2, s_c_text);
+        stk_word(&MF_N34, 120, "STACK", s_c_text);
+        stk_line(190, "TOUCH TO DROP", s_c_text);
+        stk_line(210, "THE BLOCK", s_c_text);
         snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-        gfx_text_center(260, buf, 2, s_c_accent);
+        stk_word(&MF_N20, 258, buf, s_c_accent);
         if (((now / 450) & 1) == 0) {
-            gfx_text_center(330, "TAP TO START", 2, s_c_text);
+            stk_word(&MF_N16, 330, "TAP TO START", s_c_text);
         }
     } else if (s_state == ST_OVER) {
-        gfx_darken_rect(0, 120, SCR_W, 170, 1);
-        gfx_text_center(135, "GAME", 4, rgb(255, 110, 110));
-        gfx_text_center(170, "OVER", 4, rgb(255, 110, 110));
+        gfx_darken_rect(0, 120, SCR_W, 178, 1);
+        stk_word(&MF_N28, 134, "GAME", rgb(255, 110, 110));
+        stk_word(&MF_N28, 172, "OVER", rgb(255, 110, 110));
         if (s_new_best) {
-            gfx_text_center(220, "NEW BEST!", 2, s_c_accent);
+            stk_word(&MF_N20, 222, "NEW BEST!", s_c_accent);
         } else {
             snprintf(buf, sizeof(buf), "BEST %lu", (unsigned long)s_best);
-            gfx_text_center(220, buf, 2, s_c_text);
+            stk_word(&MF_N20, 222, buf, s_c_text);
         }
         if (now - s_over_at > 900 && ((now / 450) & 1) == 0) {
-            gfx_text_center(255, "TAP TO PLAY", 2, s_c_text);
+            stk_word(&MF_N16, 262, "TAP TO PLAY", s_c_text);
         }
     }
 #endif
@@ -659,12 +787,14 @@ static void stack_icon(int x, int y, int s)
     tfd_noclip();
 }
 
-#if K_RND
+// the user leaves: the start tune stops (it played on in the menu before)
 static void stack_leave(void)
 {
+    audio_tune_stop();
+#if K_RND
     rv_free();
-}
 #endif
+}
 
 const app_t app_stack = {
         .name = "STACK",
@@ -672,8 +802,8 @@ const app_t app_stack = {
         .needs = 0,
         .init = stack_init,
         .enter = stack_enter,
-#if K_RND
         .leave = stack_leave,
+#if K_RND
         .round = APP_ROUND_HI,  // (a round panel: the view in the whole circle, stack_rv.inc)
 #endif
         .input = stack_input,

@@ -52,7 +52,7 @@ uint32_t usb_audio_dropped(void)
 int usb_audio_mode(void)
 {
     int m = (int)store_get("snd_usb", 0);
-    return m == 2 && !usb_phones_supported() ? 0 : m > 2 ? 0 : m;
+    return m == 2 && !usb_phones_supported() ? 0 : m > 2 || m < 0 ? 0 : m;  // (a damaged value: a mode of the list)
 }
 bool usb_audio_setting(void)
 {

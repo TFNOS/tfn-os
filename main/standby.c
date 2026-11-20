@@ -1,7 +1,8 @@
 // STANDBY: the state, the touches, the frame rate and the console (standby.h).
 // When it shows: at each wake of the screen and after SB_IDLE_MS with no touch or key in the MENU (never over an app,
-// the settings panel, the notices or a message). It goes: a tap, a swipe up, a key, the PWR key, the panel, an app
-// (a tap on a slot of GLANCE opens the app of the slot).
+// the settings panel, the notices or a message). It goes: the end of each touch (a tap, a long touch, a swipe), a key,
+// the PWR key, the panel, an app (a touch on a slot of GLANCE opens the app of the slot). On a dim screen the touch
+// that wakes the screen also acts (main.c frame_saver); on a dark screen it only wakes it.
 // The frame rate: STANDBY_FAST_MS while the sky moves (clouds, rain, snow) or a timer counts, else STANDBY_SLOW_MS;
 // between two frames main.c draws nothing and sends nothing to the LCD (standby_skip).
 #include "standby.h"
@@ -32,6 +33,7 @@ static int64_t s_last_at;     // ms: the last frame (the step of the sky)
 static int16_t s_x0, s_y0;
 static int s_press = -1;         // the slot under the finger (-1 = none)
 static bool s_down, s_had_down;  // (s_had_down: a finger came down after the show)
+static bool s_eat;               // the IN_TAP / IN_LONG of the touch that closed STANDBY is not the menu's
 
 // the slots of the frame (standby_draw.c writes them at each draw)
 int sb_hit_n;
@@ -197,9 +199,20 @@ static void open_slot(int i)
     }
 }
 
+// THE END OF A TOUCH CLOSES STANDBY (each lift of a finger that came down on it), not only an IN_TAP: a tap must be
+// shorter than LONG_PRESS_MS and move less than 1.8 mm, so a slow or a sliding touch did nothing, and the user had to
+// touch many times. The IN_TAP or the IN_LONG of the same touch comes after its IN_UP: STANDBY eats it, so the menu
+// under it does not get a tap with no IN_DOWN.
 bool standby_input(const input_event_t *ev)
 {
     if (!standby_on()) {
+        if (s_eat && (ev->kind == IN_TAP || ev->kind == IN_LONG)) {
+            s_eat = false;
+            return true;  // (the rest of the touch that closed STANDBY)
+        }
+        if (ev->kind == IN_DOWN) {
+            s_eat = false;
+        }
         return false;
     }
     switch (ev->kind) {
@@ -217,24 +230,21 @@ bool standby_input(const input_event_t *ev)
         break;
     case IN_UP:
         s_down = false;
-        if (s_had_down && s_y0 - ev->y >= SWIPE_PX) {
-            sfx_ui(SFX_CLICK);
-            standby_hide();  // a swipe up: the menu
-        }
         s_next_at = 0;
-        break;
-    case IN_TAP:
         if (!s_had_down) {
             break;  // (the touch that woke the screen)
         }
-        if (s_press >= 0 && slot_at(ev->x, ev->y) == s_press) {
-            open_slot(s_press);
+        s_had_down = false;
+        s_eat = true;
+        if (s_press >= 0 && s_y0 - ev->y < SWIPE_PX && slot_at(ev->x, ev->y) == s_press) {
+            open_slot(s_press);  // a touch on a slot: its app
         } else {
-            standby_hide();  // a tap: the menu where it was
+            sfx_ui(SFX_CLICK);
+            standby_hide();  // a tap, a long touch or a swipe: the menu where it was
         }
         break;
     default:
-        break;
+        break;  // (IN_TAP, IN_LONG: the IN_UP acts)
     }
     return true;
 }

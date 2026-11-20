@@ -1014,6 +1014,7 @@ int g_menu_level(void)
 }
 #endif
 static void spot_render_body(int64_t now);
+static void spot_render_inner(int64_t now);
 void men_spot_render(int64_t now)
 {
     spot_render_body(now);
@@ -1302,7 +1303,29 @@ static void spot_words(const spot_t *l, int64_t now, int mid, const uint8_t *ca)
         men_mtext_c(f, gfx_w / 2, py + (f == &MF_LABEL ? 20 : 16), men_pop_text, lcd(THEME_MENU_POP_TEXT), 255, 1);
     }
 }
+// the read ahead: the icons of the items near the view (both ways: a scroll can turn) go to the icon task before they
+// show, so a scroll draws no plain tile and never waits for the card
+static void spot_read_ahead(void)
+{
+    const int c = (int)lroundf(men_pos);
+    for (int d = 0; d <= 7; d++) {
+        for (int sg = -1; sg <= 1; sg += 2) {
+            const int i = c + d * sg;
+            if (i >= 0 && i < men_n_items && men_items[i].kind == IT_APP && (d || sg < 0)) {
+                tfn_icon_want(men_items[i].app);
+            }
+        }
+    }
+}
 static void spot_render_body(int64_t now)
+{
+    tfn_icon_ask(true);  // (no card read in a frame of the menu: tfn_icons.c)
+    spot_render_inner(now);
+    spot_read_ahead();
+    tfn_icon_ask(false);
+    (void)tfn_icon_missed();  // (also the trim of the icon files that the task read)
+}
+static void spot_render_inner(int64_t now)
 {
     spot_t l = spot_lay();
     int cat = room_cat();

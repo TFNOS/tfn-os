@@ -253,7 +253,8 @@ static struct {
 } s_rq;
 static volatile bool s_task_run, s_task_alive, s_rq_cancel;
 static TaskHandle_t s_task;
-static char *s_body;  // the answer of the API (PSRAM)
+static TaskHandle_t volatile s_orphan;  // the task of a left app that is still in a link (it deletes itself)
+static char *s_body;                    // the answer of the API (PSRAM)
 #define BODY_MAX (48 * 1024)
 
 static void url_enc(const char *in, char *out, int max)
@@ -510,8 +511,15 @@ static void fetch_task(void *arg)
         s_rq.done_gen = seen;
     }
     s_task_alive = false;
-    for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(1000));  // (leave() deletes the task: vTaskDeleteWithCaps)
+    for (;;) {  // (leave() deletes the task; a task that leave() left in a link deletes itself)
+#ifdef ESP_PLATFORM
+        if (s_orphan) {
+            TaskHandle_t me = s_orphan;
+            s_orphan = NULL;
+            vTaskDeleteWithCaps(me);
+        }
+#endif
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -532,6 +540,14 @@ static bool rq_start(int kind)
 
 static bool task_start(void)
 {
+#ifdef ESP_PLATFORM
+    for (int i = 0; i < 150 && s_orphan; i++) {
+        vTaskDelay(pdMS_TO_TICKS(20));  // (the task of the last open)
+    }
+    if (s_orphan) {
+        return false;  // (it still uses the body and the request)
+    }
+#endif
     if (!s_body) {
         s_body = heap_caps_malloc(BODY_MAX, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     }
@@ -562,6 +578,12 @@ static void task_stop(void)
     }
     if (s_task && !s_task_alive) {
         vTaskDeleteWithCaps(s_task);
+    } else if (s_task) {
+        // (the task is still in a link, for example a read of 10 s: it writes into the body until its end. So the body
+        // stays; the task deletes itself at its end, and the loader frees the body when the app unloads)
+        s_orphan = s_task;
+        s_task = NULL;
+        return;
     }
 #endif
     s_task = NULL;

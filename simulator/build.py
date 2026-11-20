@@ -125,6 +125,16 @@ def compiler(setup=False):
     return compiler(False)
 
 
+def short_inc(flag, bdir):
+    """An -I flag with a folder of the repo as a path relative to the build folder (the compiler runs there)."""
+    path = Path(flag[2:])
+    try:
+        path.relative_to(ROOT)
+    except ValueError:
+        return flag
+    return "-I" + os.path.relpath(path, bdir).replace("\\", "/")
+
+
 def build_dir(apps, frame="lcd349"):
     """The build folder of an app set: .build/all, .build/on, .build/slim, .build/sel-<name> (each set keeps its
     objects: a change of the set does not compile all again). Another frame: .build/all-cores3, .build/all-watcher ... Linux and macOS:
@@ -181,6 +191,20 @@ def renames(stubs, others):
     for p in others:
         mine |= definitions(p)
     return sorted(definitions(stubs) & mine)
+
+
+def stub_renames(bdir, ren):
+    """bdir/stub_renames.h: '#define name hoststub_name' for each name of renames(). The file changes only when the list
+    changes (the .d file of stubs.c names it: a new list compiles stubs.c again)."""
+    path = bdir / "stub_renames.h"
+    text = "".join("#define %s hoststub_%s\n" % (n, n) for n in ren)
+    try:
+        old = path.read_text()
+    except OSError:
+        old = None
+    if old != text:
+        path.write_text(text)
+    return path
 
 
 def app_file_sources(frame="lcd349"):
@@ -290,6 +314,9 @@ def build(apps="all", setup=False, force=False, jobs=None, quiet=False, frame="l
            "-I" + str(HOST / "common"), "-I" + str(MAIN), "-I" + str(bdir / "apps")] + incs
     if (QRCODE / "qrcodegen.c").exists():
         inc += ["-I" + str(QRCODE / "include"), "-I" + str(QRCODE)]
+    # (the include folders relative to the build folder, where the compiler runs: with the absolute paths of a worktree
+    # with a longer path, the line of the stubs went over the 32 K of a Windows command line when Zig starts clang)
+    inc = [short_inc(i, bdir) for i in inc]
     # (-ffp-contract=off: no fused multiply-add, so the float results are the same on each PC)
     base = target_flags() + ["-O1", "-g", "-ffp-contract=off", "-fno-sanitize=undefined", "-DTFN_SIMULATOR=1",
             "-Wall", "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable",
@@ -313,7 +340,9 @@ def build(apps="all", setup=False, force=False, jobs=None, quiet=False, frame="l
         if s.resolve() in log_off:
             cmd += ["-DSIM_LOG_INFO_OFF=1"]
         if s == stubs:
-            cmd += det_inc + ["-D%s=hoststub_%s" % (n, n) for n in ren]
+            # (the renames in a header, not as -D options: with all apps and a long repo path the command was longer
+            # than the 32 K of a Windows command line, and zig cc stopped with NameTooLong)
+            cmd += det_inc + ["-include", str(stub_renames(bdir, ren))]
         jobs_list.append((s, cmd))
     sig = hashlib.sha1(json.dumps([j[1] for j in jobs_list] + [apps]).encode()).hexdigest()
     manifest_path = bdir / "obj" / "manifest.json"
@@ -336,8 +365,13 @@ def build(apps="all", setup=False, force=False, jobs=None, quiet=False, frame="l
             return obj, key, None
         full = cmd + ["-MMD", "-MF", str(dep), "-c", str(src), "-o", str(obj)]
         r = subprocess.run(full, cwd=bdir, env=env, capture_output=True, text=True, errors="replace")
+        for _ in range(2):  # (zig on Windows: with many compiles on one cache, a compile can stop with no message)
+            if not r.returncode or r.stderr.strip():
+                break
+            r = subprocess.run(full, cwd=bdir, env=env, capture_output=True, text=True, errors="replace")
         if r.returncode:
-            return obj, None, f"{src}:\n{r.stderr.strip()}"
+            msg = r.stderr.strip() or r.stdout.strip() or "exit code %d, no message" % r.returncode
+            return obj, None, f"{src}:\n{msg}"
         warn = r.stderr.strip()
         return obj, key, ("WARN " + warn) if warn and os.environ.get("TFN_SIM_WARN") else None
 

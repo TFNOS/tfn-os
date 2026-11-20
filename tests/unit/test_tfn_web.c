@@ -13,7 +13,10 @@
 //   8. a normal card upload, and no card;
 //   9. the folders of the other installers (the STORE, a move, the USB console) of the same app stay as they are;
 //  10. an upload with no put for 2 minutes ends at the next request: its folder goes, its client gets the cause;
-//  11. with 4 uploads at a time, a new upload ends the upload with the oldest put (not the newest one).
+//  11. with 4 uploads at a time, a new upload ends the upload with the oldest put (not the newest one);
+//  12. the file API of the card (/api/fs): a big file in parts (at=, total=): a wrong at is refused with the size of
+//      the part file, a part that breaks keeps the bytes that came and the next part goes on there, the last part
+//      gives the file its name with all the bytes in order; a put with no parts works as before.
 // Build and run: python tests/unit/run.py (argument 1: the work folder)
 #include <dirent.h>
 #include <stdarg.h>
@@ -523,6 +526,57 @@ static bool answer_has(const char *text)
     return strstr(s_req.out, text) != NULL;
 }
 
+// the file API of the card (run.py builds this test with FS_ROOT "c": the card folder of the test)
+#define FS "c"
+static esp_err_t (*s_fs)(httpd_req_t *r);
+
+static bool fs_req(bool post, const char *query, const char *body, size_t n, size_t cut)
+{
+    s_now += 1000000;
+    memset(&s_req, 0, sizeof s_req);
+    s_req.method = post ? HTTP_POST : HTTP_GET;
+    s_req.uri = "/api/fs";
+    s_req.query = query;
+    s_req.body = body;
+    s_req.content_len = n;
+    s_req.body_cut = cut;
+    s_fs(&s_req);
+    return strstr(s_req.out, "\"ok\":true") != NULL;
+}
+
+// a part of /pk/big.bin: the bytes [at, at + n) of s_big
+static bool fs_part(long long at, long long total, size_t n, size_t cut)
+{
+    char q[160];
+    snprintf(q, sizeof q, "op=put&path=/pk/big.bin&at=%lld&total=%lld&tok=x", at, total);
+    return fs_req(true, q, s_big + at, n, cut);
+}
+
+static long long answer_at(void)
+{
+    const char *p = strstr(s_req.out, "\"at\":");
+    return p ? atoll(p + 5) : -2;
+}
+
+static long file_size(const char *path)
+{
+    struct stat st;
+    return stat(path, &st) == 0 ? (long)st.st_size : -1;
+}
+
+static bool same_bytes(const char *path, const char *want, size_t n)
+{
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        return false;
+    }
+    char *b = malloc(n + 1);
+    const bool ok = b && fread(b, 1, n + 1, f) == n && !memcmp(b, want, n);
+    free(b);
+    fclose(f);
+    return ok;
+}
+
 // ---------------------------------------------------------------- the checks
 // the web upload folder of an id: on the board storage (WD) and on the card (WC)
 #define WD(id) TFN_DATA_DIR "/" TFN_TMP_WEB id
@@ -701,6 +755,34 @@ static void test_idle(void)
     check(commit("k11", "board") && !strcmp(s_inst.ver, "3"), "10 the slow upload installs");
 }
 
+static void test_fs_parts(void)
+{
+    const long n = (long)sizeof s_big;
+    check(fs_req(false, "op=ls&path=/&tok=x", "", 0, 0) && answer_has("\"parts\":1"),
+          "12 op=ls: the board takes parts");
+    check(fs_part(0, n, 4000, 0) && answer_at() == 4000, "12 part 1: the answer has at 4000");
+    check(file_size(FS "/pk/big.bin.part") == 4000 && file_size(FS "/pk/big.bin") < 0, "12 part 1: a part file only");
+    check(!fs_part(3000, n, 1000, 0) && answer_at() == 4000 && answer_has("send at=4000"),
+          "12 a wrong at: refused, the answer has the size");
+    check(file_size(FS "/pk/big.bin.part") == 4000, "12 a wrong at: the part file does not change");
+    check(!fs_part(4000, n, 3000, 1000) && answer_at() == 5000, "12 a part that breaks: the bytes that came stay");
+    check(fs_part(5000, n, 4000, 0) && answer_at() == n, "12 the last part (after the break) gives the file");
+    check(file_size(FS "/pk/big.bin") == n && file_size(FS "/pk/big.bin.part") < 0 &&
+                  same_bytes(FS "/pk/big.bin", s_big, (size_t)n),
+          "12 the file has all the bytes in order, no part file stays");
+    check(!fs_part(0, 100, 200, 0), "12 a part over the total: refused");
+    check(fs_req(true, "op=put&path=/pk/one.bin&tok=x", s_big, 3000, 0) && answer_at() == 3000 &&
+                  same_bytes(FS "/pk/one.bin", s_big, 3000),
+          "12 a put with no parts: as before");
+    check(fs_part(0, n, 2000, 0) && fs_part(0, n, 3000, 0) && file_size(FS "/pk/big.bin.part") == 3000,
+          "12 at=0 starts the part file again");
+    check(fs_part(3000, n, (size_t)n - 3000, 0) && same_bytes(FS "/pk/big.bin", s_big, (size_t)n),
+          "12 the rest in one part: the file");
+    check(fs_part(0, n, (size_t)n, 0) && same_bytes(FS "/pk/big.bin", s_big, (size_t)n),
+          "12 one part with all of the file");
+    rm_tree(FS "/pk");
+}
+
 static void test_oldest(void)
 {
     const char *ids[4] = {"a12", "b12", "c12", "d12"};
@@ -746,8 +828,13 @@ int main(int argc, char **argv)
             s_post = s_uris[i].handler;
         }
     }
-    if (!s_post) {
-        printf("FAIL no handler of POST /api/apps\n");
+    for (int i = 0; i < s_nuri; i++) {
+        if (!strcmp(s_uris[i].uri, "/api/fs") && s_uris[i].method == HTTP_POST) {
+            s_fs = s_uris[i].handler;
+        }
+    }
+    if (!s_post || !s_fs) {
+        printf("FAIL no handler of POST /api/apps or /api/fs\n");
         return 1;
     }
     test_order();
@@ -758,6 +845,7 @@ int main(int argc, char **argv)
     test_others();
     test_idle();
     test_oldest();
+    test_fs_parts();
     check(tmp_count() == 0, "no upload folder stays at the end");
     printf("TFN WEB %s (%d checks, %d failed)\n", s_fail ? "FAILED" : "OK", s_n, s_fail);
     return s_fail ? 1 : 0;

@@ -33,6 +33,13 @@
 #include "tfn/input.h"
 #include "tfn/kfont.h"
 #include "tfn/uikit.h"
+#include "aatext/aatext.h"
+
+// THE TEXT: the Bungee faces of the firmware in place of the 5 x 7 dot font (libs/aatext)
+#define gfx_text           aat_text
+#define gfx_text_width     aat_w
+#define gfx_text_center    aat_text_center
+#define gfx_text_center_in aat_text_center_in
 
 static const char *TAG = "lab";
 
@@ -575,7 +582,7 @@ static void lab_render(int64_t now)
     } else if (s_frozen) {
         snprintf(b, sizeof b, "FROZEN (NOT SAVED) - TAP FROZEN TO GO ON");
     }
-    int y2 = bar ? 21 : TL_TAB5 ? 42 : 22;
+    int y2 = bar ? 24 : TL_TAB5 ? 42 : 22;  // (the 3.49: under FREEZE and RESET, not on their edge)
     int s2 = ts > 1 && gfx_text_width(b, ts) <= W - 8 ? ts : 1;
     gfx_text(4, y2, b, s2, s_frozen ? rgb(120, 200, 255) : DIM);
     // RESET

@@ -260,17 +260,15 @@ static bool install_entry(const tfn_entry_t *e, const char *tmp, int place, char
         }
         return false;
     }
-    // the hashes of the files
+    // the hashes of the files (read in pieces: before, a read of all of app.elf into one block failed while an app
+    // held the memory, and the message said "does not match")
     char path[72], hex[65], want[65];
-    uint8_t *b = NULL;
-    size_t n = 0;
     snprintf(path, sizeof path, "%s/app.elf", tmp);
-    bool ok = tfa_read_all(path, &b, &n, 4 << 20);
-    if (ok) {
-        tfa_sha256_hex(b, n, hex);
+    if (!tfa_sha256_file(path, 4 << 20, hex)) {
+        snprintf(msg, len, "%s: cannot read app.elf (or it is over 4 MB)", e->id);
+        return false;
     }
-    free(b);
-    if (!ok || strcmp(hex, e->elf_sha)) {
+    if (strcmp(hex, e->elf_sha)) {
         snprintf(msg, len, "%s: app.elf does not match the manifest", e->id);
         return false;
     }
@@ -280,14 +278,15 @@ static bool install_entry(const tfn_entry_t *e, const char *tmp, int place, char
     tfa_read_all(path, &m, &ml, 4096);
     tfa_mval(m ? (const char *)m : "", "icon_sha256", want, sizeof want);
     free(m);
-    b = NULL;
     snprintf(path, sizeof path, "%s/icon.bin", tmp);
-    if (want[0] && (!tfa_read_all(path, &b, &n, 2 << 20) || (tfa_sha256_hex(b, n, hex), strcmp(hex, want)))) {
-        free(b);
+    if (want[0] && !tfa_sha256_file(path, 2 << 20, hex)) {
+        snprintf(msg, len, "%s: cannot read icon.bin (or it is over 2 MB)", e->id);
+        return false;
+    }
+    if (want[0] && strcmp(hex, want)) {
         snprintf(msg, len, "%s: icon.bin does not match the manifest", e->id);
         return false;
     }
-    free(b);
     if (open_now(e->id)) {
         snprintf(msg, len, "%s is open: close it first", e->name);
         return false;
@@ -317,7 +316,7 @@ static bool install_entry(const tfn_entry_t *e, const char *tmp, int place, char
         // another file system (a card): a copy of each file
         mkdir(dst, 0777);
         const char *files[] = TFN_APP_FILES;
-        ok = true;
+        bool ok = true;
         for (int i = 0; i < TFN_APP_NFILES && ok; i++) {
             char a[72], c[72];
             snprintf(a, sizeof a, "%s/%s", tmp, files[i]);

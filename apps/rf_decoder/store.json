@@ -1,0 +1,6 @@
+{
+ "rfdec": {
+  "en": "Read the codes of 433 and 315 MHz remote keys, doorbells and sensors: a receiver module (MX-05, RXB6) on the pins, a wiring sketch for your board, raw pulses live, RCSwitch protocols and PWM, PPM, Manchester. A demo with no module. English and Hebrew.",
+  "he": "קוראים את הקודים של שלטים, פעמונים וחיישנים ב-433 וב-315 מגה: מודול מקלט (MX-05, RXB6) על הפינים, שרטוט חיווט ללוח שלכם, הפולסים הגולמיים בזמן אמת, פרוטוקולי RCSwitch ו-PWM, PPM, מנצ'סטר. הדגמה בלי מודול. אנגלית ועברית."
+ }
+}

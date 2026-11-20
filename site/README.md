@@ -14,12 +14,12 @@ open licence, game data, your WiFi or home addresses).
 
 | Path | What it is |
 |---|---|
-| `index.html`, `css/site.css`, `js/site.js`, `js/theme.js` | the start page |
+| `index.html`, `css/site.css`, `css/home.css`, `js/site.js`, `js/theme.js` | the start page (`css/site.css`: the shared part of all pages; `css/home.css`: the start page only) |
 | `install.html`, `css/install.css`, `js/flasher/` | the web flasher |
-| `store.html`, `css/store.css`, `js/store/` | the store page: a gallery of the apps of each board kind, from `store/index.json` (signed by a key of `STORE_KEYS` in `js/store/core.js`), with the previews of `media/apps/media.json`, and the install over USB (`js/store/usb.js`: Web Serial to the console of TFN OS: `sdusb put` of each file with a CRC check, then `apps commit`; the board checks the signature) |
+| `store.html`, `css/store.css`, `js/store/` | the store page: a gallery of the apps of each board kind, from `store/index.json` (signed by a key of `STORE_KEYS` in `js/store/core.js`), with the previews of `media/apps/media.json` and the small icons of `media/apps/icons.json` (each one a lossless WebP column of the frames of an `icon.bin`; the key is the SHA-256 of that `icon.bin` in the signed index), and the install over USB (`js/store/usb.js`: Web Serial to the console of TFN OS: `sdusb put` of each file with a CRC check, then `apps commit`; the board checks the signature) |
 | `js/boards.js` | the board kinds: chip, flash size, USB IDs, picture |
 | `vendor/esptool-js-0.7.0/` | esptool-js 0.7.0 (`bundle.js` of the npm package, Apache 2.0, with its LICENSE) |
-| `fonts/` | Bricolage Grotesque and Atkinson Hyperlegible Next (latin, woff2, SIL OFL 1.1) |
+| `fonts/` | Archivo (the titles: one static instance, width 112 and weight 620, latin, woff2) and Atkinson Hyperlegible Next (the text: latin, woff2); both SIL OFL 1.1 |
 | `test/` | the flasher checks (`run.js`), for Node (`flasher.test.js`) and the browser (`page.js`) |
 | `tools/fw_manifest.py` | the firmware files and the `manifest.json` of a kind from an ESP-IDF build folder, with checks |
 | `tools/pages_build.py` | the folder of the web site: the pages, `firmware/`, `store/` and the board pictures |

@@ -1,6 +1,7 @@
 // The keys of the board: the BOOT key (CHAT, the key of an app, the screen key), the PWR key (back to the menu,
 // the power off; the wheel of the Watcher), and the rule that lets a pull from the top open the settings panel.
 #include "main_priv.h"
+#include "tfn_listen.h"
 #include "standby.h"
 
 static const char *TAG = "main";
@@ -14,28 +15,64 @@ __attribute__((weak)) bool tennis_two_players(void)
 
 static void screen_key(int64_t t, const char *why);
 int64_t g_vkey_until_ms;  // (console.c "key ms", tests: the BOOT key is down until this time)
+int64_t g_vpwr_until_ms;  // (console.c "key pwr ms", tests: the PWR key)
 int mai_key_presses;      // the BOOT key presses for an app with app_t.key (app_key_presses)
 static bool s_key_eaten;  // a BOOT press that the panel took: not the app's until the key goes up
 static bool boot_key_now(void)
 {
     return board_boot_key_down() || esp_timer_get_time() / 1000 < g_vkey_until_ms;
 }
+
+// The calm wait of the voice (tfn_speech.h: the main loop draws about 10 frames a second while the voice makes a
+// line). A frame reads the keys one time: a short push between two frames was lost (PWR did not go back to the
+// menu while WIKI read aloud). The wait reads the keys each 10 ms and ends at a push or a touch; the push stays
+// for the next read of the frame (also when the key is up again then).
+static volatile bool s_pwr_seen, s_boot_seen;
+void mai_calm_wait(int ms)
+{
+    for (int i = 0; i < ms; i += 10) {
+        const bool p = board_pwr_key_down() || esp_timer_get_time() / 1000 < g_vpwr_until_ms, b = boot_key_now();
+        if (p || b) {
+            s_pwr_seen = s_pwr_seen || p;
+            s_boot_seen = s_boot_seen || b;
+            return;
+        }
+        if (input_pending()) {
+            return;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+// the PWR key is down now, or a push came in the calm wait
+static bool pwr_key_now(void)
+{
+    const bool d = board_pwr_key_down() || esp_timer_get_time() / 1000 < g_vpwr_until_ms || s_pwr_seen;
+    s_pwr_seen = false;
+    return d;
+}
 // The BOOT key of the 3.49: a long press (0.7 s) opens CHAT and listens (in CHAT: the same as a tap). In an app with
 // app_t.key (WRONG ROOM: a jump) each press goes to the app, and the key opens no CHAT.
 void mai_boot_key_poll(int64_t t)
 {
     static int64_t down_at, up_at;
-    static bool done;
+    static bool done, talk;
     bool own = mai_app && mai_app->key;
-    if (!boot_key_now()) {
+    const bool seen = s_boot_seen;  // (a push in the calm wait: down for this read)
+    s_boot_seen = false;
+    if (!boot_key_now() && !seen) {
         // a short press that nothing else took (not the panel, not an app with the key, not the long press of CHAT)
         if (down_at && !done && !own && t - down_at >= PWR_SHORT_MS && store_get("scr_key", 0)) {
             screen_key(t, "the BOOT key");
         }
         if (down_at) {
             up_at = t;
+            if (talk) {
+                listen_key_up();  // (a short press: the recording goes; a long one: the turn ends)
+            }
         }
         down_at = 0;
+        talk = false;
         s_key_eaten = false;
         return;
     }
@@ -50,6 +87,14 @@ void mai_boot_key_poll(int64_t t)
         } else if (own && t - up_at >= 25) {  // (a shorter gap is contact bounce)
             mai_key_presses++;
             mai_wake(t, "the BOOT key");
+        } else if (!own) {
+            talk = listen_key_down();  // THE TALK KEY (tfn_listen.h): it records from the push
+        }
+    } else if (talk) {
+        listen_key_held((int)(t - down_at));
+        if (!done && t - down_at >= 700) {
+            done = true;  // (the long press talks: no CHAT, no short press)
+            mai_wake(t, "the talk key");
         }
     } else if (!done && !own && t - down_at >= 700) {
         done = true;
@@ -94,7 +139,7 @@ void mai_pwr_key_poll(int64_t t)
 {
     static bool armed = false, back_done = false;
     static int64_t down_at = 0;
-    bool down = board_pwr_key_down();
+    bool down = pwr_key_now();
     input_wheel_set_down(down && armed && !sysui_panel_on());
     if (down) {
         if (!armed) {
@@ -159,7 +204,7 @@ void mai_pwr_key_poll(int64_t t)
     static bool armed = false;
     static int64_t down_at = 0;
 
-    if (board_pwr_key_down()) {
+    if (pwr_key_now()) {
         if (!armed) {
             return;
         }

@@ -4,6 +4,14 @@ The [MIT License](LICENSE) applies to the code, the tools and the pixel art of t
 It does not apply to the parts in this file. Each part has its own terms.
 The code of other projects is in `third_party/<name>/`, each folder with its licence file.
 
+## The math font of INTEGRALS
+
+- **File:** `apps/integral/ig_font.c` (the glyph bitmaps, made by `apps/integral/tools/mk_font.py` from the STIX font
+  files STIXGeneral, STIXGeneralItalic and STIXSizOne..FourSymReg, in the copy of the matplotlib package).
+- **Source:** [STIX Fonts](https://www.stixfonts.org), Copyright 2001-2010 by the STI Pub Companies.
+- **Licence:** the [SIL Open Font License 1.1](docs/licenses/STIX-OFL.txt). The glyph data in `apps/integral/ig_font.c`
+  is under the same licence.
+
 ## The font of STOCKS
 
 - **File:** `libs/interfont/stocks_font.inc` (the glyph bitmaps, made by `libs/interfont/tools/export_inter.py` from the
@@ -19,6 +27,27 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 - **Source:** [Inter](https://github.com/rsms/inter), Copyright 2020 The Inter Project Authors.
 - **Licence:** the [SIL Open Font License 1.1](docs/licenses/Inter-OFL.txt). The glyph data in
   `libs/interfont/sb_fonts.inc` is under the same licence.
+
+## The fonts of LINEAR ALGEBRA
+
+- **File:** `apps/linalg/la_font.c` (the glyph bitmaps, made by `apps/linalg/tools/mk_font.py` from the font files
+  Inter and Rubik).
+- **Source:** [Inter](https://github.com/rsms/inter), Copyright 2020 The Inter Project Authors; [Rubik](https://github.com/googlefonts/rubik),
+  Copyright 2015 The Rubik Project Authors.
+- **Licence:** the [SIL Open Font License 1.1](docs/licenses/Inter-OFL.txt) and
+  [docs/licenses/Rubik-OFL.txt](docs/licenses/Rubik-OFL.txt). The glyph data in `apps/linalg/la_font.c` is under the same
+  licence.
+
+## The star data of SKY
+
+- **File:** `apps/sky/sky_data.c` (made by a script from the two sources below).
+- **The stars:** the [HYG database](https://github.com/astronexus/HYG-Database) v4.0 by
+  David Nash (astronexus), under the
+  [Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+  licence. The star data in `apps/sky/sky_data.c` is under the same licence.
+- **The constellation lines and names:** [d3-celestial](https://github.com/ofrohn/d3-celestial)
+  by Olaf Frohn, under the BSD 3-Clause licence (the lines come from the Stellarium "modern"
+  sky culture).
 
 ## The BMI270 configuration file
 
@@ -111,6 +140,14 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
   `third_party/zstd/zstd.h`.
 - **Source:** [Zstandard](https://github.com/facebook/zstd) 1.5.6, Meta Platforms, Inc. and affiliates.
 - **Licence:** BSD (`third_party/zstd/LICENSE`); the source also allows the GPLv2. Not changed.
+
+## simplewebp (WIKI on the Tab5)
+
+- **Files:** `third_party/simplewebp/simplewebp.h` (a WebP decoder in one file), used by `apps/wiki/wk_webp.c`.
+- **Source:** [simplewebp](https://github.com/MikuAuahDark/simplewebp) 20260718, a port of libwebp; (c) 2010 Google Inc.,
+  2023 Miku AuahDark.
+- **Licence:** BSD-3-Clause and the WebM patent grant of Google (`third_party/simplewebp/LICENSE`). One change: a
+  read past the end of a chunk (`third_party/simplewebp/README.md`).
 
 ## The method of tfphys (Box2D)
 
@@ -205,7 +242,24 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 - **Source:** [Inter](https://github.com/rsms/inter), Copyright 2020 The Inter Project Authors.
 - **Licence:** the [SIL Open Font License 1.1](docs/licenses/Inter-OFL.txt). The glyph data is under the same licence.
 
+## The fonts of IR DECODER, RF DECODER and SDR
+
+- **Files:** the glyph bitmaps in `apps/ir_decoder/ird_fonts.inc`, `apps/rf_decoder/rfd_fonts.inc` and
+  `apps/sdr/sdr_fonts.inc` (Inter).
+- **Source:** [Inter](https://github.com/rsms/inter), Copyright 2020 The Inter Project Authors.
+- **Licence:** the [SIL Open Font License 1.1](docs/licenses/Inter-OFL.txt). The glyph data is under the same licence.
+
 ## TRIVIA: the pictures, the logo and the effects
+
+- **The icons:** the subject icons and the other icons of `apps/trivia/tv_art.c` (made by
+  `apps/trivia/tools/mk_art.py`) come from [Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (the Flat
+  style), Copyright (c) Microsoft Corporation, licence MIT ([docs/licenses/FluentEmoji-MIT.txt](docs/licenses/FluentEmoji-MIT.txt)).
+- **The logo:** the title word in `apps/trivia/tv_art.c` is made from Noto Sans Hebrew
+  (`apps/lang/tools/fonts/NotoSansHebrew-VF.ttf`), Copyright 2022 The Noto Project Authors, the SIL Open Font
+  License 1.1 (`apps/lang/tools/fonts/OFL-NotoSansHebrew.txt`).
+- **The sound effects:** `apps/trivia/sfx/*.mp3` (in the app file: `apps/trivia/tv_sfx.c`), CC0 (public domain):
+  Kenney (kenney.nl) and OpenGameArt packs; `apps/trivia/sfx/SOURCES.md` names the source of each.
+- **The questions:** `apps/trivia/tools/bank/*.json` are own text of this project.
 
 ## RIM RUNNER: the effects
 
@@ -240,11 +294,11 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
   in `site/fonts/`. The page `site/licences.html` lists the same parts for the visitors of the site.
 - **Source:** [esptool-js](https://github.com/espressif/esptool-js) 0.7.0, Copyright Espressif Systems;
   [Atkinson Hyperlegible Next](https://github.com/googlefonts/atkinson-hyperlegible-next), Copyright 2020-2024 The
-  Atkinson Hyperlegible Next Project Authors; [Bricolage Grotesque](https://github.com/ateliertriay/bricolage),
-  Copyright 2022 The Bricolage Grotesque Project Authors.
+  Atkinson Hyperlegible Next Project Authors; [Archivo](https://github.com/Omnibus-Type/Archivo),
+  Copyright 2020 The Archivo Project Authors (a static instance, width 112 and weight 620, cut to the Latin letters).
 - **Licence:** esptool-js: the Apache License 2.0 (`site/vendor/esptool-js-0.7.0/LICENSE`), not changed. The fonts:
   the SIL Open Font License 1.1 (`site/fonts/OFL-atkinson-hyperlegible-next.txt`,
-  `site/fonts/OFL-bricolage-grotesque.txt`).
+  `site/fonts/OFL-archivo.txt`).
 
 ## The previews of the store page
 
@@ -265,3 +319,9 @@ each one has its own licence:
 ## Names
 
 The project has no relation to the owners of any game, name or brand that this file or the README names.
+
+## The X25519 code of TFNCOMP
+
+- **Files:** `libs/tfncomp/tc_x25519.c`.
+- **Source:** written after TweetNaCl (D. J. Bernstein and others), which is public domain.
+- **Licence:** public domain (TweetNaCl); the changes are under the licence of this repo.

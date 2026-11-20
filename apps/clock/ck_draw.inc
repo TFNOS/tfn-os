@@ -359,10 +359,28 @@ static void button(int x, int y, int w, int h, const char *label, bool hot, int 
 static void side_buttons(const char *const *l, const int *id, const bool *hot, int n)
 {
     if (s_narrow) {
-        const int g = 6, w = (s_W - (n + 1) * g) / n, y = s_H - 42;
+        // the width of each key follows its label: four equal keys cut STOPWATCH to "STOPW..." in 320 px. Each key
+        // takes the width of its label in the bigger face; when the row is too long, all keys take the width of the
+        // smaller face (one face in the row); the room that is left goes to all keys in equal parts.
+        const int g = 6, y = s_H - 42, room = s_W - (n + 1) * g;
+        int kw[8], sum = 0;
+        for (int pass = 0; pass < 2; pass++) {
+            sum = 0;
+            for (int i = 0; i < n && i < 8; i++) {
+                kw[i] = pass ? ui_text_w(&KF_LABEL, l[i]) + 12 : ui_text_w(&KF_NAME, l[i]) + 14;
+                sum += kw[i];
+            }
+            if (sum <= room) {
+                break;
+            }
+        }
+        const int spare = room > sum ? (room - sum) / n : 0;
         tfd_rect(0, y - 4, s_W, 46, C_PANEL, 256);
-        for (int i = 0; i < n; i++) {
-            button(g + i * (w + g), y, w, 38, l[i], hot[i], id[i], 0);
+        int x = g;
+        for (int i = 0; i < n && i < 8; i++) {
+            const int w = i == n - 1 ? s_W - g - x : kw[i] + spare;
+            button(x, y, w, 38, l[i], hot[i], id[i], 0);
+            x += w + g;
         }
     } else {
         const int x = s_W - 100, y0 = (s_scr == SC_CLOCK ? 4 : s_top_h + 4), g = 4;

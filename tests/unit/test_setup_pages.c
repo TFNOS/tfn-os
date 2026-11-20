@@ -156,6 +156,25 @@ int gfx_text_width(const char *s, int scale)
     return (int)strlen(s) * 6 * scale;
 }
 
+// (the pages draw the text of gfx_text in a real face: main/set_text.h maps those names to ui_dot_text*; here the same
+// record of each text)
+void ui_dot_text(int x, int y, const char *s, int sc, uint16_t c)
+{
+    gfx_text(x, y, s, sc, c);
+}
+void ui_dot_text_in(int x, int w, int y, const char *s, int sc, uint16_t c)
+{
+    gfx_text_center_in(x, w, y, s, sc, c);
+}
+void ui_dot_text_c(int y, const char *s, int sc, uint16_t c)
+{
+    gfx_text_center_in(0, gfx_w, y, s, sc, c);
+}
+int ui_dot_text_w(const char *s, int sc)
+{
+    return gfx_text_width(s, sc);
+}
+
 // ---------------------------------------------------------------- the fake publisher wait (tfn_pub.c)
 static bool s_wait_on;
 static tfn_pub_t s_wait_key;

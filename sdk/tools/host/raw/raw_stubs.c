@@ -68,9 +68,42 @@ __attribute__((weak)) void bt_mouse_buttons(uint8_t buttons) { (void)buttons; }
 __attribute__((weak)) bool bt_pad_boot(void) { return false; }
 
 // the touch log of TOUCH LAB (tfn/board.h): no reports on the PC
+#include "tfn/board.h"
 __attribute__((weak)) void board_touch_log(bool on) { (void)on; }
 __attribute__((weak)) int board_touch_reports(touch_rep_t *out, int max) { (void)out; (void)max; return 0; }
 __attribute__((weak)) int board_touch_read_len_get(void) { return 0; }
 
+// the voice module (tfn/speech.h): no voice on the PC
+#include "tfn/speech.h"
+__attribute__((weak)) bool speech_offer(const speech_ops_t *ops) { (void)ops; return false; }
+__attribute__((weak)) bool speech_ready(void) { return false; }
+__attribute__((weak)) void speech_say(const char *text) { (void)text; }
+__attribute__((weak)) void speech_stop(void) {}
+__attribute__((weak)) bool speech_make(const char *text, const char *path) { (void)text; (void)path; return false; }
+__attribute__((weak)) bool speech_file_ok(const char *path, const char *text) { (void)path; (void)text; return false; }
+__attribute__((weak)) int speech_play_file(const char *path) { (void)path; return 0; }
+__attribute__((weak)) bool speech_read_open(const speech_read_cfg_t *c) { (void)c; return false; }
+__attribute__((weak)) void speech_read_play(bool on) { (void)on; }
+__attribute__((weak)) void speech_read_close(void) {}
+__attribute__((weak)) void speech_read_get(speech_read_t *st) { memset(st, 0, sizeof *st); }
+// the ears (tfn/listen.h): no ears on the PC (an app gives a typed fallback)
+#include "tfn/listen.h"
+__attribute__((weak)) bool listen_offer(const listen_ops_t *ops) { (void)ops; return false; }
+__attribute__((weak)) bool listen_ready(void) { return false; }
+__attribute__((weak)) bool listen_start(const char *brain) { (void)brain; return false; }
+__attribute__((weak)) void listen_stop(void) {}
+__attribute__((weak)) void listen_cancel(void) {}
+__attribute__((weak)) int listen_state(void) { return LS_OFF; }
+__attribute__((weak)) float listen_level(void) { return 0.0f; }
+__attribute__((weak)) void listen_text(char *out, int cap) { if (cap > 0) { out[0] = 0; } }
+__attribute__((weak)) void listen_answer(char *out, int cap) { if (cap > 0) { out[0] = 0; } }
+__attribute__((weak)) bool listen_ask(const char *brain, const char *text) { (void)brain; (void)text; return false; }
+__attribute__((weak)) void listen_handler(listen_handler_fn fn) { (void)fn; }
 // the stop of the sounds that use a memory block (tfn/audio.h): the PC has no mixer
 __attribute__((weak)) void audio_stop_mem(const void *p, size_t n) { (void)p; (void)n; }
+// the raw frames of the link (main/tfn/link.h): no radio
+#include "tfn/link.h"
+__attribute__((weak)) bool link_raw_open(uint8_t m0, uint8_t m1) { (void)m0; (void)m1; return false; }
+__attribute__((weak)) void link_raw_close(void) {}
+__attribute__((weak)) bool link_raw_send(const uint8_t *mac, const void *d, int n) { (void)mac; (void)d; (void)n; return false; }
+__attribute__((weak)) bool link_raw_recv(link_raw_t *m) { (void)m; return false; }

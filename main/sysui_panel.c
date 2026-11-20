@@ -117,6 +117,11 @@ static bool app_two_step(const app_t *a)
     if (a && a->name && (!strcmp(a->name, "CHECKERS") || !strcmp(a->name, "CHESS"))) {
         return true;
     }
+    // GUMMY SIEGE: a finger down anywhere starts the pull of the sling (and in the flight a touch anywhere is the
+    // power): a pull of the sling that starts at the top middle must stay a pull of the sling
+    if (a && a->name && !strcmp(a->name, "GUMMY SIEGE")) {
+        return true;
+    }
     return false;
 }
 static int64_t s_tab_until;  // the tab of the two-step pull shows until this time

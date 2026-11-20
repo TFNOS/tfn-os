@@ -311,7 +311,7 @@ static void enter(int64_t now)
     }
     s_items[1].n = (uint8_t)(s_nbus < 2 ? 2 : s_nbus);
     s_busi = (int)store_get("i2c_bus", 0);
-    if (s_busi >= s_nbus) {
+    if (s_busi < 0 || s_busi >= s_nbus) {
         s_busi = 0;
     }
     s_khz = store_get("i2c_khz", 100) == 400 ? 400 : 100;

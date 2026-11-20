@@ -33,6 +33,10 @@ void power_hold(bool on);
 // the same for an armed alarm in the next 24 hours (alarm.c): the board must be on to ring
 void power_alarm_hold(bool on);
 void power_oref_hold(bool on);  // oref.c: HOME FRONT ALERTS watch (no automatic POWER OFF)
+// true = a known heavy work runs on core 1 now (the TLS of the STANDBY weather, the ears and the brains of TALK): the
+// task watchdog does not watch the idle task of core 1 (else it prints a warning after 5 s; it only prints). A count:
+// each true needs its false. Call it from a task, not from an interrupt.
+void power_idle1_hold(bool hold);
 // POWER OFF now, from the manager (/api/ctl?poweroff=1): the next power_tick() gives true
 void power_off_ask(void);
 // true = the board runs on its battery (no charger, no PC). false = external power, or not known yet (then the board

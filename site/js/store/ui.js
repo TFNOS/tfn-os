@@ -3,6 +3,7 @@
 // (Web Serial), it reads the kind, the version and the apps of the board, and installs an app with one click
 // (usb.js). With no Web Serial, the page gives the signed zip file of an app.
 import { BOARDS, boardByKind } from '../boards.js';
+import { addClip, clipsOk } from '../site.js';
 import { stat } from '../stats.js';
 import {
   appsFor, checkIndex, decodeIcon, keyId, kindsOf, loadChecked, sizeText, trustedKey, verCmp, verifySig,
@@ -18,12 +19,25 @@ const FILTERS = [{ usbVendorId: 0x303a }, { usbVendorId: 0x1a86 }];
 const TINTS = { GAMES: '#3b2f9a', UTIL: '#0d5d58', TOOLS: '#0d5d58' };
 
 const $ = (id) => document.getElementById(id);
-const state = { index: null, kind: '', group: 'all', media: {}, link: null, board: null, icons: new Map(), dlg: null };
+const state = {
+  index: null, kind: '', group: 'all', media: {}, small: new Map(), link: null, board: null, icons: new Map(),
+  dlg: null,
+};
 
 // ---------- the files ----------
 
 async function fetchBytes(url) {
   const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) {
+    throw new Error('The site could not give ' + url.split('?')[0] + ' (HTTP ' + r.status + ').');
+  }
+  return new Uint8Array(await r.arrayBuffer());
+}
+
+// A file whose address has the hash of its content ("?sha=" of loadChecked): the browser may keep it in its cache,
+// because a new file gets a new address. The page checks the SHA-256 of the bytes in each case.
+async function fetchCached(url) {
+  const r = await fetch(url);
   if (!r.ok) {
     throw new Error('The site could not give ' + url.split('?')[0] + ' (HTTP ' + r.status + ').');
   }
@@ -59,6 +73,28 @@ function saveFile(name, data) {
 
 const iconCache = new Map();
 
+// The small icon of the site (media/apps/icons.json of site/tools/app_icons.py): all frames of the icon in one column
+// of a lossless WebP picture (2 to 36 KB; the icon.bin of the store is 13 to 210 KB). Its field "of" is the SHA-256 of
+// the icon.bin in the signed index, so a small icon is always the picture of the current icon.bin.
+// -> a promise of { size, ms, count, sheet }; it fails when the browser cannot show the picture.
+function loadSheet(s) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => {
+      if (img.naturalWidth !== s.size || img.naturalHeight !== s.size * s.frames) {
+        reject(new Error('the small icon has another size'));
+        return;
+      }
+      resolve({ size: s.size, ms: s.ms || 100, count: s.frames, sheet: img });
+    };
+    img.onerror = () => reject(new Error('no small icon'));
+    img.src = mediaUrl(s.file, s.v);
+  });
+}
+
+// The icon of an app: the small icon of the site, else (no small icon, or a browser with no WebP) the icon.bin of the
+// store with the check of its SHA-256.
 function iconOf(entry) {
   const want = entry.files['icon.bin'];
   if (!want) {
@@ -66,10 +102,14 @@ function iconOf(entry) {
   }
   const url = STORE + entry.path + 'icon.bin';
   if (!iconCache.has(url)) {
-    iconCache.set(url, loadChecked(url, want, fetchBytes).then(decodeIcon).catch(() => null));
+    const big = () => loadChecked(url, want, fetchCached).then(decodeIcon).catch(() => null);
+    const small = state.small.get(want.sha256);
+    iconCache.set(url, small && small.file ? loadSheet(small).catch(big) : big());
   }
   return iconCache.get(url);
 }
+
+const frameCount = (ic) => (ic.sheet ? ic.count : ic.frames.length);
 
 function paintIcon(canvas, ic, f) {
   if (canvas.width !== ic.size) {
@@ -77,6 +117,12 @@ function paintIcon(canvas, ic, f) {
     canvas.height = ic.size;
   }
   const ctx = canvas.getContext('2d');
+  if (ic.sheet) {
+    const y = (f % ic.count) * ic.size;
+    ctx.clearRect(0, 0, ic.size, ic.size);
+    ctx.drawImage(ic.sheet, 0, y, ic.size, ic.size, 0, 0, ic.size, ic.size);
+    return;
+  }
   const img = ctx.createImageData(ic.size, ic.size);
   const idx = ic.frames[f % ic.frames.length];
   for (let i = 0; i < idx.length; i++) {
@@ -99,8 +145,21 @@ const seen = 'IntersectionObserver' in window ? new IntersectionObserver((list) 
 }) : null;
 const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// The icon files of all apps are about 2.7 MB: an icon loads only when its canvas comes near the screen.
+const waiting = new Map();
+const near = 'IntersectionObserver' in window ? new IntersectionObserver((list) => {
+  for (const e of list) {
+    const go = waiting.get(e.target);
+    if (e.isIntersecting && go) {
+      near.unobserve(e.target);
+      waiting.delete(e.target);
+      go();
+    }
+  }
+}, { rootMargin: '300px' }) : null;
+
 function addIcon(canvas, entry) {
-  iconOf(entry).then((ic) => {
+  const go = () => iconOf(entry).then((ic) => {
     if (!ic || !canvas.isConnected) {
       return;
     }
@@ -110,6 +169,12 @@ function addIcon(canvas, entry) {
     }
     paintIcon(canvas, ic, 0);
   });
+  if (near) {
+    waiting.set(canvas, go);
+    near.observe(canvas);
+  } else {
+    go();
+  }
 }
 
 function tick(now) {
@@ -118,9 +183,9 @@ function tick(now) {
       state.icons.delete(canvas);
       continue;
     }
-    if (it.visible && !still && it.ic.frames.length > 1 && now - it.t >= it.ic.ms) {
+    if (it.visible && !still && frameCount(it.ic) > 1 && now - it.t >= it.ic.ms) {
       it.t = now;
-      it.f = (it.f + 1) % it.ic.frames.length;
+      it.f = (it.f + 1) % frameCount(it.ic);
       paintIcon(canvas, it.ic, it.f);
     }
   }
@@ -149,7 +214,17 @@ function mediaOf(app) {
   return state.media[app.id] || null;
 }
 
-// the picture part of a card or of the window: the preview of the app, else its icon
+// The address of a file of media.json. "v" (a hash of the files of the entry) changes with each new file, so a cache
+// can keep the files for a long time.
+function mediaUrl(name, v) {
+  return MEDIA + name + (v ? '?v=' + encodeURIComponent(v) : '');
+}
+
+const isVideo = (name) => /\.mp4$/i.test(name || '');
+
+// The picture part of a card or of the window: the preview of the app, else its icon. A card shows the still poster
+// (a small file); its short video loads and plays only while a mouse points at it. The window plays the video at
+// once, except with "reduce motion" or "save data".
 function shotEl(app, entry, big) {
   const m = mediaOf(app);
   const el = document.createElement(big ? 'div' : 'button');
@@ -158,15 +233,34 @@ function shotEl(app, entry, big) {
     el.type = 'button';
     el.setAttribute('aria-label', 'More about ' + app.name);
   }
-  if (m && (m.anim || m.poster)) {
+  const anim = m && isVideo(m.anim) ? m.anim : '';
+  const poster = m && (m.poster || (!isVideo(m.anim) && m.anim));
+  if (big && anim && !still && !(navigator.connection && navigator.connection.saveData)) {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.width = m.w || 640;
+    video.height = m.h || 172;
+    if (poster) {
+      video.poster = mediaUrl(poster, m.v);
+    }
+    video.src = mediaUrl(anim, m.v);
+    video.setAttribute('aria-label', app.name + ' on the board');
+    el.appendChild(video);
+  } else if (poster) {
     const img = document.createElement('img');
-    img.src = MEDIA + (still && m.poster ? m.poster : m.anim || m.poster);
+    img.src = mediaUrl(poster, m.v);
     img.alt = big ? app.name + ' on the board' : '';
     img.loading = 'lazy';
     img.decoding = 'async';
     img.width = m.w || 640;
     img.height = m.h || 172;
     el.appendChild(img);
+    if (!big && anim && clipsOk()) {
+      addClip(el, mediaUrl(anim, m.v));
+    }
   } else {
     el.classList.add('icon-only');
     el.style.setProperty('--tint', TINTS[app.group] || '#2d2f6a');
@@ -556,7 +650,7 @@ function openDlg(app, entry) {
   const m = mediaOf(app);
   for (const x of (m && m.extra) || []) {
     const img = document.createElement('img');
-    img.src = MEDIA + (x.file || x);
+    img.src = mediaUrl(x.file || x, x.v);
     img.alt = app.name + (x.what ? ', ' + x.what : '');
     img.loading = 'lazy';
     extra.appendChild(img);
@@ -636,8 +730,8 @@ async function init() {
   $('disconnect').addEventListener('click', () => disconnect());
   requestAnimationFrame(tick);
   try {
-    const [data, sig, media] = await Promise.all([fetchBytes(STORE + 'index.json'), fetchBytes(STORE + 'index.sig'),
-      fetchJson(MEDIA + 'media.json')]);
+    const [data, sig, media, small] = await Promise.all([fetchBytes(STORE + 'index.json'),
+      fetchBytes(STORE + 'index.sig'), fetchJson(MEDIA + 'media.json'), fetchJson(MEDIA + 'icons.json')]);
     const index = JSON.parse(new TextDecoder().decode(data));
     const faults = checkIndex(index);
     if (faults.length) {
@@ -651,6 +745,12 @@ async function init() {
     }
     state.index = index;
     state.media = media || {};
+    state.small = new Map();
+    for (const x of (small && Array.isArray(small.icons) ? small.icons : [])) {
+      if (x && /^[0-9a-f]{64}$/.test(x.of || '') && /^[a-z0-9_]+-icon(-[0-9a-f]{8})?\.webp$/.test(x.file || '')) {
+        state.small.set(x.of, x);
+      }
+    }
     $('key-id').textContent = (await keyId(index.pubkey)).toUpperCase();
     $('release').textContent = index.release || '-';
     $('store-facts').hidden = false;

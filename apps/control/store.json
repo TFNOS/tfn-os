@@ -1,0 +1,6 @@
+{
+ "control": {
+  "en": "Your own remotes through a TFN companion (a small ESP32 with modules). Learn the keys of real IR remotes (NEC, Samsung, Sony, RC5, RC6, or an exact copy), add keys that switch a relay or a light, and tiles that show a button, a motion or door sensor live. English and Hebrew.",
+  "he": "שלטים משלכם דרך מלווה TFN (ESP32 קטן עם רכיבים). לומדים מקשים של שלטי IR אמיתיים (NEC, סמסונג, סוני, RC5, RC6 או העתק מדויק), מוסיפים מקשים שמפעילים ממסר או אור, ואריחים שמראים לחצן, חיישן תנועה או דלת בזמן אמת. אנגלית ועברית."
+ }
+}

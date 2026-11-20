@@ -34,6 +34,7 @@
 #include "tfn/friends.h"
 #include "tfn/gfx.h"
 #include "tfn/input.h"
+#include "slowtap/slowtap.h"
 #include "tfn/imu.h"
 #include "tfn/mfont.h"
 #include "miniz.h"
@@ -467,6 +468,12 @@ static void art_build(void)
 // a picture of the data at the scale k: each pixel is the mean of its box of the picture (the colours weighted by alpha)
 static void spr_make(const cpic_t *s, float k, cspr_t *o)
 {
+    if (s->w <= 0 || s->h <= 0) {
+        // (a picture that did not load: no memory at the load of the art. No division by its zero size)
+        o->c = NULL;
+        o->w = o->h = 0;
+        return;
+    }
     int W = (int)(s->w * k + 0.5f), H = (int)(s->h * k + 0.5f);
     if (W < 1) {
         W = 1;
@@ -625,6 +632,8 @@ static void woods_at(int s)
         }
         spr_make(&s_src[12 + w], 2.0f * s / s_src[12 + w].w, &t);
         if (!t.c) {
+            free(s_wood[w]);  // (no wood picture: the plain colours of draw_square, not the bytes of a new block)
+            s_wood[w] = NULL;
             continue;
         }
         for (int y = 0; y < 2 * s; y++) {
@@ -1715,7 +1724,7 @@ static void ch_enter(int64_t now)
     art_build();
     memset(&C, 0, sizeof C);
     s_tilt = store_get("ch_tilt", 0) & 1;  // (VIEW: SWIPE first)
-    C.level = (int)store_get("ch_lvl", LV_MEDIUM) % 3;
+    C.level = (int)(store_get("ch_lvl", LV_MEDIUM) % 3);
     C.my_side = store_get("ch_side", 0) ? BLACK : WHITE;
     pos_start(&C.pos);
     C.sel = NOSQ;
@@ -2155,7 +2164,7 @@ static void sg_step(void)
         s_send_from = -1;
     }
 }
-static void ch_input(const input_event_t *ev)
+static void ch_input_ev(const input_event_t *ev)
 {
     if (ev->kind == IN_DOWN) {
         s_touch_active = true;
@@ -2279,6 +2288,17 @@ static void ch_input(const input_event_t *ev)
         sfx_tone(700, 700, 20, W_SQUARE, 18);
     } else {
         C.sel = NOSQ;
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title and the end acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void ch_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    ch_input_ev(ev);
+    if (slow && (C.g == G_TITLE || C.g == G_OVER)) {
+        ch_input_ev(&tap);
     }
 }
 static void ch_update(int64_t now)

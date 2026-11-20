@@ -65,7 +65,7 @@ The header has 3 sections. The tables give each name, the value of the CoreS3, a
 | `BOARD_UI_GRID` | 0 | The grid UI of a small portrait panel: the menu as a grid of big icons, the soft panel |
 | `BOARD_HI_FRAME` | 0 | An app can draw at the panel resolution (`gfx_hi_want()`, `gfx_hi()`) |
 | `BOARD_ROUND_ZOOM` | 0 | A round panel shows the frame of the apps zoomed to the width of the circle |
-| `BOARD_UI_SMOOTH_TEXT` | 0 | The system pages use the anti-aliased font |
+| `BOARD_UI_SMOOTH_TEXT` | 0 | No effect now: the system pages (SETUP, its pages, the keyboard) use the anti-aliased font on all boards |
 | `BOARD_FRAME_MM_PX` | 0.128f | The size of one px of the frame of the apps, in mm |
 | `BOARD_NATIVE_MM_PX` | 0.0f | The size of one px of the native frame, in mm (0 = no native frame) |
 | `BOARD_ROUND_HI_MM_PX` | 0.0f | The size of one px of the round HI frame, in mm (0 = no such frame) |

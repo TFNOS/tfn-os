@@ -116,6 +116,8 @@ void con_touch2(char *cmd);
 void con_touchraw(char *cmd);
 void con_touches(char *cmd);
 void con_quiet(char *cmd);
+void con_say(char *cmd);
+void con_listen(char *cmd);
 void con_snd(char *cmd);
 void con_tap(char *cmd);
 void con_clock(char *cmd);

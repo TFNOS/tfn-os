@@ -74,6 +74,7 @@ static const tune_note_t DK_OPEN[] = {
 #include "tfn/settings.h"
 #include "tfn/sysui.h"
 #include "tfn/uikit.h"
+#include "slowtap/slowtap.h"
 #ifndef DK_FIXED
 #define DK_FIXED 0  // 1: the 2.5D version (app_dirt25.c)
 #define DK_SYM   app_dirt
@@ -2418,7 +2419,7 @@ static void dk_leave(void)
     s_spa = NULL;
     s_tex_arena = -1;
 }
-static void dk_input(const input_event_t *ev)
+static void dk_input_ev(const input_event_t *ev)
 {
     int x = ev->x, y = ev->y;
     if (s_gs == GS_COUNT || s_gs == GS_RACE) {
@@ -2483,6 +2484,17 @@ static void dk_input(const input_event_t *ev)
                 buy(i);
             }
         }
+    }
+}
+// a slow tap (a press of 350 - 900 ms) on the title, the garage, the results and the lobby acts as a tap (libs/slowtap)
+static slowtap_t s_slowtap;
+static void dk_input(const input_event_t *ev)
+{
+    input_event_t tap;
+    const bool slow = st_slow(&s_slowtap, ev, &tap);
+    dk_input_ev(ev);
+    if (slow && (s_gs != GS_COUNT && s_gs != GS_RACE)) {
+        dk_input_ev(&tap);
     }
 }
 static void dk_update(int64_t now)

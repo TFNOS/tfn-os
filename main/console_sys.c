@@ -49,6 +49,9 @@ static void list_dir(const char *dir, int depth, int *n, uint64_t *sum)
 #define USBFS_CRC esp_rom_crc32_le
 #include "usb_fs.inc"
 #include "device_guard_usb.inc"
+#include "tfn_speech.h"
+#include "tfn_listen.h"
+#include "alarm.h"
 
 #if defined(CONFIG_TFN_DEVICE_PROTECTION) && CONFIG_TFN_DEVICE_PROTECTION
 // "maint"
@@ -397,6 +400,93 @@ void con_quiet(char *cmd)
     ESP_LOGI(TAG, "quiet %d", q);
 }
 
+// the voice reader (tfn/speech.h): "say read <text file> <cache folder> [hold s] [line]", "say rd" (its state),
+// "say play", "say pause", "say close"; a voice file: "say make <path> <text>", "say file <path>" (play it);
+// SPEAK AT AN ALARM: "say alarm on|off", a test timer "say timer <s> [label]", "say ringoff" (stop the ring)
+static bool con_say_more(char *a)
+{
+    if (!strncmp(a, "read ", 5)) {
+        char t[128], c[128];
+        int hold = 0, line = 0;
+        if (sscanf(a + 5, "%127s %127s %d %d", t, c, &hold, &line) >= 2) {
+            speech_read_cfg_t cfg = {.text = t, .cache = c, .line = line, .hold_s = hold, .play = true};
+            ESP_LOGI(TAG, "say read: %s", speech_read_open(&cfg) ? "open" : "FAILED");
+        }
+    } else if (!strcmp(a, "rd")) {
+        speech_read_t s;
+        speech_read_get(&s);
+        ESP_LOGI(TAG, "reader: state %d play %d line %d/%d made %d ahead %d ms wait %d ms rate %d %%", s.state, s.play,
+                 s.line, s.lines, s.made, s.ahead_ms, s.wait_ms, s.rate_pc);
+    } else if (!strcmp(a, "play") || !strcmp(a, "pause")) {
+        speech_read_play(a[1] == 'l');
+    } else if (!strcmp(a, "close")) {
+        speech_read_close();
+    } else if (!strncmp(a, "make ", 5)) {
+        char p[128];
+        int k = 0;
+        if (sscanf(a + 5, "%127s %n", p, &k) == 1 && k > 0) {
+            ESP_LOGI(TAG, "say make: %s", speech_make(a + 5 + k, p) ? "queued" : "FAILED");
+        }
+    } else if (!strncmp(a, "file ", 5)) {
+        ESP_LOGI(TAG, "say file: %d ms", speech_play_file(a + 5));
+    } else if (!strcmp(a, "alarm on") || !strcmp(a, "alarm off")) {
+        alarm_voice_set(a[7] == 'n');
+        ESP_LOGI(TAG, "speak at an alarm %s", alarm_voice_on() ? "on" : "off");
+    } else if (!strncmp(a, "timer ", 6)) {  // (a test: a timer of N s, as CLOCK makes it)
+        ctimer_t t[TIMER_MAX];
+        const int n = timer_get(t, TIMER_MAX);
+        int k = 0, len = 0, at = 0;
+        while (k < n && t[k].state != TIMER_FREE) {
+            k++;
+        }
+        if (k < n && sscanf(a + 6, "%d %n", &len, &at) >= 1 && len > 0) {
+            memset(&t[k], 0, sizeof t[k]);
+            t[k].state = TIMER_RUN;
+            t[k].vol = 30;
+            t[k].len_s = (uint32_t)len;
+            t[k].end_ms = esp_timer_get_time() / 1000 + len * 1000LL;
+            snprintf(t[k].label, sizeof t[k].label, "%s", at > 0 ? a + 6 + at : "");
+            timer_set(t, n);
+        }
+        ESP_LOGI(TAG, "say timer: %s", k < n && len > 0 ? "set" : "no free timer");
+    } else if (!strcmp(a, "ringoff")) {
+        alarm_stop();
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// "say <text>": the voice says the text (tfn_speech.h: a board with the app VOICE); "say": its state; "say stop";
+// "listen": the ears and the small brains (tfn_listen.h): "listen", "listen ask <text>", "listen key <text>",
+// "listen down" / "listen up" (a virtual talk key)
+void con_listen(char *cmd)
+{
+    (void)cmd;
+    char *a = strtok(NULL, " \r\n");
+    char *b = strtok(NULL, "\r\n");
+    listen_console(a ? a : "", b);
+}
+
+// "say on" / "say off": the setting READ NOTICES ALOUD; the reader and the voice files: con_say_more()
+void con_say(char *cmd)
+{
+    (void)cmd;
+    char *a = strtok(NULL, "\r\n");
+    if (!a || !a[0]) {
+        ESP_LOGI(TAG, "say: %s, read notices aloud %s", speech_state(), speech_notices_on() ? "on" : "off");
+    } else if (con_say_more(a)) {
+        return;
+    } else if (!strcmp(a, "stop")) {
+        speech_stop();
+    } else if (!strcmp(a, "on") || !strcmp(a, "off")) {
+        speech_set_notices(a[1] == 'n');
+        ESP_LOGI(TAG, "read notices aloud %s", a[1] == 'n' ? "on" : "off");
+    } else {
+        speech_say(a);
+    }
+}
+
 // "snd"
 void con_snd(char *cmd)
 {
@@ -687,8 +777,11 @@ void con_mem(char *cmd)
                 if (in) {
                     sum += sz;
                 }
-                printf("memtask %-16s prio %2u stack %s %5u (%u never used)\n", ts[i].pcTaskName,
-                       (unsigned)ts[i].uxCurrentPriority, in ? "INT  " : "PSRAM", (unsigned)sz,
+                // (the state: R runs, r ready, B waits (blocked), S stopped, D deleted)
+                static const char ST[] = "RrBSD?";
+                const unsigned e = (unsigned)ts[i].eCurrentState < 5 ? (unsigned)ts[i].eCurrentState : 5;
+                printf("memtask %-16s prio %2u %c stack %s %5u (%u never used)\n", ts[i].pcTaskName,
+                       (unsigned)ts[i].uxCurrentPriority, ST[e], in ? "INT  " : "PSRAM", (unsigned)sz,
                        (unsigned)ts[i].usStackHighWaterMark);
             }
             printf("memtask end: %u tasks, %u bytes of stacks in internal RAM\n", (unsigned)n, (unsigned)sum);

@@ -99,6 +99,7 @@ bool mai_app_runs(void);
 extern int mai_key_presses;
 void mai_pwr_key_poll(int64_t t);
 void mai_boot_key_poll(int64_t t);
+void mai_calm_wait(int ms);
 bool mai_pull_allow(void);
 bool tennis_two_players(void);
 

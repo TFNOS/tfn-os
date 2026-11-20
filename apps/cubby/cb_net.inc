@@ -10,7 +10,7 @@
 //   the world of the HOST and takes it.
 // - The end: THE TITLE (the panel) or the end of the link. The other board plays on alone ("FRIEND LEFT").
 #define NET_ID      'Y'
-#define NET_VER     1
+#define NET_VER     2               // (2: the big island of round 3)
 #define K_PK        N2_K_APP        // the packet of the CLIENT (the HOST sends the same packet as its state)
 #define K_SNAP      (N2_K_APP + 1)  // the world of the HOST (when the CLIENT asks for it)
 #define NET_TICK_MS 50
@@ -41,7 +41,7 @@ typedef struct __attribute__((packed)) {
 } npk_t;
 _Static_assert(sizeof(npk_t) <= N2_STATE_MAX, "the packet must fit");
 // the world of the HOST: the cells with cubes (i, j, the count, the kinds 2 bits each), the balloon cubes, the flags
-#define SNAP_CELLS 24
+#define SNAP_CELLS 30
 typedef struct __attribute__((packed)) {
     uint8_t ncell;
     struct __attribute__((packed)) {
@@ -53,7 +53,7 @@ typedef struct __attribute__((packed)) {
         int16_t y, base;
     } flo[NFLO];
     uint8_t drops;
-    uint16_t sparks;
+    uint32_t sparks;
 } nsnap_t;
 _Static_assert(sizeof(nsnap_t) <= N2_STATE_MAX, "the world must fit a packet");
 
@@ -110,7 +110,7 @@ static void net_event(int type, int a, int b, int c, float y)
 static void drops_count(void)
 {
     int n = 0;
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NDROP; k++) {
         n += s_drop[k].got;
     }
     s_ndrops = n;
@@ -164,7 +164,7 @@ static void net_apply(const nev_t *e)
         }
         break;
     case NE_DROP_GOT:
-        if (e->c < 3 && !s_drop[e->c].got) {
+        if (e->c < NDROP && !s_drop[e->c].got) {
             drop_t *d = &s_drop[e->c];
             d->got = true;
             d->t = 0;
@@ -174,10 +174,11 @@ static void net_apply(const nev_t *e)
                          n & 1 ? 0xFFD23A : 0xFFFFFF);
             }
             drops_count();
-            if (s_ndrops == 3 && s_win_t < 0) {
+            if (s_ndrops == NDROP && s_win_t < 0) {
                 s_win_t = 0;
             }
-            music_jingle(s_ndrops == 3 ? CBM_J_WIN : CBM_J_SUNDROP, s_ndrops == 3 ? CB_J_WIN_MS : CB_J_SUNDROP_MS);
+            music_jingle(s_ndrops == NDROP ? CBM_J_WIN : CBM_J_SUNDROP,
+                         s_ndrops == NDROP ? CB_J_WIN_MS : CB_J_SUNDROP_MS);
         }
         break;
     case NE_SPARK_GOT:
@@ -281,7 +282,7 @@ static uint32_t world_hash(void)
             HMIX(s_flo[k].j);
         }
     }
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NDROP; k++) {
         HMIX(s_drop[k].got);
     }
     for (int k = 0; k < NSPARK; k++) {
@@ -319,14 +320,14 @@ static void snap_make(nsnap_t *s)
         s->flo[k].y = mm16(f->y);
         s->flo[k].base = mm16(f->base);
     }
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NDROP; k++) {
         if (s_drop[k].got) {
             s->drops |= (uint8_t)(1 << k);
         }
     }
     for (int k = 0; k < NSPARK; k++) {
         if (s_spark[k].got) {
-            s->sparks |= (uint16_t)(1 << k);
+            s->sparks |= (uint32_t)1 << k;
         }
     }
 }
@@ -355,7 +356,7 @@ static void snap_take(const nsnap_t *s)
             P.on_float = -1;
         }
     }
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < NDROP; k++) {
         bool g = (s->drops >> k) & 1;
         if (g && !s_drop[k].got) {
             s_drop[k].t = 0;
@@ -366,7 +367,7 @@ static void snap_take(const nsnap_t *s)
         s_spark[k].got = (s->sparks >> k) & 1;
     }
     drops_count();
-    if (s_ndrops == 3 && s_win_t < 0) {
+    if (s_ndrops == NDROP && s_win_t < 0) {
         s_win_t = 0;
     }
 }
@@ -629,6 +630,16 @@ static void net_frame(float rdt)
 static bool net_friend_on_float(int k)
 {
     return s_fr.on && s_fr.seen && s_fr.ground && s_fr.on_float == k;
+}
+// the friend robot stands on the cell (i, j) with the top t (a plate)
+static bool net_friend_on_cell(int i, int j, float t)
+{
+    return s_fr.on && s_fr.seen && s_fr.ground && robot_on(s_fr.p.x, s_fr.p.y, s_fr.p.z, i, j, t);
+}
+// the friend robot is in the cells of a machine
+static bool net_friend_in_mech(const mech_t *q)
+{
+    return s_fr.on && s_fr.seen && robot_in_mech(q, s_fr.p.x, s_fr.p.z);
 }
 // the robot of this board does not go into the friend robot (only this board moves its own robot)
 static void net_push(void)

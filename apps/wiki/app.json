@@ -1,0 +1,16 @@
+{
+ "tfn_app": 1,
+ "name": "WIKI",
+ "sym": "app_wiki",
+ "group": "UTIL",
+ "emoji": "📖",
+ "new": true,
+ "srcs": [
+  "app_wiki.c",
+  "wk_webp.c"
+ ],
+ "store": {
+  "en": "Wikipedia with no network: put a Kiwix ZIM file (download.kiwix.org) in /wiki on the SD card. Search, random pages, links. Text: Wikipedia, CC BY-SA 4.0.",
+  "he": "ויקיפדיה בלי רשת: שים קובץ ZIM של Kiwix (download.kiwix.org) בתיקייה wiki בכרטיס SD. חיפוש, דף אקראי, קישורים. הטקסט: ויקיפדיה, CC BY-SA 4.0."
+ }
+}

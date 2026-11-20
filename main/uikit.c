@@ -4,6 +4,7 @@
 #include <math.h>
 #include <string.h>
 #include "gfx.h"
+#include "../libs/bidi/bidi.h"
 
 // gfx colours are in the byte order of the LCD: the mixes work on the plain 565 value
 static inline uint16_t sw16(uint16_t c)
@@ -304,10 +305,6 @@ static const kglyph_t *kglyph(const kfont_t *f, int cp)
     }
     return NULL;
 }
-static inline bool heb(uint16_t c)
-{
-    return c >= 0x590 && c <= 0x5FF;
-}
 static float adv(const kfont_t *f, uint16_t c)
 {
     const kglyph_t *g = kglyph(f, c);
@@ -342,99 +339,22 @@ static void glyph(const kfont_t *f, float x, int base, uint16_t c, uint16_t col)
         }
     }
 }
-// a letter of a Latin or a number run (left to right) inside the word i..j: a Latin letter or a digit, or a sign between
-// two of them ("2.5", "A/B")
-static bool alnum16(uint16_t c)
-{
-    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-}
-static bool ltr_at(const uint16_t *cp, int i, int j, int k)
-{
-    if (alnum16(cp[k])) {
-        return true;
-    }
-    if (heb(cp[k]) || k == i || k + 1 >= j) {
-        return false;
-    }
-    return alnum16(cp[k - 1]) && alnum16(cp[k + 1]) && (cp[k] == '.' || cp[k] == ',' || cp[k] == ':' || cp[k] == '/');
-}
-// one line from x (the left end): a line with Hebrew from the right (the words from the right, the letters of a Hebrew
-// word from the right; a number or a Latin word keeps its order)
+#define TXT_MAX 96  // (also the most letters of a line: bidi_order works on a line of up to BIDI_MAX letters)
+// one line from x (the left end). A line with Hebrew is in the order of the Unicode Bidirectional Algorithm (bidi.h):
+// it goes from the right, a Latin phrase or a number keeps its own order, and a bracket of a right-to-left part shows
+// its mirror (rule L4), so that "(" and ")" close a Hebrew group the right way round.
 static void line_at(const kfont_t *f, const uint16_t *cp, int n, float x0, int base, uint16_t col)
 {
-    bool rtl = false;
+    int16_t ord[TXT_MAX];
+    uint8_t mir[TXT_MAX];
+    const bool rtl = bidi_order(cp, n, ord, mir);
+    float x = x0;
     for (int i = 0; i < n; i++) {
-        if (heb(cp[i])) {
-            rtl = true;
-            break;
-        }
-    }
-    if (!rtl) {
-        float x = x0;
-        for (int i = 0; i < n; i++) {
-            glyph(f, x, base, cp[i], col);
-            x += adv(f, cp[i]);
-        }
-        return;
-    }
-    float x = x0 + run_w(f, cp, n);
-    int i = 0;
-    while (i < n) {
-        int j = i;
-        while (j < n && cp[j] != ' ') {
-            j++;
-        }
-        bool hw = false;
-        for (int k = i; k < j; k++) {
-            if (heb(cp[k])) {
-                hw = true;
-                break;
-            }
-        }
-        float ww = run_w(f, cp + i, j - i);
-        x -= ww;
-        if (hw) {
-            // a word with Hebrew: its runs from the right; the letters of a Hebrew run from the right, a Latin or a number
-            // run in its order ("ה-WIFI" shows WIFI-ה; the whole word does not turn)
-            float xx = x + ww;
-            int k = i;
-            while (k < j) {
-                int e = k + 1;
-                bool l = ltr_at(cp, i, j, k);
-                while (e < j && ltr_at(cp, i, j, e) == l) {
-                    e++;
-                }
-                float rw = run_w(f, cp + k, e - k);
-                xx -= rw;
-                if (l) {
-                    float xr = xx;
-                    for (int m = k; m < e; m++) {
-                        glyph(f, xr, base, cp[m], col);
-                        xr += adv(f, cp[m]);
-                    }
-                } else {
-                    float xr = xx + rw;
-                    for (int m = k; m < e; m++) {
-                        xr -= adv(f, cp[m]);
-                        glyph(f, xr, base, cp[m], col);
-                    }
-                }
-                k = e;
-            }
-        } else {
-            float xx = x;
-            for (int k = i; k < j; k++) {
-                glyph(f, xx, base, cp[k], col);
-                xx += adv(f, cp[k]);
-            }
-        }
-        if (j < n) {
-            x -= adv(f, ' ');
-        }
-        i = j + 1;
+        const uint16_t c = !rtl ? cp[i] : mir[i] ? bidi_mirror(cp[ord[i]]) : cp[ord[i]];
+        glyph(f, x, base, c, col);
+        x += adv(f, c);
     }
 }
-#define TXT_MAX 96
 void ui_text(const kfont_t *f, int x, int base, const char *utf8, uint16_t col)
 {
     uint16_t cp[TXT_MAX];
@@ -452,6 +372,33 @@ int ui_text_w(const kfont_t *f, const char *utf8)
     uint16_t cp[TXT_MAX];
     int n = tfn_utf8_decode(utf8, cp, TXT_MAX, true);
     return (int)ceilf(run_w(f, cp, n));
+}
+// THE DOT TEXT IN A REAL FACE (the system pages): a dot scale sc (the 5 x 7 dot font of gfx_text: 7 * sc px high)
+// takes the Rubik face of about the same size: 1 = KF_LABEL, 2 = KF_TEXT, 3 = KF_BIG, 4 and more = KF_TITLE. y stays
+// the top of the dot line; the capitals of the face sit in the middle of that band.
+static const kfont_t *dot_face(int sc)
+{
+    return sc <= 1 ? &KF_LABEL : sc == 2 ? &KF_TEXT : sc == 3 ? &KF_BIG : &KF_TITLE;
+}
+static int dot_base(int y, int sc)
+{
+    return y + (7 * sc + dot_face(sc)->asc * 3 / 4) / 2;
+}
+void ui_dot_text(int x, int y, const char *s, int sc, uint16_t c)
+{
+    ui_text(dot_face(sc), x, dot_base(y, sc), s, c);
+}
+int ui_dot_text_w(const char *s, int sc)
+{
+    return ui_text_w(dot_face(sc), s);
+}
+void ui_dot_text_c(int y, const char *s, int sc, uint16_t c)
+{
+    ui_text_c(dot_face(sc), gfx_w / 2, dot_base(y, sc), s, c);
+}
+void ui_dot_text_in(int x, int w, int y, const char *s, int sc, uint16_t c)
+{
+    ui_text_c(dot_face(sc), x + w / 2, dot_base(y, sc), s, c);
 }
 const kfont_t *ui_text_fit(const kfont_t *const *fonts, int n, const char *utf8, int w)
 {

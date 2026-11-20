@@ -1,0 +1,6 @@
+{
+ "tuner": {
+  "en": "A chromatic tuner that listens with the microphone. A needle and a strobe band show how many cents you are flat or sharp. Choose CHROMATIC, GUITAR, BASS, UKULELE or VIOLIN. Tap a string to hear its note. Set A4 from 430 to 450 Hz.",
+  "he": "מכוון כרומטי שמאזין במיקרופון. מחוג ופס סטרובוסקופ מראים כמה סנטים אתם נמוכים או גבוהים. בחרו CHROMATIC, GUITAR, BASS, UKULELE או VIOLIN. געו במיתר כדי לשמוע את התו. כוונו את A4 בין 430 ל-450 הרץ."
+ }
+}
