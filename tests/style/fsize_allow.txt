@@ -20,8 +20,11 @@ apps/gummy_siege/gs_core.inc levels_parse 181
 libs/hebcal/hc_cal.inc hc_events 203
 apps/hebcal/hc_draw.inc draw_today 167
 apps/kart/app_kart.c rows_prepare 154
+apps/minesweeper/ms_art.inc bg_paint 153
 apps/murano/app_murano.c draw_scene 473
 apps/orbital/orb_pilot.inc pilot_think 395
+apps/pinball/app_pinball.c pin_update 197
+apps/pinball/app_pinball.c table_build 205
 apps/summer/sc_bowl.inc bowl_render 206
 apps/summer/sc_peak.inc peak_render 161
 apps/summer/sc_peak.inc peak_step 318

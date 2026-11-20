@@ -1,0 +1,16 @@
+{
+ "tfn_app": 1,
+ "name": "MINESWEEPER",
+ "sym": "app_mines",
+ "group": "GAMES",
+ "emoji": "💣",
+ "new": true,
+ "srcs": [
+  "app_mines.c",
+  "ms_music.c"
+ ],
+ "store": {
+  "en": "Minesweeper in a garden, with 8 gardens in different looks and a mole named DIGBY. You can solve every board with no guess. Tap a tile to aim, then tap DIG or FLAG. The BOOT key digs too. English and Hebrew.",
+  "he": "שולה המוקשים בגינה, עם 8 גנים בעיצובים שונים וחפרפרת בשם DIGBY. אפשר לפתור כל לוח בלי ניחושים. געו באריח כדי לכוון, ואז על DIG לחפירה או על FLAG לדגל. גם מקש BOOT חופר. אנגלית ועברית."
+ }
+}

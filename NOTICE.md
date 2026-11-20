@@ -265,7 +265,7 @@ The code of other projects is in `third_party/<name>/`, each folder with its lic
 
 ## The games of the store: the effects, the music and the data
 
-- **Files:** the game folders `apps/cubby/`, `apps/gummy_siege/`, `apps/murano/`, `apps/turning_wood/`, `apps/dirt_kings/`, `apps/kart/`, `apps/coil/`, `apps/summer/`, `apps/deep_current/`, `apps/boulevard/`, `apps/four_seasons/`, `apps/glasshouse/`, `apps/orbital/`, `apps/chess/`, `apps/backgammon/`, `apps/checkers/`, `apps/sea_battle/`.
+- **Files:** the game folders `apps/cubby/`, `apps/gummy_siege/`, `apps/murano/`, `apps/turning_wood/`, `apps/dirt_kings/`, `apps/kart/`, `apps/coil/`, `apps/summer/`, `apps/deep_current/`, `apps/boulevard/`, `apps/four_seasons/`, `apps/glasshouse/`, `apps/orbital/`, `apps/chess/`, `apps/backgammon/`, `apps/checkers/`, `apps/sea_battle/`, `apps/minesweeper/`, `apps/pinball/`.
 - **The sound effects:** the MP3 files of `apps/cubby/sfx/`, `apps/gummy_siege/sfx/`, `apps/murano/sfx/`, `apps/turning_wood/sfx/`, `apps/dirt_kings/sfx/`, `apps/kart/sfx/`, `apps/summer/sfx/`, `apps/deep_current/sfx/`, `apps/boulevard/sfx/`, `apps/four_seasons/sfx/`, `apps/glasshouse/sfx/`, `apps/orbital/sfx/`, `apps/backgammon/sfx/`, `apps/checkers/sfx/` (most games have them as C data in their app file:
   the file `<x>_sfx.c` of the folder), CC0 (public domain): Kenney (kenney.nl) and OpenGameArt (opengameart.org)
   packs. The file `SOURCES.md` of each `sfx/` folder names the pack and the source file of each effect.

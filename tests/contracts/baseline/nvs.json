@@ -4,6 +4,7 @@
    "tz"
   ],
   "<store>": [
+   "%s%d",
    "A",
    "Ab",
    "Bb",
@@ -209,6 +210,10 @@
    "mqtt_lang",
    "mqtt_mode",
    "mqtt_srv",
+   "ms_coins",
+   "ms_lang",
+   "ms_snd",
+   "ms_unlock",
    "mt_acc",
    "mt_beats",
    "mt_bpm",
@@ -252,6 +257,7 @@
    "pad_ver",
    "pads_set3",
    "pb_tilt",
+   "pin_best",
    "pmu_a3off",
    "pool_fake",
    "pw_deep",

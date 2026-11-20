@@ -74,6 +74,8 @@ apps/linalg/la_font.c
 apps/linalg/la_font.h
 apps/linalg/la_sfx.c
 apps/linalg/la_sfx.h
+apps/minesweeper/ms_music.c
+apps/minesweeper/ms_music.h
 apps/mqtt/mq_fonts.inc
 apps/murano/mu_music.c
 apps/murano/mu_music.h

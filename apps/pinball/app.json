@@ -1,0 +1,14 @@
+{
+ "tfn_app": 1,
+ "name": "PINBALL",
+ "sym": "app_pinball",
+ "group": "GAMES",
+ "emoji": "🕹️",
+ "srcs": [
+  "app_pinball.c"
+ ],
+ "store": {
+  "en": "A pinball table with ramps, bumpers, drop targets, multiball and missions. Touch the left half for the left flipper and the right half for the right flipper. Hold and release to launch. Knock on the board to nudge, but a third nudge is a tilt.",
+  "he": "שולחן פינבול עם רמפות, פגושים, מטרות נופלות, מולטיבול ומשימות. געו בחצי השמאלי לפליפר השמאלי ובחצי הימני לפליפר הימני. החזיקו ושחררו כדי לשגר. דפיקה על הלוח דוחפת את הכדורים, אבל דחיפה שלישית היא TILT."
+ }
+}
