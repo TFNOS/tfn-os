@@ -287,5 +287,269 @@
   "secs": 5.0,
   "v": "3fe6a325",
   "extra": []
+ },
+ "bits": {
+  "anim": "bits.mp4",
+  "poster": "bits.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "62b6bc93",
+  "extra": []
+ },
+ "btkeys": {
+  "anim": "btkeys.mp4",
+  "poster": "btkeys.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "273038c8",
+  "extra": []
+ },
+ "chessclock": {
+  "anim": "chessclock.mp4",
+  "poster": "chessclock.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "f80858bf",
+  "extra": []
+ },
+ "companions": {
+  "anim": "companions.mp4",
+  "poster": "companions.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "bab9807d",
+  "extra": []
+ },
+ "control": {
+  "anim": "control.mp4",
+  "poster": "control.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "5e97301e",
+  "extra": []
+ },
+ "hebcal": {
+  "anim": "hebcal.mp4",
+  "poster": "hebcal.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "9099305c",
+  "extra": []
+ },
+ "hop": {
+  "anim": "hop.mp4",
+  "poster": "hop.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "0c6fb98a",
+  "rot": 90,
+  "extra": []
+ },
+ "hourglass": {
+  "anim": "hourglass.mp4",
+  "poster": "hourglass.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "1f0d00f5",
+  "rot": 90,
+  "extra": []
+ },
+ "integral": {
+  "anim": "integral.mp4",
+  "poster": "integral.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "59ca4d70",
+  "extra": []
+ },
+ "irdec": {
+  "anim": "irdec.mp4",
+  "poster": "irdec.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "f81e9790",
+  "extra": []
+ },
+ "linalg": {
+  "anim": "linalg.mp4",
+  "poster": "linalg.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "02365795",
+  "extra": []
+ },
+ "metro": {
+  "anim": "metro.mp4",
+  "poster": "metro.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "bd6ac2d4",
+  "extra": []
+ },
+ "mic": {
+  "anim": "mic.mp4",
+  "poster": "mic.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "d5ce1122",
+  "extra": []
+ },
+ "mines": {
+  "anim": "mines.mp4",
+  "poster": "mines.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "55d10bad",
+  "extra": []
+ },
+ "morse": {
+  "anim": "morse.mp4",
+  "poster": "morse.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "8bca1a14",
+  "extra": []
+ },
+ "ohm": {
+  "anim": "ohm.mp4",
+  "poster": "ohm.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "aa2d6dc5",
+  "extra": []
+ },
+ "pinball": {
+  "anim": "pinball.mp4",
+  "poster": "pinball.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "809372f8",
+  "rot": 90,
+  "extra": []
+ },
+ "rfdec": {
+  "anim": "rfdec.mp4",
+  "poster": "rfdec.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "e8fa74c4",
+  "extra": []
+ },
+ "ringseq": {
+  "anim": "ringseq.mp4",
+  "poster": "ringseq.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "0ed1af14",
+  "extra": []
+ },
+ "sdr": {
+  "anim": "sdr.mp4",
+  "poster": "sdr.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "bda9fdfe",
+  "extra": []
+ },
+ "sight": {
+  "anim": "sight.mp4",
+  "poster": "sight.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "aac0ffa2",
+  "extra": []
+ },
+ "sky": {
+  "anim": "sky.mp4",
+  "poster": "sky.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "3ece83e0",
+  "extra": []
+ },
+ "tilt": {
+  "anim": "tilt.mp4",
+  "poster": "tilt.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "4f11085c",
+  "rot": 90,
+  "extra": []
+ },
+ "trivia": {
+  "anim": "trivia.mp4",
+  "poster": "trivia.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "1700a4ba",
+  "extra": []
+ },
+ "tuner": {
+  "anim": "tuner.mp4",
+  "poster": "tuner.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "d630c1bb",
+  "extra": []
+ },
+ "wiki": {
+  "anim": "wiki.mp4",
+  "poster": "wiki.jpg",
+  "w": 640,
+  "h": 172,
+  "fps": 16,
+  "secs": 5.0,
+  "v": "13f946db",
+  "extra": []
  }
 }

@@ -10,6 +10,15 @@
    "v": "7d9b5778"
   },
   {
+   "app": "bits",
+   "of": "78a4343e000bf4e1dffbe0e1ec676f4eb843387d863db7e48c50851f3d7cf519",
+   "file": "bits-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "c05da70b"
+  },
+  {
    "app": "blvd",
    "of": "174f028e41a3b272e2ae81d20843844c544e19b4375c0f6259b80d7e506cc10c",
    "file": "blvd-icon.webp",
@@ -17,6 +26,15 @@
    "frames": 16,
    "ms": 125,
    "v": "04d02e3f"
+  },
+  {
+   "app": "btkeys",
+   "of": "5c1e9862801ed3cf06481ba47762bcb481c0ce082196cee5b29426127a41784d",
+   "file": "btkeys-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "2c8fb0f8"
   },
   {
    "app": "checkers",
@@ -37,6 +55,15 @@
    "v": "b874effe"
   },
   {
+   "app": "chessclock",
+   "of": "9959da9fc36ba65969b25cbaff23a0182902518dfbc62100d557920498753c69",
+   "file": "chessclock-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "9e6cf879"
+  },
+  {
    "app": "clock",
    "of": "8bc5439af5e4fa65f6be2fe7f7d8a46a16db244f3ffb252853e656c6ddb871b6",
    "file": "clock-icon.webp",
@@ -53,6 +80,24 @@
    "frames": 16,
    "ms": 125,
    "v": "f06cc4b0"
+  },
+  {
+   "app": "companions",
+   "of": "e66149b0bda0ad1297a186150703662437e6806ba9a24127baba791834d4570f",
+   "file": "companions-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "c83bdfa4"
+  },
+  {
+   "app": "control",
+   "of": "834c562f1890b31dbabfe68ab833f0c936b649e04a702648dd0f4ebec15c3a65",
+   "file": "control-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "0111116c"
   },
   {
    "app": "cubby",
@@ -109,6 +154,33 @@
    "v": "2a3215b5"
   },
   {
+   "app": "hebcal",
+   "of": "e055a09bd1a00c4a46ba18bc34a088997ac839597a00582e2f12b20cdce3f39c",
+   "file": "hebcal-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "06bf8da0"
+  },
+  {
+   "app": "hop",
+   "of": "2b1c52afa224217693e69b561697bad313601f5721ad7a466711df21d8edfb93",
+   "file": "hop-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "4ea44649"
+  },
+  {
+   "app": "hourglass",
+   "of": "174f01b5c98c633f1480c1cdca203d189c40b30575c82eedacb2c24ef2894b2b",
+   "file": "hourglass-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "a1f1ebcb"
+  },
+  {
    "app": "i2c",
    "of": "a544d6392ee78cafcdefb8e2dbb0a764bf90669e696d9bf67aa59c7c39a58c88",
    "file": "i2c-icon.webp",
@@ -116,6 +188,24 @@
    "frames": 16,
    "ms": 125,
    "v": "3a71a959"
+  },
+  {
+   "app": "integral",
+   "of": "46da67cca08a7f2c2f4ac68b6cd5770a4b51bb0e66e2daa0b0cbb58d98edde81",
+   "file": "integral-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "d976c0a4"
+  },
+  {
+   "app": "irdec",
+   "of": "0537fd346736c11eb1d9427fa63d7bccbcf8a088a0ee63b8f70066fb5437a0b3",
+   "file": "irdec-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "f81969d9"
   },
   {
    "app": "kart",
@@ -136,6 +226,33 @@
    "v": "b22c3350"
   },
   {
+   "app": "linalg",
+   "of": "322246d1ce9c276eb505bb56c748d8f7ba7897e55935b62765fd4e6ad6ece6aa",
+   "file": "linalg-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "46004611"
+  },
+  {
+   "app": "metro",
+   "of": "ec07c5573ff62d3144ad39184a25c893eeffba498995898f2bdfd1dc1005c21e",
+   "file": "metro-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "a95deb23"
+  },
+  {
+   "app": "mic",
+   "of": "ba503dc7eb6d5203f8af226f15574814734ad32351a8bc3a33f78648452f9a68",
+   "file": "mic-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "cdfc4e8f"
+  },
+  {
    "app": "midictl",
    "of": "6e82b71e83ba47385755888f68bdc195af9ce05d911e2429a819e22f10ebf4c9",
    "file": "midictl-icon.webp",
@@ -143,6 +260,24 @@
    "frames": 16,
    "ms": 125,
    "v": "b68e55fb"
+  },
+  {
+   "app": "mines",
+   "of": "cfbbfaed1b9561981bd6d8827cc44491889fbfdb180d89cbdf9d1bcaa3a98dfc",
+   "file": "mines-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "87fa17ff"
+  },
+  {
+   "app": "morse",
+   "of": "96e96fa66a7ff60f9241b5d0e022253b7bab479e135a846d7007e199e54898d9",
+   "file": "morse-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "a610d0df"
   },
   {
    "app": "mqtt",
@@ -163,6 +298,15 @@
    "v": "bf8c6107"
   },
   {
+   "app": "ohm",
+   "of": "26488c4e871b2b41b9ae04118362e96b94a394d371aab0f6bfa97f267cce2d81",
+   "file": "ohm-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "a6979438"
+  },
+  {
    "app": "orbital",
    "of": "cf743a0ae7c651754050221ee01886615fbd569351078892807f747495b944ce",
    "file": "orbital-icon.webp",
@@ -170,6 +314,42 @@
    "frames": 16,
    "ms": 125,
    "v": "006ce52d"
+  },
+  {
+   "app": "pinball",
+   "of": "33ee006fd249442cce6758e630e6d7b48e0a82db962dc94597fd2407d59d096e",
+   "file": "pinball-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "a8c85878"
+  },
+  {
+   "app": "rfdec",
+   "of": "69df2d9e5119a1e01004622e4b8a79de531fb9cef614788fc705cb6d92b31711",
+   "file": "rfdec-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "d7f86241"
+  },
+  {
+   "app": "ringseq",
+   "of": "061a71c3571ea6a6de6e7287a3d12d811f8cc6db9c243f3980a9b08f142ccd1b",
+   "file": "ringseq-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "34ba1128"
+  },
+  {
+   "app": "sdr",
+   "of": "e2203cdf0dea3b041c2289c60d2bd7e12a20cc84d31120768636a0dad207776e",
+   "file": "sdr-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "98784d2e"
   },
   {
    "app": "sea",
@@ -199,6 +379,15 @@
    "v": "4566791b"
   },
   {
+   "app": "sight",
+   "of": "1d134b6645e9d9a8e5bdffd4ad8217a28a5154996a02bd2bc0184727287beca9",
+   "file": "sight-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "98112d43"
+  },
+  {
    "app": "simon",
    "of": "a0cad0295dd713b19e550816334366977dffdbde268d305c8dd45fbde31f7685",
    "file": "simon-icon.webp",
@@ -206,6 +395,15 @@
    "frames": 16,
    "ms": 125,
    "v": "74e89377"
+  },
+  {
+   "app": "sky",
+   "of": "949457dfada75e8f989abe7dc846ddca1e9bf5bebc2500d1a5249a766d9b6bce",
+   "file": "sky-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "c4fd30a5"
   },
   {
    "app": "stack",
@@ -226,6 +424,15 @@
    "v": "4c44b846"
   },
   {
+   "app": "tilt",
+   "of": "894f2d8bf127e6b1f4aa49ebfcf2bb03a378fb17f516d9ca63ffd9f4f4319daf",
+   "file": "tilt-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "ba7a4dcc"
+  },
+  {
    "app": "touchlab",
    "of": "ddb0947078b47506c1402264e4a70e815555f1bde3809cc54c7d178d67cf13bd",
    "file": "touchlab-icon.webp",
@@ -235,6 +442,24 @@
    "v": "2907390e"
   },
   {
+   "app": "trivia",
+   "of": "28462d38661e3946f4c412982001a8b104a9a4442e08233c7f7f7e8962587d02",
+   "file": "trivia-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "9e10be68"
+  },
+  {
+   "app": "tuner",
+   "of": "fe9179acbe31de95a89f20b216d268a78d717f9bb170f0c5371b135911202e1a",
+   "file": "tuner-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "19a0bba4"
+  },
+  {
    "app": "weather",
    "of": "cb44731b7817cea68e6b5c34600de36e7ca27632b44def9e8fd79982b92ac5ca",
    "file": "weather-icon.webp",
@@ -242,6 +467,15 @@
    "frames": 16,
    "ms": 125,
    "v": "70bfc0d7"
+  },
+  {
+   "app": "wiki",
+   "of": "0449b4717acbb16f74665f3e530fa8a691004cdcac4493ff51a41119cd2a6978",
+   "file": "wiki-icon.webp",
+   "size": 128,
+   "frames": 16,
+   "ms": 125,
+   "v": "ec703b5b"
   },
   {
    "app": "wood",
