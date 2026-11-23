@@ -275,33 +275,13 @@ static void scale_row_orient(const uint16_t *fb, int o, int px, uint16_t *line)
     }
 }
 
-// The physical panel is 800 x 480 (landscape). Landscape frames (640 x 360) scale to the full 800 x 480 panel;
-// portrait frames (360 x 640, e.g. HOP and HOURGLASS) render upright in a centered 360 x 480 window (x = 220..579)
-// so they are never sideways on the desktop panel and touch coordinates match the visual layout.
+// The physical panel is 800 x 480 (landscape). In TFN OS's physical portrait coordinates (LCD_W=360, LCD_H=640),
+// ORIENT_LAND_A (the natural landscape view, 640 x 360) maps directly to the full 800 x 480 panel (5:4 horizontal,
+// 4:3 vertical) via an internal-RAM line buffer to maximize PSRAM burst write throughput.
 static void draw_frame(const uint16_t *fb, int orient, uint16_t *dst)
 {
     static uint16_t s_line[PANEL_W];
     const int o = orient & 3;
-    if (o == ORIENT_PORTRAIT || o == ORIENT_PORTRAIT_FLIP) {
-        const int x0 = (PANEL_W - LCD_W) / 2;  // 220
-        memset(s_line, 0, sizeof s_line);
-        for (int ry = 0; ry < PANEL_H; ry++) {
-            const int sy = ry * LCD_H / PANEL_H;
-            if (o == ORIENT_PORTRAIT) {
-                const uint16_t *src = fb + sy * LCD_W;
-                for (int px = 0; px < LCD_W; px++) {
-                    s_line[x0 + px] = __builtin_bswap16(src[px]);
-                }
-            } else {
-                for (int px = 0; px < LCD_W; px++) {
-                    s_line[x0 + px] = __builtin_bswap16(fb[log_index(o, px, sy, LCD_W, LCD_H)]);
-                }
-            }
-            memcpy(dst + ry * PANEL_W, s_line, PANEL_W * sizeof(uint16_t));
-        }
-        esp_cache_msync(dst, PANEL_W * PANEL_H * sizeof(uint16_t), ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-        return;
-    }
     for (int ry = 0, sy = 0; sy < LCD_W; sy += 3, ry += 4) {
         uint16_t *d0 = dst + ry * PANEL_W;
         uint16_t *d1 = d0 + PANEL_W;
@@ -502,20 +482,8 @@ int board_touch_points(int *x, int *y, int max)
                 const uint8_t *p = buf + i * 8;
                 int tx = p[1] | (p[2] << 8);  // 0..799 along the 800-px panel width
                 int ty = p[3] | (p[4] << 8);  // 0..479 along the 480-px panel height
-                int px, py;
-                const orient_t o = gfx_orient();
-                if (o == ORIENT_PORTRAIT || o == ORIENT_PORTRAIT_FLIP) {
-                    const int x0 = (PANEL_W - LCD_W) / 2;  // 220
-                    px = tx - x0;
-                    py = ty * LCD_H / PANEL_H;
-                    if (o == ORIENT_PORTRAIT_FLIP) {
-                        px = LCD_W - 1 - px;
-                        py = LCD_H - 1 - py;
-                    }
-                } else {
-                    px = LCD_W - 1 - (ty * LCD_W / PANEL_H);
-                    py = tx * LCD_H / PANEL_W;
-                }
+                int px = LCD_W - 1 - (ty * LCD_W / PANEL_H);
+                int py = tx * LCD_H / PANEL_W;
                 if (px < 0) {
                     px = 0;
                 } else if (px >= LCD_W) {
