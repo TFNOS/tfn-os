@@ -78,7 +78,7 @@
 // the chip has its own WiFi and BLE radio (ESP-NOW, BLE, the native radio); 0 = the radio is a second chip
 #define BOARD_RADIO_NATIVE 1
 // the event log of the board (evlog.h: GET /api/evlog, the console "evlog")
-#define BOARD_EVLOG 0
+#define BOARD_EVLOG 1
 // the kind of the build as one name: only this file defines it (tfn_app_priv.h sets TFN_KIND_<kind> from it for
 // the conditions of the ABI table tfn_abi.inc)
 #define BOARD_KIND_CROW7 1

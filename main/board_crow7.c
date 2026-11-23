@@ -64,7 +64,7 @@ static const char *TAG = "board";
 // Physical RGB panel dimensions (landscape native scan: 800 wide by 480 high)
 #define PANEL_W  800
 #define PANEL_H  480
-#define PCLK_HZ  16000000
+#define PCLK_HZ  12000000
 
 typedef struct {
     const uint16_t *fb;
@@ -81,6 +81,7 @@ static uint8_t s_bright = 230;
 static bool s_scr_sleep;
 static bool s_spk_on = true;
 static bool s_spk_hold;
+volatile uint32_t g_ev_screen_bytes;
 
 static void stc_cmd(uint8_t cmd)
 {
@@ -235,74 +236,73 @@ static inline int log_index(int orient, int px, int py, int pw, int ph)
     }
 }
 
+static inline uint16_t mix565(uint16_t a, uint16_t b)
+{
+    return (uint16_t)(((a & 0xF7DEu) >> 1) + ((b & 0xF7DEu) >> 1) + (a & b & 0x0821u));
+}
+
+// Expand one 640-px source row (LCD_H = 640) into an 800-px internal-RAM line buffer with 5:4 RGB565 interpolation.
+static void scale_row_land_a(const uint16_t *src, uint16_t *line)
+{
+    const uint32_t *s32 = (const uint32_t *)src;
+    for (int rx = 0, sx = 0; sx < LCD_H / 2; sx += 2, rx += 5) {
+        uint32_t w0 = s32[sx];
+        uint32_t w1 = s32[sx + 1];
+        uint16_t p0 = __builtin_bswap16((uint16_t)w0);
+        uint16_t p1 = __builtin_bswap16((uint16_t)(w0 >> 16));
+        uint16_t p2 = __builtin_bswap16((uint16_t)w1);
+        uint16_t p3 = __builtin_bswap16((uint16_t)(w1 >> 16));
+        line[rx] = p0;
+        line[rx + 1] = p1;
+        line[rx + 2] = mix565(p1, p2);
+        line[rx + 3] = p2;
+        line[rx + 4] = p3;
+    }
+}
+
+static void scale_row_orient(const uint16_t *fb, int o, int px, uint16_t *line)
+{
+    for (int rx = 0, sx = 0; sx < LCD_H; sx += 4, rx += 5) {
+        uint16_t p0 = __builtin_bswap16(fb[log_index(o, px, sx, LCD_W, LCD_H)]);
+        uint16_t p1 = __builtin_bswap16(fb[log_index(o, px, sx + 1, LCD_W, LCD_H)]);
+        uint16_t p2 = __builtin_bswap16(fb[log_index(o, px, sx + 2, LCD_W, LCD_H)]);
+        uint16_t p3 = __builtin_bswap16(fb[log_index(o, px, sx + 3, LCD_W, LCD_H)]);
+        line[rx] = p0;
+        line[rx + 1] = p1;
+        line[rx + 2] = mix565(p1, p2);
+        line[rx + 3] = p2;
+        line[rx + 4] = p3;
+    }
+}
+
 // The physical panel is 800 x 480 (landscape). In TFN OS's physical portrait coordinates (LCD_W=360, LCD_H=640),
 // ORIENT_LAND_A (the natural landscape view, 640 x 360) maps directly to the full 800 x 480 panel (5:4 horizontal,
-// 4:3 vertical) with zero black bars.
+// 4:3 vertical) via an internal-RAM line buffer to maximize PSRAM burst write throughput.
 static void draw_frame(const uint16_t *fb, int orient, uint16_t *dst)
 {
+    static uint16_t s_line[PANEL_W];
     const int o = orient & 3;
     for (int ry = 0, sy = 0; sy < LCD_W; sy += 3, ry += 4) {
-        const int px0 = LCD_W - 1 - sy;
-        const int px1 = LCD_W - 1 - (sy + 1);
-        const int px2 = LCD_W - 1 - (sy + 2);
-        const uint16_t *s0 = (o == ORIENT_LAND_A) ? (fb + sy * LCD_H) : NULL;
-        const uint16_t *s1 = (o == ORIENT_LAND_A) ? (fb + (sy + 1) * LCD_H) : NULL;
-        const uint16_t *s2 = (o == ORIENT_LAND_A) ? (fb + (sy + 2) * LCD_H) : NULL;
         uint16_t *d0 = dst + ry * PANEL_W;
         uint16_t *d1 = d0 + PANEL_W;
         uint16_t *d2 = d1 + PANEL_W;
         uint16_t *d3 = d2 + PANEL_W;
         if (o == ORIENT_LAND_A) {
-            for (int rx = 0, sx = 0; sx < LCD_H; sx += 4, rx += 5) {
-                uint16_t c0 = __builtin_bswap16(s0[sx]);
-                uint16_t c1 = __builtin_bswap16(s0[sx + 1]);
-                uint16_t c2 = __builtin_bswap16(s0[sx + 2]);
-                uint16_t c3 = __builtin_bswap16(s0[sx + 3]);
-                d0[rx] = c0;
-                d0[rx + 1] = c1;
-                d0[rx + 2] = c1;
-                d0[rx + 3] = c2;
-                d0[rx + 4] = c3;
-
-                c0 = __builtin_bswap16(s1[sx]);
-                c1 = __builtin_bswap16(s1[sx + 1]);
-                c2 = __builtin_bswap16(s1[sx + 2]);
-                c3 = __builtin_bswap16(s1[sx + 3]);
-                d1[rx] = c0;
-                d1[rx + 1] = c1;
-                d1[rx + 2] = c1;
-                d1[rx + 3] = c2;
-                d1[rx + 4] = c3;
-
-                c0 = __builtin_bswap16(s2[sx]);
-                c1 = __builtin_bswap16(s2[sx + 1]);
-                c2 = __builtin_bswap16(s2[sx + 2]);
-                c3 = __builtin_bswap16(s2[sx + 3]);
-                d3[rx] = c0;
-                d3[rx + 1] = c1;
-                d3[rx + 2] = c1;
-                d3[rx + 3] = c2;
-                d3[rx + 4] = c3;
-            }
-            memcpy(d2, d1, PANEL_W * sizeof(uint16_t));
+            scale_row_land_a(fb + sy * LCD_H, s_line);
+            memcpy(d0, s_line, PANEL_W * sizeof(uint16_t));
+            scale_row_land_a(fb + (sy + 1) * LCD_H, s_line);
+            memcpy(d1, s_line, PANEL_W * sizeof(uint16_t));
+            memcpy(d2, s_line, PANEL_W * sizeof(uint16_t));
+            scale_row_land_a(fb + (sy + 2) * LCD_H, s_line);
+            memcpy(d3, s_line, PANEL_W * sizeof(uint16_t));
         } else {
-            for (int rx = 0, sx = 0; sx < LCD_H; sx += 4, rx += 5) {
-                d0[rx] = __builtin_bswap16(fb[log_index(o, px0, sx, LCD_W, LCD_H)]);
-                d0[rx + 1] = d0[rx + 2] = __builtin_bswap16(fb[log_index(o, px0, sx + 1, LCD_W, LCD_H)]);
-                d0[rx + 3] = __builtin_bswap16(fb[log_index(o, px0, sx + 2, LCD_W, LCD_H)]);
-                d0[rx + 4] = __builtin_bswap16(fb[log_index(o, px0, sx + 3, LCD_W, LCD_H)]);
-
-                d1[rx] = __builtin_bswap16(fb[log_index(o, px1, sx, LCD_W, LCD_H)]);
-                d1[rx + 1] = d1[rx + 2] = __builtin_bswap16(fb[log_index(o, px1, sx + 1, LCD_W, LCD_H)]);
-                d1[rx + 3] = __builtin_bswap16(fb[log_index(o, px1, sx + 2, LCD_W, LCD_H)]);
-                d1[rx + 4] = __builtin_bswap16(fb[log_index(o, px1, sx + 3, LCD_W, LCD_H)]);
-
-                d3[rx] = __builtin_bswap16(fb[log_index(o, px2, sx, LCD_W, LCD_H)]);
-                d3[rx + 1] = d3[rx + 2] = __builtin_bswap16(fb[log_index(o, px2, sx + 1, LCD_W, LCD_H)]);
-                d3[rx + 3] = __builtin_bswap16(fb[log_index(o, px2, sx + 2, LCD_W, LCD_H)]);
-                d3[rx + 4] = __builtin_bswap16(fb[log_index(o, px2, sx + 3, LCD_W, LCD_H)]);
-            }
-            memcpy(d2, d1, PANEL_W * sizeof(uint16_t));
+            scale_row_orient(fb, o, LCD_W - 1 - sy, s_line);
+            memcpy(d0, s_line, PANEL_W * sizeof(uint16_t));
+            scale_row_orient(fb, o, LCD_W - 1 - (sy + 1), s_line);
+            memcpy(d1, s_line, PANEL_W * sizeof(uint16_t));
+            memcpy(d2, s_line, PANEL_W * sizeof(uint16_t));
+            scale_row_orient(fb, o, LCD_W - 1 - (sy + 2), s_line);
+            memcpy(d3, s_line, PANEL_W * sizeof(uint16_t));
         }
     }
     esp_cache_msync(dst, PANEL_W * PANEL_H * sizeof(uint16_t), ESP_CACHE_MSYNC_FLAG_DIR_C2M);
@@ -318,6 +318,7 @@ static void flush_task(void *arg)
             draw_frame(f.fb, f.orient, s_rgb_fb);
         }
         xSemaphoreGive(s_flush_idle);
+        vTaskDelay(1);
     }
 }
 
@@ -349,7 +350,7 @@ static void lcd_init(void)
             .in_color_format = LCD_COLOR_FMT_RGB565,
             .out_color_format = LCD_COLOR_FMT_RGB565,
             .num_fbs = 1,
-            .bounce_buffer_size_px = PANEL_W * 10,
+            .bounce_buffer_size_px = PANEL_W * 8,
             .hsync_gpio_num = GPIO_NUM_40,
             .vsync_gpio_num = GPIO_NUM_41,
             .de_gpio_num = GPIO_NUM_42,
