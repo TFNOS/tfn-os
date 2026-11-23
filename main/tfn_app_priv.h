@@ -88,6 +88,11 @@
 #else
 #define TFN_KIND_AM175 0
 #endif
+#ifdef BOARD_KIND_CROW7
+#define TFN_KIND_CROW7 1
+#else
+#define TFN_KIND_CROW7 0
+#endif
 // a big PSRAM (the Tab5: 32 MB): the icon files and the decoded frames stay at an app load while the PSRAM has room,
 // and the prefetch task reads all icons at the start
 #define TFA_ICON_BIG (BOARD_PSRAM_MB >= 32)

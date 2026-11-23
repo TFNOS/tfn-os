@@ -17,6 +17,8 @@
 #include "../../boards/watcher/board_caps.h"
 #elif CONFIG_TFN_TARGET_AMOLED175
 #include "../../boards/am175/board_caps.h"
+#elif CONFIG_TFN_TARGET_CROW7
+#include "../../boards/crow7/board_caps.h"
 #else
 #include "../../boards/lcd349/board_caps.h"
 #endif

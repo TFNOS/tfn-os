@@ -174,6 +174,26 @@
       "notes": ["the bootloader, the table and the boot menu (the factory slot) belong to the Tab5Boot project: tfn writes only the app",
                 "the app goes into the slot tfn_a (partitions_tab5.csv); tfn erases the otadata first, as Tab5Boot does for TFN",
                 "boot_md5: the flash tool has no entry for this kind; tfn does not write the bootloader of this kind"]
+    },
+    "crow7": {
+      "name": "Elecrow CrowPanel Advance 7.0",
+      "chip": "esp32s3",
+      "release": false,
+      "kconfig_target": "CONFIG_TFN_TARGET_CROW7",
+      "sdkconfig_defaults": ["sdkconfig.defaults", "sdkconfig.defaults.crow7"],
+      "dev_sdkconfig": "sdkconfig.crow7",
+      "partition_table": "partitions_wide.csv",
+      "flash_size": "16MB",
+      "flash_chip_mb": 16,
+      "console_usb": ["1a86:7523", "303a:1001"],
+      "console": "uart0",
+      "frame": {"w": 360, "h": 640, "native_w": 0, "native_h": 0, "round_hi": 0},
+      "boot_md5": ["f7673474902841b34c45ee0ada1d6027", "43b5137409d6711030643d703951520e"],
+      "boot_source": "the flash tool OTA_BOOT",
+      "table_md5": "d0111583e707c2bab7e6dbcf8491ecc1",
+      "flash": {"bootloader": "0x0", "table": "0x8000", "app": "0x10000", "otadata": "0x910000", "first_time": true,
+                "baud": 921600, "after": "hard_reset"},
+      "notes": ["800 x 480 16-bit RGB565 panel; 360 x 640 (640 x 360 landscape) tablet app frame scaled to fill the full 800 x 480 screen"]
     }
   }
 }
