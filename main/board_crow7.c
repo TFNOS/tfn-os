@@ -275,6 +275,60 @@ static void scale_row_orient(const uint16_t *fb, int o, int px, uint16_t *line)
     }
 }
 
+// Expand 8 sequential source pixels (from internal-RAM strip) into 10 destination pixels (5:4 with RGB565 blend).
+static inline void expand_8_to_10(const uint16_t *p, uint16_t *dst)
+{
+    uint16_t a0 = __builtin_bswap16(p[0]);
+    uint16_t a1 = __builtin_bswap16(p[1]);
+    uint16_t a2 = __builtin_bswap16(p[2]);
+    uint16_t a3 = __builtin_bswap16(p[3]);
+    dst[0] = a0;
+    dst[1] = a1;
+    dst[2] = mix565(a1, a2);
+    dst[3] = a2;
+    dst[4] = a3;
+
+    uint16_t b0 = __builtin_bswap16(p[4]);
+    uint16_t b1 = __builtin_bswap16(p[5]);
+    uint16_t b2 = __builtin_bswap16(p[6]);
+    uint16_t b3 = __builtin_bswap16(p[7]);
+    dst[5] = b0;
+    dst[6] = b1;
+    dst[7] = mix565(b1, b2);
+    dst[8] = b2;
+    dst[9] = b3;
+}
+
+// Fast sequential-read transpose for ORIENT_PORTRAIT: reads 8 consecutive source rows (5.7 KB) into internal RAM
+// per strip so PSRAM is never read with a 720-byte stride.
+static void draw_portrait(const uint16_t *fb, uint16_t *dst)
+{
+    static uint16_t s_strip[8][LCD_W];
+    for (int sx0 = 0, rx0 = 0; sx0 < LCD_H; sx0 += 8, rx0 += 10) {
+        memcpy(s_strip, fb + sx0 * LCD_W, sizeof s_strip);
+        for (int ry = 0, sy = 0; sy < LCD_W; sy += 3, ry += 4) {
+            const int px0 = LCD_W - 1 - sy;
+            const int px1 = px0 - 1;
+            const int px2 = px0 - 2;
+            uint16_t p0[8], p1[8], p2[8];
+            for (int k = 0; k < 8; k++) {
+                p0[k] = s_strip[k][px0];
+                p1[k] = s_strip[k][px1];
+                p2[k] = s_strip[k][px2];
+            }
+            uint16_t *d0 = dst + ry * PANEL_W + rx0;
+            uint16_t *d1 = d0 + PANEL_W;
+            uint16_t *d2 = d1 + PANEL_W;
+            uint16_t *d3 = d2 + PANEL_W;
+            expand_8_to_10(p0, d0);
+            expand_8_to_10(p1, d1);
+            memcpy(d2, d1, 10 * sizeof(uint16_t));
+            expand_8_to_10(p2, d3);
+        }
+    }
+    esp_cache_msync(dst, PANEL_W * PANEL_H * sizeof(uint16_t), ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+}
+
 // The physical panel is 800 x 480 (landscape). In TFN OS's physical portrait coordinates (LCD_W=360, LCD_H=640),
 // ORIENT_LAND_A (the natural landscape view, 640 x 360) maps directly to the full 800 x 480 panel (5:4 horizontal,
 // 4:3 vertical) via an internal-RAM line buffer to maximize PSRAM burst write throughput.
@@ -282,6 +336,10 @@ static void draw_frame(const uint16_t *fb, int orient, uint16_t *dst)
 {
     static uint16_t s_line[PANEL_W];
     const int o = orient & 3;
+    if (o == ORIENT_PORTRAIT) {
+        draw_portrait(fb, dst);
+        return;
+    }
     for (int ry = 0, sy = 0; sy < LCD_W; sy += 3, ry += 4) {
         uint16_t *d0 = dst + ry * PANEL_W;
         uint16_t *d1 = d0 + PANEL_W;
