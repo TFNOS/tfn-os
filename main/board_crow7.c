@@ -64,7 +64,7 @@ static const char *TAG = "board";
 // Physical RGB panel dimensions (landscape native scan: 800 wide by 480 high)
 #define PANEL_W  800
 #define PANEL_H  480
-#define PCLK_HZ  12000000
+#define PCLK_HZ  16000000
 
 typedef struct {
     const uint16_t *fb;
