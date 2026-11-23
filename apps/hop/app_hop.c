@@ -23,7 +23,14 @@
 #include "tfn/sysui.h"
 #include "tfn/board.h"
 
-#if BOARD_UI_TABLET
+#if BOARD_UI_TABLET && BOARD_STANDS_LAND
+// Desktop landscape tablet (640 x 360): full-screen landscape play with CoreS3 heights.
+#define SCR_W    640
+#define SCR_H    360
+#define HS(h)    ((h) * 0.65f)
+#define CAM_KEEP 150
+#define FALL_CAM 100
+#elif BOARD_UI_TABLET
 // The Tab5 (frame 360 x 640): the heights of the 3.49 (the same height of the screen), and
 // a wider world. The platforms are a little wider, so the jumps are as easy as on the 3.49.
 #define SCR_W    360
@@ -1273,7 +1280,7 @@ static void hop_icon(int x, int y, int s)
 
 const app_t app_hop = {
         .name = "HOP",
-        .landscape = false,
+        .landscape = (BOARD_UI_TABLET && BOARD_STANDS_LAND),
         .needs = 0,             // the touch sides also move the blob
         .round = APP_ROUND_HI,  // (a round panel: the view in the whole circle, hop_rv.inc)
         .init = hop_init,

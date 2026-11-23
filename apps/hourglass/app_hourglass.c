@@ -64,6 +64,24 @@ static const char *TAG = "hourglass";
 #define TIME_X (SCR_W / 2)
 #define TIME_Y 46  // the baseline of the time
 #define HINT_Y 66
+#elif BOARD_UI_TABLET && BOARD_STANDS_LAND && !defined(HG_PORTRAIT)
+// the desktop tablet stands in landscape: 640 x 360, the hourglass at the left and the time at the right
+#define HG_LAND 1
+#define SCR_W   640
+#define SCR_H   360
+#define CX      224
+#define NECK_Y  180
+#define BULB_L  136
+#define R_MAX   54
+#define NECK_R  3.0f
+#define GT      3
+#define CAP_H   15
+#define CAP_W   76
+#define POST_X  68
+#define POST_R  5
+#define TIME_X  496
+#define TIME_Y  186
+#define HINT_Y  216
 #elif BOARD_UI_TABLET
 // the Tab5 stands upright: the 360 x 640 frame; the time at the top, a big hourglass under it
 #define SCR_W  360
