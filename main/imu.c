@@ -506,7 +506,18 @@ static bool sensor_start(void)
     return true;
 }
 #else
-#error "boards/<kind>/board_caps.h: no IMU kind (BOARD_IMU_BMI270, BOARD_IMU_WHEEL or BOARD_IMU_QMI8658)"
+// No motion sensor on this board (all BOARD_IMU_* are 0).
+static bool read_raw(float acc[3], float gyr[3])
+{
+    (void)acc;
+    (void)gyr;
+    return false;
+}
+
+static bool sensor_start(void)
+{
+    return false;
+}
 #endif
 
 bool imu_init(void)

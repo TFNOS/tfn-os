@@ -196,11 +196,14 @@ void usb_audio_boot(void)
 }
 
 #ifdef ESP_PLATFORM
+#include "sdkconfig.h"  // (CONFIG_IDF_TARGET_ESP32S3: the PHY switch below)
+#endif
+
+#if defined(ESP_PLATFORM) && CONFIG_TINYUSB_MIDI_COUNT
 
 #include "esp_log.h"
 #include "tinyusb.h"
 #include "tinyusb_default_config.h"
-#include "sdkconfig.h"  // (CONFIG_IDF_TARGET_ESP32S3: the PHY switch below)
 #include "hal/usb_serial_jtag_ll.h"
 
 static const char *TAG = "usb_audio";
