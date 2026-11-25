@@ -107,7 +107,7 @@ idf_component_register(
 )
 # USB AUDIO (main/usb_audio.c): the audio class of TinyUSB, one IN endpoint of 98 bytes (48 kHz, mono,
 # 16 bit, one more sample for the drift), a FIFO of 24 ms. PUBLIC: the driver and usb_audio.c see the same numbers.
-if(CONFIG_IDF_TARGET_ESP32S3 AND NOT CMAKE_BUILD_EARLY_EXPANSION)
+if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     idf_component_get_property(arcade_tusb espressif__tinyusb COMPONENT_LIB)
     target_compile_definitions(${arcade_tusb} PUBLIC CFG_TUD_AUDIO=1 CFG_TUD_AUDIO_ENABLE_EP_IN=1
                                CFG_TUD_AUDIO_FUNC_1_EP_IN_SZ_MAX=98 CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ=2352)

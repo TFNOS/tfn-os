@@ -10,6 +10,7 @@ in our firmware. It tells which pins are free, and the cautions.
 | Seeed SenseCAP Watcher | A 2 x 4 socket (2.54 mm) on the back; a Grove I2C port | [3](#3-the-seeed-sensecap-watcher) |
 | M5Stack Tab5 (ESP32-P4) | The M5-Bus socket (2 x 15) on the back; ExtPort1 (2 x 5 header, 2.54 mm); ExtPort2 (RS-485 + I2C); PORT.A; the STAMP pads | [4](#4-the-m5stack-tab5) |
 | Waveshare ESP32-S3-Touch-AMOLED-1.8 | No pin header and no socket. Only small test pads on the PCB | [5](#5-the-waveshare-amoled-18) |
+| Elecrow CrowPanel Advance 7.0 | The GPIO8 UART1/GPIO header and the I2C header (GPIO15, GPIO16) on the back | [6](#6-the-elecrow-crowpanel-advance-70) |
 
 The sources:
 - 3.49: the V1 schematic (https://files.waveshare.com/wiki/ESP32-S3-Touch-LCD-3.49/ESP32-S3-Touch-LCD-3.49-Schematic.pdf,
@@ -405,3 +406,22 @@ needs wires soldered to the pads.
 
 The I2C bus (GPIO15 SDA, GPIO14 SCL; `board_amoled.c`): AXP2101 0x34, TCA9554 0x20, FT3168 (the touch) 0x38,
 QMI8658 0x6B, ES8311 0x18 and the RTC 0x51.
+
+---
+
+## 6. The Elecrow CrowPanel Advance 7.0
+
+The CrowPanel Advance 7.0 has a UART1/GPIO header and an I2C header on the back.
+
+| Header | Pin | Net | Use in our firmware |
+|---|---|---|---|
+| GPIO / UART1 | GPIO8 | Free GPIO | `BOARD_FREE_PINS` (the 315 / 433 MHz radio and GPIO apps) |
+| I2C | SDA | GPIO15 | The internal I2C bus (`board_crow7.c`) |
+| I2C | SCL | GPIO16 | The internal I2C bus (`board_crow7.c`) |
+
+The internal I2C bus (GPIO15 SDA, GPIO16 SCL): STC8H1K28 (backlight and power coprocessor) 0x30, GT911 (the touch) 0x5D or 0x14.
+
+### The cautions
+
+- GPIO19 and GPIO20 (USB D- and D+ on the ESP32-S3) are wired to board power rails and are driven high by `board_crow7.c`. The console uses UART0 over the onboard CH340 chip (`1a86:7523`), and USB MIDI / USB AUDIO stay off.
+- The NS4168 speaker amplifier shares GPIO4, GPIO5, and GPIO6 with the microSD card SPI bus (`SPI2_HOST`). Our firmware leaves `BOARD_I2S_*` set to `GPIO_NUM_NC` so the audio driver does not take those pins from the SD card.

@@ -80,7 +80,7 @@ export const BOARDS = [
     short: 'CrowPanel 7.0',
     chip: 'ESP32-S3',
     flashMB: 16,
-    usb: [{ vid: WCH_VID, pid: 0x7523 }, { vid: ESPRESSIF_VID, pid: 0x1001 }],
+    usb: [{ vid: WCH_VID, pid: 0x7523 }],
     screen: '800 x 480 RGB',
     shot: 'img/screens/board_cores3.webp',
     web: false,

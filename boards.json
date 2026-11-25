@@ -185,7 +185,7 @@
       "partition_table": "partitions_wide.csv",
       "flash_size": "16MB",
       "flash_chip_mb": 16,
-      "console_usb": ["1a86:7523", "303a:1001"],
+      "console_usb": ["1a86:7523"],
       "console": "uart0",
       "frame": {"w": 360, "h": 640, "native_w": 0, "native_h": 0, "round_hi": 0},
       "boot_md5": ["f7673474902841b34c45ee0ada1d6027", "43b5137409d6711030643d703951520e"],

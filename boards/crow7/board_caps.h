@@ -48,18 +48,17 @@
 #define BOARD_NATIVE_MM_PX   0.0f
 #define BOARD_ROUND_HI_MM_PX 0.0f
 
-// the board stands on its long side: the natural frame of the apps is 320 x 240 (landscape). The bar screen
-// of the 3.49 has its own name (BOARD_BAR_SCREEN of board.h)
+// the board stands on its long side: the natural frame of the apps is 360 x 640 (640 x 360 landscape).
 #define BOARD_STANDS_LAND 1
 
 // ---------------------------------------------------------------- the sensors and the input
 // the kind of the motion sensor (one of them is 1): BOARD_IMU_QMI8658 = the QMI8658 chip, BOARD_IMU_BMI270 = the
 // BMI270 chip (bmi270_config.c), BOARD_IMU_WHEEL = no chip: the wheel is a left/right tilt (imu.c)
-#define BOARD_IMU_QMI8658 1
+#define BOARD_IMU_QMI8658 0
 #define BOARD_IMU_BMI270  0
 #define BOARD_IMU_WHEEL   0
 // the I2C address of the motion sensor (0 = no chip)
-#define BOARD_IMU_ADDR 0x6B
+#define BOARD_IMU_ADDR 0
 // the BMI270 axes in the physical frame of gfx.h (x right, y down in portrait, z into the screen): {sensor axis 0..2,
 // sign} for physical x, y and z (imu.c, BMI_AXIS); 0 = no BMI270
 #define BOARD_IMU_AXIS {{0, 0}, {0, 0}, {0, 0}}
@@ -67,12 +66,12 @@
 // sign)
 #define BOARD_IMU_TURN_Y 0
 // the size of one px of board_touch_points() in um (input.c: the tap slop in mm)
-#define BOARD_TOUCH_PX_UM 128
+#define BOARD_TOUCH_PX_UM 240
 // the M5Stack Tab5 Keyboard (an STM32 on I2C, tab5_kbd.c) can connect to the board
 #define BOARD_KBD_I2C 0
 
 // the size of one px of the touch points in um in the frame of the apps (not the native frame): libs/kscroll
-#define BOARD_TOUCH_FRAME_UM 128
+#define BOARD_TOUCH_FRAME_UM 240
 
 // ---------------------------------------------------------------- the chips, the radio, the sound, the system
 // the chip has its own WiFi and BLE radio (ESP-NOW, BLE, the native radio); 0 = the radio is a second chip
@@ -92,11 +91,11 @@
 // the voice (tfn/speech.h, the store app VOICE): 1 = the board can read text aloud (tiny-voca needs an octal PSRAM
 // and its model on an SD card); here: octal PSRAM and an SD card slot
 #define BOARD_TTS 1
-// the I2S pins of the codecs (the speaker and the microphones)
+// the I2S pins of the codecs (disabled: the NS4168 speaker DAC shares GPIO4, GPIO5, and GPIO6 with the SD card SPI bus)
 #define BOARD_I2S_MCLK GPIO_NUM_NC
-#define BOARD_I2S_BCLK GPIO_NUM_5
-#define BOARD_I2S_WS   GPIO_NUM_6
-#define BOARD_I2S_DOUT GPIO_NUM_4
+#define BOARD_I2S_BCLK GPIO_NUM_NC
+#define BOARD_I2S_WS   GPIO_NUM_NC
+#define BOARD_I2S_DOUT GPIO_NUM_NC
 #define BOARD_I2S_DIN  GPIO_NUM_NC
 // the speaker codec: BOARD_SPK_AW88298 = an AW88298, BOARD_SPK_ES8388 = an ES8388; both 0 = an ES8311
 #define BOARD_SPK_AW88298 0

@@ -13,8 +13,11 @@ CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=512
 # CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
 CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
-# Do not place RGB LCD ISR in IRAM so that NVS/Flash operations do not crash when accessing PSRAM/bounce buffers
+# Keep the RGB LCD ISR out of IRAM so flash and NVS writes do not crash.
 # CONFIG_LCD_RGB_ISR_IRAM_SAFE is not set
+# GPIO19 and GPIO20 drive board power rails, so USB console, MIDI, and AUDIO stay off.
+# CONFIG_TINYUSB_ENABLED is not set
+CONFIG_TINYUSB_MIDI_COUNT=0
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_wide.csv"
 

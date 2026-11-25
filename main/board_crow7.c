@@ -4,12 +4,11 @@
 //
 // Screen: 800 x 480 16-bit RGB565 parallel panel (DE 42, VSYNC 41, HSYNC 40, PCLK 39 at 16 MHz;
 //         B0..B4 = 21, 47, 48, 45, 38; G0..G5 = 9, 10, 11, 12, 13, 14; R0..R4 = 7, 17, 18, 3, 46).
-//         The apps draw the CoreS3 frame (240 x 320 portrait / 320 x 240 landscape), scaled 2x to 640 x 480
-//         centered on the 800 x 480 panel (80 px black pillars on left/right), or the native 480 x 800
-//         (800 x 480 landscape) frame at 1:1.
+//         The apps draw the 360 x 640 (640 x 360 landscape) tablet frame, scaled to fill the 800 x 480 panel.
+//         Portrait apps are transposed onto the landscape panel.
 // Touch:  GT911 at 0x5D (or 0x14) on I2C0 (SDA 15, SCL 16), reset pin GPIO1.
 // Power & Backlight: STC8H1K28 coprocessor at 0x30 on I2C0 (0x00..0xF4 brightness, 245 backlight off, 249 unmute,
-//         250 wake touch), plus GPIO19 / GPIO20 high for power rails and GPIO2 high for v1.0 backlight fallback.
+//         250 wake touch); GPIO19 and GPIO20 high for board power rails (not USB); GPIO2 high for v1.0 backlight.
 // SD:     SPI2 (MOSI 6, MISO 4, SCK 5, CS -1 / GPIO0).
 
 #include "sdkconfig.h"
@@ -62,9 +61,9 @@ static const char *TAG = "board";
 #define GT911_ADDR_B 0x14
 
 // Physical RGB panel dimensions (landscape native scan: 800 wide by 480 high)
-#define PANEL_W  800
-#define PANEL_H  480
-#define PCLK_HZ  16000000
+#define PANEL_W 800
+#define PANEL_H 480
+#define PCLK_HZ 16000000
 
 typedef struct {
     const uint16_t *fb;
@@ -119,8 +118,8 @@ static bool tp_probe_and_init(void)
             s_tp = add_dev(s_bus, addrs[i]);
             uint8_t id[4] = {0};
             if (tp_read_reg(0x8140, id, 4)) {
-                ESP_LOGI(TAG, "touch: GT911 at 0x%02X (ID: %c%c%c%c)", addrs[i],
-                         id[0] ? id[0] : '?', id[1] ? id[1] : '?', id[2] ? id[2] : '?', id[3] ? id[3] : '?');
+                ESP_LOGI(TAG, "touch: GT911 at 0x%02X (ID: %c%c%c%c)", addrs[i], id[0] ? id[0] : '?',
+                         id[1] ? id[1] : '?', id[2] ? id[2] : '?', id[3] ? id[3] : '?');
             } else {
                 ESP_LOGI(TAG, "touch: GT911 at 0x%02X", addrs[i]);
             }
@@ -194,11 +193,11 @@ static void i2c_and_stc_init(void)
         tp_hw_reset();
     }
 
-    stc_cmd(245);  // backlight off during init
-    stc_cmd(250);  // wake touch
-    stc_cmd(249);  // unmute speaker
+    stc_cmd(245);  // turn the backlight off during init
+    stc_cmd(250);  // wake the touch chip
+    stc_cmd(249);  // unmute the speaker
 
-    // Always perform GT911 reset and wait up to 500 ms for GT911 to respond on 0x5D or 0x14
+    // Reset the GT911 and wait up to 500 ms for it to reply at 0x5D or 0x14.
     for (int attempt = 0; attempt < 5; attempt++) {
         if (tp_probe_and_init()) {
             break;
@@ -208,7 +207,7 @@ static void i2c_and_stc_init(void)
     if (!s_tp) {
         ESP_LOGW(TAG, "touch: GT911 not found at startup (will retry in poll)");
     }
-    board_backlight(230);  // turn backlight on early so the display is visible right away
+    board_backlight(230);  // turn the backlight on early so the display is visible
 }
 
 i2c_master_bus_handle_t board_i2c0(void)

@@ -87,7 +87,7 @@ menu "TFN OS"
         config TFN_TARGET_TAB5
             bool "M5Stack Tab5, ESP32-P4 (720 x 1280 DSI; the apps draw 320 x 240, scaled 3 times)"
         config TFN_TARGET_CROW7
-            bool "Elecrow CrowPanel Advance 7.0, ESP32-S3 (800 x 480 RGB; the apps draw 320 x 240, scaled 2 times)"
+            bool "Elecrow CrowPanel Advance 7.0, ESP32-S3 (800 x 480 RGB)"
     endchoice
 
     choice TFN_BOARD
