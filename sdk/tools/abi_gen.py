@@ -49,9 +49,9 @@ import tempfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 MAIN = os.path.join(ROOT, 'main')
-KINDS = ('lcd349', 'cores3', 'am18', 'watcher', 'tab5', 'am175')
+KINDS = ('lcd349', 'cores3', 'am18', 'watcher', 'tab5', 'am175', 'crow7')
 KIND_IF = {'lcd349': 'TFN_KIND_LCD349', 'cores3': 'TFN_KIND_CORES3', 'am18': 'TFN_KIND_AM18', 'watcher': 'TFN_KIND_WATCHER',
-           'tab5': 'TFN_KIND_TAB5', 'am175': 'TFN_KIND_AM175'}
+           'tab5': 'TFN_KIND_TAB5', 'am175': 'TFN_KIND_AM175', 'crow7': 'TFN_KIND_CROW7'}
 
 
 def tools(kind):

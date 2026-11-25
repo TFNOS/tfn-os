@@ -1673,34 +1673,43 @@ ELFSYM(ha_template, 0x4dc76425, 0x71bc0e53)
 ELFSYM(gfx_hi, 0xaa6f936a, 0xcbb154ce)
 ELFSYM(gfx_hi_want, 0xf3f9a511, 0x1df729e8)
 #endif
-#if TFN_KIND_AM175 || TFN_KIND_AM18 || TFN_KIND_CORES3 || TFN_KIND_LCD349 || TFN_KIND_TAB5
+#if TFN_KIND_AM175 || TFN_KIND_AM18 || TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_LCD349 || TFN_KIND_TAB5
 ELFSYM(gpio_set_direction, 0x31fab173, 0xbf30e545)
 ELFSYM(gpio_set_drive_capability, 0xc94e3eb1, 0xe5832c61)
 ELFSYM(vTaskSetTimeOutState, 0x5cdaa0fc, 0x08699074)
 ELFSYM(xRingbufferCreate, 0x84efa1e7, 0x2de4bb14)
 #endif
-#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_LCD349 || TFN_KIND_TAB5 || TFN_KIND_WATCHER
+#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_LCD349 || TFN_KIND_TAB5 || TFN_KIND_WATCHER
 ELFSYM(gpio_set_pull_mode, 0x190acc4d, 0xa0e06d9f)
 #endif
-#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_LCD349 || TFN_KIND_WATCHER
+#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_LCD349 || TFN_KIND_WATCHER
 ELFSYM(vRingbufferDeleteWithCaps, 0x98d69fb7, 0xcb94eda7)
 ELFSYM(xRingbufferCreateStatic, 0x49be692d, 0xa501571a)
 ELFSYM(xRingbufferCreateWithCaps, 0x8e07d64a, 0x8c34ec27)
 #endif
-#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_LCD349
+#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_LCD349
 ELFSYM(heap_caps_get_total_size, 0x8d443325, 0xe25cb1b6)
 ELFSYM(xRingbufferReceive, 0xbff3a254, 0xecc2130c)
 #endif
-#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_WATCHER
+#if TFN_KIND_AM175 || TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_WATCHER
 ELFSYM(i2c_master_receive, 0x27364b6c, 0x194be4f1)
 #endif
-#if TFN_KIND_CORES3 || TFN_KIND_LCD349 || TFN_KIND_WATCHER
+#if TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_LCD349 || TFN_KIND_WATCHER
 ELFSYM(adc_cali_create_scheme_curve_fitting, 0xe2c2ec48, 0x5424f422)
 ELFSYM(adc_cali_raw_to_voltage, 0x58e708a1, 0x1398ed30)
 ELFSYM(adc_oneshot_config_channel, 0xa4f36b81, 0xb7d57d56)
 ELFSYM(adc_oneshot_new_unit, 0xb21ad03e, 0x829c202d)
 ELFSYM(adc_oneshot_read, 0x65b5a4f3, 0x0df444e7)
 ELFSYM(gpio_config_as_analog, 0xce3836cf, 0x15ccff72)
+#endif
+#if TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_LCD349
+ELFSYM(adc_cali_delete_scheme_curve_fitting, 0x1376fb35, 0xed65c092)
+ELFSYM(adc_oneshot_del_unit, 0x513405df, 0x3ee3d98b)
+#endif
+#if TFN_KIND_CORES3 || TFN_KIND_CROW7 || TFN_KIND_WATCHER
+ELFSYM(esp_log_buffer_hex_internal, 0x87d511e5, 0x8e24c4b4)
+ELFSYM(spi_device_get_actual_freq, 0x1e892815, 0xfc090636)
+ELFSYM(spi_device_transmit, 0xb593d459, 0x76199ceb)
 #endif
 #if TFN_KIND_LCD349 || TFN_KIND_TAB5 || TFN_KIND_WATCHER
 ELFSYM(ledc_bind_channel_timer, 0xef7e8459, 0x02b3fcab)
@@ -1712,14 +1721,10 @@ ELFSYM(ledc_timer_resume, 0xee32aff1, 0xab44ebc4)
 ELFSYM(ledc_timer_rst, 0xd24ee08b, 0xbb60518d)
 ELFSYM(ledc_update_duty, 0xa6f7e2ba, 0x87ec3cfc)
 #endif
-#if TFN_KIND_CORES3 || TFN_KIND_LCD349
-ELFSYM(adc_cali_delete_scheme_curve_fitting, 0x1376fb35, 0xed65c092)
-ELFSYM(adc_oneshot_del_unit, 0x513405df, 0x3ee3d98b)
-#endif
-#if TFN_KIND_CORES3 || TFN_KIND_WATCHER
-ELFSYM(esp_log_buffer_hex_internal, 0x87d511e5, 0x8e24c4b4)
-ELFSYM(spi_device_get_actual_freq, 0x1e892815, 0xfc090636)
-ELFSYM(spi_device_transmit, 0xb593d459, 0x76199ceb)
+#if TFN_KIND_CORES3 || TFN_KIND_CROW7
+ELFSYM(xTimerCreate, 0x67d5fd18, 0x365415a6)
+ELFSYM(xTimerGenericCommand, 0xdc55718e, 0xf676d427)
+ELFSYM(xTimerIsTimerActive, 0x1c36e21f, 0x59f748ac)
 #endif
 #if TFN_KIND_LCD349 || TFN_KIND_TAB5
 ELFSYM(ble_midi_mtu, 0x4c0a8f65, 0xc83dc016)
@@ -1732,11 +1737,6 @@ ELFSYM(nvs_get_stats, 0xcb665e29, 0x848876b0)
 ELFSYM(uxTaskGetNumberOfTasks, 0xcbf7dcdf, 0xe29737e5)
 ELFSYM(uxTaskGetSystemState, 0x6a46d163, 0xf63f2290)
 ELFSYM(vTaskGetInfo, 0xa924bd28, 0xea6321b8)
-#endif
-#if TFN_KIND_CORES3
-ELFSYM(xTimerCreate, 0x67d5fd18, 0x365415a6)
-ELFSYM(xTimerGenericCommand, 0xdc55718e, 0xf676d427)
-ELFSYM(xTimerIsTimerActive, 0x1c36e21f, 0x59f748ac)
 #endif
 #if TFN_KIND_TAB5
 ELFSYM(fprintf, 0x608416f6, 0xdec93d1f)

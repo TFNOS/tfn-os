@@ -335,7 +335,8 @@ def select(doc, main_dir, select_file=None, add=(), remove=(), host=False, with_
                                 (a['name'], a.get('why_core', 'system code calls it')))
             sel.discard(a['name'])
     if not host and slim_kind(doc, kind):
-        sel = {a['name'] for a in apps if a.get('core') and kind not in a.get('store_on', [])}
+        builtin_for_kind = set((doc.get('slim') or {}).get('builtin', {}).get(kind, []))
+        sel = {a['name'] for a in apps if (a.get('core') or a['name'] in builtin_for_kind) and kind not in a.get('store_on', [])}
         notes.append('the slim firmware of %s: only the core apps (the others are app files)' % kind)
     for a in apps:
         if not host and slim_kind(doc, kind) and kind in a.get('store_on', []):

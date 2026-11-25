@@ -6171,7 +6171,7 @@ The task and queue functions of FreeRTOS. A task of an app must end before the a
 - `vTaskDelete`: the system notes the tasks of an app file; while one runs, the code of the app stays in memory
 - `vTaskDeleteWithCaps`: the system notes the tasks of an app file; while one runs, the code of the app stays in memory
 - `vTaskGetInfo` *(only: am175)*
-- `vTaskSetTimeOutState` *(only: am175, am18, cores3, lcd349, tab5)*
+- `vTaskSetTimeOutState` *(only: am175, am18, cores3, crow7, lcd349, tab5)*
 - `vTaskSuspendAll`
 - `xPortEnterCriticalTimeout`
 - `xQueueCreateCountingSemaphore`
@@ -6229,7 +6229,7 @@ The ESP-IDF functions that apps can call (time, log, random numbers, memory, the
 - `esp_http_client_set_url`
 - `esp_http_client_write`
 - `esp_log`
-- `esp_log_buffer_hex_internal` *(only: cores3, watcher)*
+- `esp_log_buffer_hex_internal` *(only: cores3, crow7, watcher)*
 - `esp_log_timestamp`
 - `esp_log_va`
 - `esp_log_write`
@@ -6343,7 +6343,7 @@ The ESP-IDF functions that apps can call (time, log, random numbers, memory, the
 - `heap_caps_get_info`
 - `heap_caps_get_largest_free_block`
 - `heap_caps_get_minimum_free_size`
-- `heap_caps_get_total_size` *(only: am175, cores3, lcd349)*
+- `heap_caps_get_total_size` *(only: am175, cores3, crow7, lcd349)*
 - `heap_caps_malloc`: the system notes each block of an app file and frees it when the app closes
 - `heap_caps_print_heap_info` *(only: am175)*
 - `httpd_query_key_value`
@@ -6432,13 +6432,13 @@ Other functions of the C library: `qsort` (a sort) and `time` (the clock in seco
 The math functions of the C library. Use the `float` versions (`sinf`, `sqrtf`) and `fsin()` / `fcos()` of `gfx.h` for graphics.
 
 - `acosf`
-- `adc_cali_create_scheme_curve_fitting` *(only: cores3, lcd349, watcher)*
-- `adc_cali_delete_scheme_curve_fitting` *(only: cores3, lcd349)*
-- `adc_cali_raw_to_voltage` *(only: cores3, lcd349, watcher)*
-- `adc_oneshot_config_channel` *(only: cores3, lcd349, watcher)*
-- `adc_oneshot_del_unit` *(only: cores3, lcd349)*
-- `adc_oneshot_new_unit` *(only: cores3, lcd349, watcher)*
-- `adc_oneshot_read` *(only: cores3, lcd349, watcher)*
+- `adc_cali_create_scheme_curve_fitting` *(only: cores3, crow7, lcd349, watcher)*
+- `adc_cali_delete_scheme_curve_fitting` *(only: cores3, crow7, lcd349)*
+- `adc_cali_raw_to_voltage` *(only: cores3, crow7, lcd349, watcher)*
+- `adc_oneshot_config_channel` *(only: cores3, crow7, lcd349, watcher)*
+- `adc_oneshot_del_unit` *(only: cores3, crow7, lcd349)*
+- `adc_oneshot_new_unit` *(only: cores3, crow7, lcd349, watcher)*
+- `adc_oneshot_read` *(only: cores3, crow7, lcd349, watcher)*
 - `asinf`
 - `atan2f`
 - `atanf`
@@ -6480,7 +6480,7 @@ The math functions of the C library. Use the `float` versions (`sinf`, `sqrtf`) 
 - `fprintf` *(only: tab5)*
 - `fputc` *(only: tab5)*
 - `gpio_config`
-- `gpio_config_as_analog` *(only: cores3, lcd349, watcher)*
+- `gpio_config_as_analog` *(only: cores3, crow7, lcd349, watcher)*
 - `gpio_func_sel`
 - `gpio_get_level`
 - `gpio_input_enable`
@@ -6497,16 +6497,16 @@ The math functions of the C library. Use the `float` versions (`sinf`, `sqrtf`) 
 - `gpio_pullup_dis`
 - `gpio_pullup_en`
 - `gpio_reset_pin`
-- `gpio_set_direction` *(only: am175, am18, cores3, lcd349, tab5)*
-- `gpio_set_drive_capability` *(only: am175, am18, cores3, lcd349, tab5)*
+- `gpio_set_direction` *(only: am175, am18, cores3, crow7, lcd349, tab5)*
+- `gpio_set_drive_capability` *(only: am175, am18, cores3, crow7, lcd349, tab5)*
 - `gpio_set_intr_type`
 - `gpio_set_level`
-- `gpio_set_pull_mode` *(only: am175, cores3, lcd349, tab5, watcher)*
+- `gpio_set_pull_mode` *(only: am175, cores3, crow7, lcd349, tab5, watcher)*
 - `hypotf`
 - `i2c_master_bus_add_device`
 - `i2c_master_bus_rm_device`
 - `i2c_master_multi_buffer_transmit`
-- `i2c_master_receive` *(only: am175, cores3, watcher)*
+- `i2c_master_receive` *(only: am175, cores3, crow7, watcher)*
 - `i2c_master_transmit`
 - `i2c_master_transmit_receive`
 - `ledc_bind_channel_timer` *(only: lcd349, tab5, watcher)*
@@ -7071,14 +7071,14 @@ The math functions of the C library. Use the `float` versions (`sinf`, `sqrtf`) 
 - `spi_bus_add_device`
 - `spi_bus_remove_device`
 - `spi_device_acquire_bus`
-- `spi_device_get_actual_freq` *(only: cores3, watcher)*
+- `spi_device_get_actual_freq` *(only: cores3, crow7, watcher)*
 - `spi_device_get_trans_result`
 - `spi_device_polling_end`
 - `spi_device_polling_start`
 - `spi_device_polling_transmit`
 - `spi_device_queue_trans`
 - `spi_device_release_bus`
-- `spi_device_transmit` *(only: cores3, watcher)*
+- `spi_device_transmit` *(only: cores3, crow7, watcher)*
 - `sqrt`
 - `sqrtf`
 - `stk_split`
@@ -7090,7 +7090,7 @@ The math functions of the C library. Use the `float` versions (`sinf`, `sqrtf`) 
 - `ulTaskGetIdleRunTimeCounterForCore`
 - `vEventGroupDelete`
 - `vRingbufferDelete`
-- `vRingbufferDeleteWithCaps` *(only: am175, cores3, lcd349, watcher)*
+- `vRingbufferDeleteWithCaps` *(only: am175, cores3, crow7, lcd349, watcher)*
 - `vRingbufferGetInfo`
 - `vRingbufferReturnItem`
 - `vsnprintf` *(only: tab5)*
@@ -7098,16 +7098,16 @@ The math functions of the C library. Use the `float` versions (`sinf`, `sqrtf`) 
 - `xEventGroupCreate`
 - `xEventGroupSetBits`
 - `xEventGroupWaitBits`
-- `xRingbufferCreate` *(only: am175, am18, cores3, lcd349, tab5)*
-- `xRingbufferCreateStatic` *(only: am175, cores3, lcd349, watcher)*
-- `xRingbufferCreateWithCaps` *(only: am175, cores3, lcd349, watcher)*
+- `xRingbufferCreate` *(only: am175, am18, cores3, crow7, lcd349, tab5)*
+- `xRingbufferCreateStatic` *(only: am175, cores3, crow7, lcd349, watcher)*
+- `xRingbufferCreateWithCaps` *(only: am175, cores3, crow7, lcd349, watcher)*
 - `xRingbufferGetCurFreeSize`
-- `xRingbufferReceive` *(only: am175, cores3, lcd349)*
+- `xRingbufferReceive` *(only: am175, cores3, crow7, lcd349)*
 - `xRingbufferReceiveUpTo`
 - `xRingbufferSend`
-- `xTimerCreate` *(only: cores3)*
-- `xTimerGenericCommand` *(only: cores3)*
-- `xTimerIsTimerActive` *(only: cores3)*
+- `xTimerCreate` *(only: cores3, crow7)*
+- `xTimerGenericCommand` *(only: cores3, crow7)*
+- `xTimerIsTimerActive` *(only: cores3, crow7)*
 
 ## Types and constants
 

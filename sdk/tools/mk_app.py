@@ -48,7 +48,7 @@ import store_conf  # noqa: E402
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 SDK = os.path.join(ROOT, 'sdk')
 HOST = os.path.join(SDK, 'tools', 'host')
-KINDS = ('lcd349', 'cores3', 'am18', 'watcher', 'tab5', 'am175')
+KINDS = ('lcd349', 'cores3', 'am18', 'watcher', 'tab5', 'am175', 'crow7')
 FIRMWARE_BUILDS = {}
 
 
@@ -56,7 +56,7 @@ def firmware_build(kind):
     return FIRMWARE_BUILDS.get(kind, os.path.join(ROOT, 'build_dev', kind))
 
 # the icon tool of each kind (the Tab5 draws the frame of the CoreS3: the same icon and flags)
-ICON_KIND = {'tab5': 'cores3', 'am175': 'watcher'}     # (the AMOLED-1.75C draws the frames of the Watcher)
+ICON_KIND = {'tab5': 'cores3', 'am175': 'watcher', 'crow7': 'cores3'}     # (the AMOLED-1.75C draws the frames of the Watcher)
 
 
 def app_of(name, kinds=None):

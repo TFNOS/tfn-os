@@ -1,0 +1,23 @@
+# The Elecrow CrowPanel Advance 7.0" HMI (ESP32-S3-WROOM-1-N16R8: 16 MB QIO flash, 8 MB octal PSRAM, 800 x 480 RGB565).
+# Use this file after sdkconfig.defaults, with its own build folder and sdkconfig:
+#   idf.py -B build_dev/crow7 -D SDKCONFIG="$PWD/build_dev/crow7/sdkconfig"
+#          -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.defaults.crow7" build
+CONFIG_TFN_TARGET_CROW7=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=512
+# The console and the log: UART0 (GPIO43/44) through the onboard CH340 USB-UART chip (/dev/tty.wchusbserial*).
+# CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+# Keep the RGB LCD ISR out of IRAM so flash and NVS writes do not crash.
+# CONFIG_LCD_RGB_ISR_IRAM_SAFE is not set
+# GPIO19 and GPIO20 drive board power rails, so USB console, MIDI, and AUDIO stay off.
+# CONFIG_TINYUSB_ENABLED is not set
+CONFIG_TINYUSB_MIDI_COUNT=0
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_wide.csv"
+
